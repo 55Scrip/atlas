@@ -570,6 +570,16 @@ export const sv: Record<TranslationKey, string> = {
     "Fritt kassaflöde är inte positivt, så en avkastning kan inte beräknas.",
   "investmentCase.analysis.valuation.gap.missingScenarioAssumptions":
     "Inga framåtblickande antaganden har angetts för det här scenariot.",
+  "investmentCase.analysis.valuation.gap.denominatorEvidenceMissing":
+    "Aktuell värdering kan inte stödjas eftersom Atlas ännu inte kan fastställa bolagets fullständiga marknadsvärde för stamaktier.",
+  "investmentCase.analysis.valuation.gap.currentIssuerPriceNotSynchronized":
+    "Aktuell värdering kan inte stödjas eftersom Atlas saknar samtidiga marknadsdata för alla relevanta aktieslag.",
+  "investmentCase.analysis.valuation.gap.temporalEvidenceGap":
+    "Aktuell värdering kan inte stödjas eftersom Atlas marknads- och rapportunderlag inte är konsekvent daterat.",
+  "investmentCase.analysis.valuation.gap.numeratorEvidenceMissing":
+    "Aktuell värdering kan inte stödjas eftersom ett preferensaktieanspråk på det fria kassaflödet inte kan kvantifieras.",
+  "investmentCase.analysis.valuation.gap.boundedDenominatorDisagreement":
+    "Aktuell värdering kan inte stödjas eftersom underlaget medger mer än en tolkning av dagens värdering.",
   "investmentCase.analysis.valuation.history": "Jämförs med {{count}} tidigare räkenskapsår ({{from}}–{{to}}).",
   "investmentCase.analysis.valuation.historyLimited":
     "Bara {{count}} tidigare räkenskapsår att jämföra med; Atlas kräver {{minimum}} innan värderingen får påverka rekommendationen.",

@@ -35,7 +35,7 @@ from atlas.analysis_engine.recommendation import (
 from atlas.analysis_engine.recommendation_conviction import RecommendationConvictionLevel
 from atlas.analysis_engine.valuation.contracts import ValuationStatus
 from atlas.analysis_engine.valuation.facts import extract_valuation_facts_from_records
-from atlas.analysis_engine.valuation.pipeline import evaluate_valuation
+from tests.unit.analysis_engine.valuation._issuer_basis import evaluate_fixture_valuation as evaluate_valuation
 from atlas.analysis_engine.valuation.support import ValuationSupport, ValuationSupportGapKind, ValuationSupportStatus
 from atlas.decision_engine.contracts import (
     EvaluationState,
@@ -295,7 +295,7 @@ def _undervalued_valuation_engine():
 
     from atlas.analysis_engine.business_facts.extraction import extract_facts_from_records
     from atlas.analysis_engine.valuation.facts import extract_valuation_facts_from_records
-    from atlas.analysis_engine.valuation.pipeline import evaluate_valuation
+    from tests.unit.analysis_engine.valuation._issuer_basis import evaluate_fixture_valuation as evaluate_valuation
     from tests.unit.analysis_engine.valuation._fixtures import fundamentals_record, market_record, valuation_inputs
 
     def _filed(year: int) -> "datetime":

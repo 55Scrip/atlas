@@ -180,10 +180,10 @@ class TestValuationKeepsReadingTheAdjustedPrice:
         from atlas.analysis_engine.methodology import ANALYSIS_METHODOLOGY
         from atlas.analysis_engine.valuation.cash_flow import FCF_YIELD_METHODOLOGY
 
-        assert FCF_YIELD_METHODOLOGY == "fiscal_epoch_v2"
+        assert FCF_YIELD_METHODOLOGY == "fiscal_epoch_v3"
         assert ANALYSIS_METHODOLOGY == (
-            "financial_risk=debt_burden_v2;outlook=sensitivity_v2;"
-            "rolling_growth=fiscal_year_windows_v2;valuation=fiscal_epoch_v2"
+            "financial_risk=debt_burden_v2;outlook=sensitivity_v2;rolling_growth=fiscal_year_windows_v2;"
+            "valuation=fiscal_epoch_v3+issuer_common_equity_market_cap_v1+common_attributable_fcf_v1"
         )
 
 

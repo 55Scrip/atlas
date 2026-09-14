@@ -567,6 +567,16 @@ export const en = {
     "Free cash flow is not positive, so a yield can't be computed.",
   "investmentCase.analysis.valuation.gap.missingScenarioAssumptions":
     "No forward assumptions have been supplied for this scenario.",
+  "investmentCase.analysis.valuation.gap.denominatorEvidenceMissing":
+    "Current valuation cannot be supported because Atlas cannot yet establish the company's full common-equity market value.",
+  "investmentCase.analysis.valuation.gap.currentIssuerPriceNotSynchronized":
+    "Current valuation cannot be supported because Atlas does not have synchronized market data for all relevant share classes.",
+  "investmentCase.analysis.valuation.gap.temporalEvidenceGap":
+    "Current valuation cannot be supported because Atlas's market and filing evidence are not dated consistently.",
+  "investmentCase.analysis.valuation.gap.numeratorEvidenceMissing":
+    "Current valuation cannot be supported because a preferred-stock claim on free cash flow cannot be quantified.",
+  "investmentCase.analysis.valuation.gap.boundedDenominatorDisagreement":
+    "Current valuation cannot be supported because the available evidence allows more than one reading of today's valuation.",
   "investmentCase.analysis.valuation.history": "Compared with {{count}} earlier fiscal years ({{from}}–{{to}}).",
   "investmentCase.analysis.valuation.historyLimited":
     "Only {{count}} earlier fiscal year(s) to compare with; Atlas requires {{minimum}} before valuation may affect the recommendation.",

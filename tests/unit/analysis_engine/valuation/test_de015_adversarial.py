@@ -26,7 +26,7 @@ from atlas.analysis_engine.recommendation import evaluate_recommendation_gate
 from atlas.analysis_engine.recommendation_conviction import calculate_recommendation_conviction
 from atlas.analysis_engine.valuation.contracts import ValuationMethodKind, ValuationStatus
 from atlas.analysis_engine.valuation.facts import extract_valuation_facts_from_records
-from atlas.analysis_engine.valuation.pipeline import evaluate_valuation
+from tests.unit.analysis_engine.valuation._issuer_basis import evaluate_fixture_valuation as evaluate_valuation
 from atlas.analysis_engine.valuation.proof import PathProof, ProofVerdict
 from atlas.analysis_engine.valuation.support import (
     ValuationSupportGapKind,

@@ -7,7 +7,7 @@ import dataclasses
 from atlas.analysis_engine.exceptions import AnalysisEngineContractError
 from atlas.analysis_engine.valuation.contracts import ValuationMethodKind, ValuationStatus
 from atlas.analysis_engine.valuation.models import ValuationEngineResult
-from atlas.analysis_engine.valuation.pipeline import evaluate_valuation
+from tests.unit.analysis_engine.valuation._issuer_basis import evaluate_fixture_valuation as evaluate_valuation
 from atlas.decision_engine.contracts import EvaluationState
 from tests.unit.analysis_engine.valuation._fixtures import EVALUATED_AT, valuation_inputs
 

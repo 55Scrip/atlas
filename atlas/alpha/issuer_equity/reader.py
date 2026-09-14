@@ -1,5 +1,7 @@
 """Inputs for the issuer common-equity composer, from persisted evidence --
-read-only, on demand (nothing in Case composition calls it).
+read-only, on demand (Case composition reads it through
+`valuation_basis`; `on_date` composes on exactly one date for the strict
+current observation).
 
 **Count sets.** Class counts come from Atlas's share evidence: each current
 filing's cover counts (dated by their own instant) and each annual filing's
@@ -78,13 +80,37 @@ class IssuerEquityReader:
         self._rights = SqlAlchemyClassRightsEvidenceRepository(engine)
         self._records = SqlAlchemyBusinessRecordRepository(engine)
         self._listing_mics = listing_mics
+        # Request-scoped memos: one reader serves one composition pass, and
+        # nothing it reads changes within it.
+        self._records_by_company: dict[str, tuple] = {}
+        self._count_sets: dict[str, list] = {}
+        self._rights_by: dict[tuple[str, date], tuple] = {}
+        self._prices: dict[str, dict] = {}
+
+    def prime(self, company: str, records: tuple) -> None:
+        """Every version of `company`'s records, already read by the caller --
+        read once rather than again here. Nothing to prime is no priming."""
+        if records:
+            self._records_by_company[company] = tuple(records)
+
+    def _company_records(self, company: str) -> tuple:
+        if company not in self._records_by_company:
+            self._records_by_company[company] = tuple(self._records.get_by_company(company))
+        return self._records_by_company[company]
 
     # -- identity ------------------------------------------------------------------------------------------
 
     def issuer_cik(self, ticker: str) -> str | None:
-        ciks = {f"{int(r.metadata['sec_cik']):010d}" for r in self._records.get_by_company(ticker)
+        ciks = {f"{int(r.metadata['sec_cik']):010d}" for r in self._company_records(ticker)
                 if r.document_type is SourceKind.FINANCIAL_STATEMENT and str(r.metadata.get("sec_cik") or "").isdigit()}
         return ciks.pop() if len(ciks) == 1 else None
+
+    def rights(self, issuer_cik: str, evaluated_on: date):
+        """The issuer's rights evidence filed by the evaluation date."""
+        key = (issuer_cik, evaluated_on)
+        if key not in self._rights_by:
+            self._rights_by[key] = self._rights.observations_for_issuers(frozenset({issuer_cik}), filed_by=evaluated_on)[issuer_cik]
+        return self._rights_by[key]
 
     def _listed(self, symbol: str | None, mic: str | None) -> str | None:
         if not symbol or not mic or self._listing_mics is None:
@@ -94,8 +120,13 @@ class IssuerEquityReader:
     # -- prices --------------------------------------------------------------------------------------------
 
     def price_series(self, symbol: str) -> dict[date, ListedPrice]:
+        if symbol not in self._prices:
+            self._prices[symbol] = self._price_series(symbol)
+        return self._prices[symbol]
+
+    def _price_series(self, symbol: str) -> dict[date, ListedPrice]:
         by_day: dict[date, set[ListedPrice]] = {}
-        for record in latest_versions(self._records.get_by_company(symbol)):
+        for record in latest_versions(self._company_records(symbol)):
             p = market_price_provenance(record)
             if p is None:
                 continue
@@ -110,6 +141,11 @@ class IssuerEquityReader:
     # -- counts --------------------------------------------------------------------------------------------
 
     def count_sets(self, issuer_cik: str) -> list[CountSet]:
+        if issuer_cik not in self._count_sets:
+            self._count_sets[issuer_cik] = self._read_count_sets(issuer_cik)
+        return self._count_sets[issuer_cik]
+
+    def _read_count_sets(self, issuer_cik: str) -> list[CountSet]:
         sets: dict[tuple[str, date], list[ClassCount]] = {}
         filed: dict[tuple[str, date], date] = {}
         for o in self._shares.current_evidence_for_issuers(frozenset({issuer_cik})).get(issuer_cik, ()):
@@ -153,14 +189,14 @@ class IssuerEquityReader:
             class_breakdown=breakdown)
 
     def _basis_events(self, ticker: str):
-        return derive_basis_events(latest_versions(self._records.get_by_company(ticker)))
+        return derive_basis_events(latest_versions(self._company_records(ticker)))
 
     def current(self, ticker: str, evaluated_on: date) -> IssuerCommonEquityMarketCap | None:
         cik = self.issuer_cik(ticker)
         if cik is None:
             return None
         sets = self.count_sets(cik)
-        rights = self._rights.observations_for_issuers(frozenset({cik}), filed_by=evaluated_on)[cik]
+        rights = self.rights(cik, evaluated_on)
         own = self.price_series(ticker)
         series: dict[str, dict[date, ListedPrice]] = {ticker: own}
         first = None
@@ -193,6 +229,31 @@ class IssuerEquityReader:
                 return composed
         return first
 
+    def on_date(self, ticker: str, on: date, evaluated_on: date) -> IssuerCommonEquityMarketCap | None:
+        """The composition on exactly `on` -- never an earlier date. A listed
+        sibling class with no price that day leaves it insufficient
+        (`no_price:<symbol>`); a share-basis change between the count and the
+        price withholds it. `None` without an issuer or a count set by then."""
+        cik = self.issuer_cik(ticker)
+        if cik is None:
+            return None
+        sets = self.count_sets(cik)
+        usable = [s for s in sets if s.instant <= on and s.filing_date <= evaluated_on]
+        if not usable:
+            return None
+        chosen = usable[-1]
+        later = [s for s in sets if s.instant > chosen.instant and s.filing_date <= evaluated_on]
+        events = self._basis_events(ticker)
+        if (any(e.after < on and e.on_or_before > chosen.instant for e in events)
+                or any(not _same_basis(_total(chosen), _total(s)) for s in later)):
+            composed = compose_issuer_common_equity_market_cap(cik, on, (), {}, (), case_symbol=ticker)
+            return replace(composed, count_instant=chosen.instant, count_accession=chosen.accession,
+                           gaps=("share_basis_change_between_count_and_price",))
+        rights = self.rights(cik, evaluated_on)
+        symbols = {c.symbol for c in chosen.counts if c.symbol and c.shares > 0} | {ticker}
+        prices = {s: p for s in sorted(symbols) if (p := self.price_series(s).get(on)) is not None}
+        return self._compose(cik, on, chosen, sets, ticker, prices, rights)
+
     def at_epoch(self, ticker: str, observed_on: date, count_accession: str, period_end: date, evaluated_on: date,
                  *, factor: float = 1.0) -> IssuerCommonEquityMarketCap | None:
         """One historical epoch: the count set is the class counts the Case's
@@ -205,7 +266,7 @@ class IssuerEquityReader:
         chosen = next((s for s in sets if s.accession == count_accession and s.instant == period_end), None)
         if chosen is None:
             return None
-        rights = self._rights.observations_for_issuers(frozenset({cik}), filed_by=evaluated_on)[cik]
+        rights = self.rights(cik, evaluated_on)
         symbols = {c.symbol for c in chosen.counts if c.symbol and c.shares > 0} | {ticker}
         prices = {s: p for s in symbols if (p := self.price_series(s).get(observed_on)) is not None}
         return self._compose(cik, observed_on, chosen, sets, ticker, prices, rights, factor)

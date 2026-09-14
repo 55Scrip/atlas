@@ -75,7 +75,9 @@ from atlas.analysis_engine.risk.models import RiskAnalysisResult
 from atlas.analysis_engine.risk.pipeline import evaluate_risk
 from atlas.analysis_engine.valuation.contracts import ValuationMethodKind, ValuationStatus
 from atlas.analysis_engine.valuation.facts import extract_valuation_facts_from_records
-from atlas.analysis_engine.valuation.models import ValuationEngineResult
+from atlas.analysis_engine.valuation.cash_flow import fiscal_epochs
+from atlas.analysis_engine.valuation.issuer_basis import IssuerValuationBasis
+from atlas.analysis_engine.valuation.models import FcfYieldEvidence, ValuationEngineResult
 from atlas.analysis_engine.valuation.pipeline import evaluate_valuation
 from atlas.analysis_engine.valuation.support import evaluate_valuation_support
 from atlas.decision_engine.contracts import (
@@ -505,6 +507,24 @@ def _effective_open_questions(
     return tuple(question for question in open_questions if question.kind not in stale)
 
 
+def fiscal_epochs_for_records(
+    business_records: tuple[BusinessRecord, ...], *, generated_at: datetime
+) -> FcfYieldEvidence | None:
+    """The fiscal epochs `assemble_analysis`'s FCF-yield valuation will price,
+    from the same records, source gates and applicability -- so the Alpha
+    composition layer can compose their issuer basis first. A description
+    of which observations exist, never a valuation."""
+    return fiscal_epochs(
+        extract_facts_from_records(business_records, evaluated_at=generated_at),
+        extract_valuation_facts_from_records(business_records, evaluated_at=generated_at),
+        statement_record_ids=frozenset(
+            record.id for record in business_records if record.document_type is DocumentKind.FINANCIAL_STATEMENT
+        ),
+        industry=_company_industry(business_records),
+        evaluated_at=generated_at,
+    )
+
+
 def assemble_analysis(
     engine_input: DecisionEngineInput,
     decision_output: DecisionEngineOutput,
@@ -512,6 +532,7 @@ def assemble_analysis(
     is_thesis_stale: bool,
     business_records: tuple[BusinessRecord, ...] = (),
     generated_at: datetime,
+    valuation_basis: IssuerValuationBasis | None = None,
 ) -> CanonicalAnalysis:
     """Assemble one `CanonicalAnalysis` from an already-computed
     `DecisionEngineOutput`. Deterministic: identical inputs always
@@ -550,6 +571,11 @@ def assemble_analysis(
     `RiskStatus.HIGH` -- `BUSINESS_RISK`/`THESIS_RISK` are deliberately
     excluded to avoid double-counting signals `business_conclusive`/
     `has_contradicting_evidence` already carry.
+
+    **fiscal_epoch_v3**: `valuation_basis` is the issuer basis composed by
+    the Alpha layer for exactly these records' fiscal epochs
+    (`fiscal_epochs_for_records`). `None` withholds the FCF-yield valuation
+    -- there is no other construction to fall back to.
     """
     reasoning = decision_output.reasoning.finding
     confidence: Confidence = decision_output.business_evaluation.evidence_quality.coverage
@@ -573,6 +599,7 @@ def assemble_analysis(
         statement_record_ids=statement_record_ids,
         industry=industry,
         evaluated_at=generated_at,
+        valuation_basis=valuation_basis,
     )
     # Valuation Support for Capital Deployment (`DE-015`): an independent
     # conclusion derived from valuation_engine plus raw business/valuation

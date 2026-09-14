@@ -10,7 +10,7 @@ from atlas.analysis_engine.contracts import CapabilityStatus
 from atlas.analysis_engine.conviction import ConvictionLevel
 from atlas.analysis_engine.findings import FindingKind
 from atlas.analysis_engine.models import UnavailableCapability
-from atlas.analysis_engine.pipeline import assemble_analysis
+from tests.unit.analysis_engine.valuation._issuer_basis import assemble_fixture_analysis as assemble_analysis
 from atlas.core.domain.case.value_objects import CaseId
 from atlas.core.domain.evidence.value_objects import Direction
 from atlas.decision_engine.contracts import DecisionEngineInput, RecommendationOutcomeKind

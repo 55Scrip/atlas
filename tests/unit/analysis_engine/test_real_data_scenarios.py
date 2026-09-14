@@ -18,7 +18,7 @@ from atlas.analysis_engine.business_contracts import BusinessCategory
 from atlas.analysis_engine.business_data.models import RawBusinessDocument
 from atlas.analysis_engine.business_data.pipeline import IngestedRecord, ingest
 from atlas.analysis_engine.business_data.versioning import latest_versions
-from atlas.analysis_engine.pipeline import assemble_analysis
+from tests.unit.analysis_engine.valuation._issuer_basis import assemble_fixture_analysis as assemble_analysis
 from atlas.analysis_engine.contracts import RiskCategory
 from atlas.analysis_engine.risk.contracts import RiskStatus
 from atlas.analysis_engine.valuation.contracts import ValuationMethodKind, ValuationStatus

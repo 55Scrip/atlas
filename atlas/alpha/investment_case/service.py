@@ -33,6 +33,7 @@ from atlas.alpha.investment_case.management_credibility_intelligence import extr
 from atlas.alpha.investment_case.management_guidance_intelligence import extract_management_guidance
 from atlas.alpha.investment_case.regulatory_filings import extract_regulatory_filings
 from atlas.alpha.investment_case_change.repository import SqlAlchemyInvestmentCaseSnapshotRepository
+from atlas.alpha.issuer_equity.valuation_basis import IssuerValuationBasisBuilder
 from atlas.alpha.portfolio.models import AlphaHolding, AlphaTradeLogEntry
 from atlas.alpha.portfolio.store import AlphaPortfolioStore
 from atlas.alpha.portfolio.trade_log_store import AlphaTradeLogStore
@@ -46,7 +47,7 @@ from atlas.analysis_engine.business_data.sources import SourceKind
 from atlas.analysis_engine.business_data.versioning import latest_versions
 from atlas.analysis_engine.business_facts.extraction import extract_facts_from_records
 from atlas.analysis_engine.investment_case_change import ChangeIntelligence, capture_snapshot, compare_snapshots
-from atlas.analysis_engine.pipeline import assemble_analysis
+from atlas.analysis_engine.pipeline import assemble_analysis, fiscal_epochs_for_records
 from atlas.analysis_engine.valuation.contracts import ValuationMethodKind
 from atlas.analysis_engine.valuation.facts import extract_valuation_facts_from_records
 from atlas.core.domain.case.entity import Case
@@ -110,6 +111,7 @@ class InvestmentCaseCompositionService:
         snapshot_repository: SqlAlchemyInvestmentCaseSnapshotRepository | None = None,
         binding_repository: CaseInstrumentBindingRepository | None = None,
         security_share_repository: SqlAlchemySecurityShareEvidenceRepository | None = None,
+        valuation_basis_builder: IssuerValuationBasisBuilder | None = None,
     ) -> None:
         self._case_repository = case_repository
         self._decision_repository = decision_repository
@@ -143,6 +145,10 @@ class InvestmentCaseCompositionService:
         #: construction site that predates it) a Case simply has no
         #: security-level share counts.
         self._security_share_repository = security_share_repository
+        #: fiscal_epoch_v3 -- composes each Case's issuer valuation basis from
+        #: persisted evidence. Without it (bare test construction) the
+        #: FCF-yield valuation is withheld, never priced on the retired proxy.
+        self._valuation_basis_builder = valuation_basis_builder
         # (Investment Case Monitoring & Change Intelligence v1) Optional,
         # trailing, same backward-compatible-extension shape as
         # `watchlist_store` above: every call site built before this
@@ -182,6 +188,7 @@ class InvestmentCaseCompositionService:
         evaluated_at: datetime,
         shared_issuer: bool,
         security_share_counts: tuple[SecurityShareCountObservation, ...] = (),
+        every_version: tuple[BusinessRecord, ...] = (),
     ) -> InvestmentCaseComposition:
         """The one per-Case assembly implementation -- both `build` and
         `build_many` call only this. Never duplicated, never
@@ -210,12 +217,27 @@ class InvestmentCaseCompositionService:
         decision_output = run_pipeline(engine_input, generated_at=evaluated_at)
 
         is_thesis_stale = _is_thesis_stale(decisions, observations, evaluated_at)
+        # fiscal_epoch_v3: the fiscal epochs the valuation compares, their
+        # aligned historical market capitalisations, and the issuer basis that
+        # prices them -- composed before the analysis, which only applies it.
+        fiscal_epochs = fiscal_epochs_for_records(business_records, generated_at=evaluated_at)
+        historical_market_cap = reconstruct_historical_market_caps(
+            fiscal_epochs, business_records, shared_issuer=shared_issuer,
+            security_share_counts=security_share_counts, as_of=evaluated_at.date(),
+        )
+        valuation_basis = None
+        if self._valuation_basis_builder is not None and ticker is not None:
+            valuation_basis = self._valuation_basis_builder.build(
+                ticker=ticker, every_version=every_version or business_records, records=business_records,
+                epochs=fiscal_epochs, historical=historical_market_cap, evaluated_at=evaluated_at,
+            )
         canonical_analysis = assemble_analysis(
             engine_input,
             decision_output,
             is_thesis_stale=is_thesis_stale,
             business_records=business_records,
             generated_at=evaluated_at,
+            valuation_basis=valuation_basis,
         )
 
         # Product Sprint 14 (Evidence & Explanation Quality): the exact
@@ -248,12 +270,6 @@ class InvestmentCaseCompositionService:
             if finding.kind is ValuationMethodKind.FCF_YIELD_RELATIVE
         )
         historical_valuation = extract_historical_valuation(fcf_yield_finding, market_facts)
-        # Descriptive only, read from the same epochs; never handed back to
-        # anything that decides (see `historical_market_cap.py`).
-        historical_market_cap = reconstruct_historical_market_caps(
-            fcf_yield_finding.fcf_yield_evidence, business_records, shared_issuer=shared_issuer,
-            security_share_counts=security_share_counts, as_of=evaluated_at.date(),
-        )
         earnings_call = extract_earnings_call_knowledge(business_records)
         financial_statement_intelligence = extract_financial_statement_history(business_records)
         financial_quality_intelligence = extract_financial_quality(financial_statement_intelligence)
@@ -464,6 +480,7 @@ class InvestmentCaseCompositionService:
         business_records: tuple[BusinessRecord, ...] = ()
         shared_issuer = False
         security_share_counts: tuple[SecurityShareCountObservation, ...] = ()
+        every_version: tuple[BusinessRecord, ...] = ()
         if ticker is not None:
             trades_for_ticker = tuple(t for t in all_trades if t.security == ticker)
             every_version = self._business_record_repository.get_by_company(ticker)
@@ -484,6 +501,7 @@ class InvestmentCaseCompositionService:
             evaluated_at=_utc_now(),
             shared_issuer=shared_issuer,
             security_share_counts=security_share_counts,
+            every_version=every_version if ticker is not None else (),
         )
 
     def _security_share_counts(
@@ -626,5 +644,6 @@ class InvestmentCaseCompositionService:
                 evaluated_at=evaluated_at,
                 shared_issuer=bool(holding is not None and sharing_by_ticker.get(holding.ticker)),
                 security_share_counts=security_shares_by_ticker.get(holding.ticker, ()) if holding is not None else (),
+                every_version=tuple(business_records_by_ticker.get(holding.ticker, ())) if holding is not None else (),
             )
         return results

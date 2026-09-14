@@ -17,6 +17,10 @@ from fastapi import Depends
 from atlas.alpha.case_instrument.dependencies import get_case_instrument_binding_repository
 from atlas.alpha.case_instrument.repository import CaseInstrumentBindingRepository
 from atlas.alpha.investment_case.service import InvestmentCaseCompositionService
+from atlas.alpha.issuer_equity.dependencies import get_issuer_valuation_basis_builder
+from atlas.alpha.issuer_equity.valuation_basis import IssuerValuationBasisBuilder
+from atlas.alpha.security_share_evidence.dependencies import get_security_share_evidence_repository
+from atlas.alpha.security_share_evidence.repository import SqlAlchemySecurityShareEvidenceRepository
 from atlas.alpha.portfolio.api.dependencies import get_alpha_portfolio_store, get_alpha_trade_log_store
 from atlas.alpha.portfolio.store import AlphaPortfolioStore
 from atlas.alpha.portfolio.trade_log_store import AlphaTradeLogStore
@@ -47,6 +51,10 @@ def get_investment_case_composition_service(
     trade_log_store: AlphaTradeLogStore = Depends(get_alpha_trade_log_store),
     business_record_repository: SqlAlchemyBusinessRecordRepository = Depends(get_business_record_repository),
     binding_repository: CaseInstrumentBindingRepository = Depends(get_case_instrument_binding_repository),
+    security_share_repository: SqlAlchemySecurityShareEvidenceRepository = Depends(
+        get_security_share_evidence_repository
+    ),
+    valuation_basis_builder: IssuerValuationBasisBuilder = Depends(get_issuer_valuation_basis_builder),
 ) -> InvestmentCaseCompositionService:
     return InvestmentCaseCompositionService(
         case_repository=case_repository,
@@ -58,6 +66,8 @@ def get_investment_case_composition_service(
         trade_log_store=trade_log_store,
         business_record_repository=business_record_repository,
         binding_repository=binding_repository,
+        security_share_repository=security_share_repository,
+        valuation_basis_builder=valuation_basis_builder,
     )
 
 

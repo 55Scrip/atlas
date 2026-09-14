@@ -1,6 +1,8 @@
-"""The decision firewall around class economic-rights evidence and the
-issuer common-equity composer: a closed set of importers. Nothing that
-values, recommends, narrates or snapshots a Case reads either."""
+"""The firewall around class economic-rights evidence and the issuer
+common-equity composer: a closed set of importers. Since fiscal_epoch_v3 the
+valuation reads them -- only through Case composition's issuer valuation
+basis; no recommendation, narrative, snapshot or Decision Layer module names
+the evidence, its tables or its methodology."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -19,7 +21,7 @@ def _importers(fragment: str, *, skip_dir: str = "") -> set[str]:
     return out
 
 
-def test_rights_evidence_is_read_only_by_its_write_path_and_the_composer():
+def test_rights_evidence_is_read_only_by_its_write_path_and_the_issuer_composers():
     assert _importers("class_rights_evidence", skip_dir="atlas/alpha/class_rights_evidence/") == {
         "atlas/alpha/business_data_refresh/class_rights_evidence.py",
         "atlas/alpha/issuer_equity/claims.py",
@@ -30,8 +32,15 @@ def test_rights_evidence_is_read_only_by_its_write_path_and_the_composer():
     }
 
 
-def test_the_composer_is_reached_only_by_the_operator_command():
-    assert _importers("issuer_equity", skip_dir="atlas/alpha/issuer_equity/") == {"atlas/dev/backfill_class_rights_evidence.py"}
+def test_the_composers_are_reached_only_through_case_composition_wiring_and_the_operator_command():
+    assert _importers("issuer_equity", skip_dir="atlas/alpha/issuer_equity/") == {
+        "atlas/alpha/investment_case/service.py",
+        "atlas/alpha/investment_case/api/dependencies.py",
+        "atlas/alpha/discovery_context/dependencies.py",
+        "atlas/alpha/monitoring/api/dependencies.py",
+        "atlas/alpha/portfolio_cockpit/api/dependencies.py",
+        "atlas/dev/backfill_class_rights_evidence.py",
+    }
 
 
 def test_the_rights_adapter_is_reached_only_through_business_data_refresh():
@@ -43,4 +52,4 @@ def test_no_decision_layer_names_the_tables_or_the_methodology():
     names = ("class_rights_observations", "class_rights_filings", "issuer_common_equity_market_cap_v1")
     hits = {str(p.relative_to(ROOT)) for p in (ROOT / "atlas").rglob("*.py") if any(n in p.read_text() for n in names)}
     assert hits == {"atlas/alpha/class_rights_evidence/table.py", "atlas/alpha/class_rights_evidence/repository.py",
-                    "atlas/alpha/issuer_equity/composer.py"}
+                    "atlas/analysis_engine/valuation/issuer_basis.py"}

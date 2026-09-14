@@ -29,7 +29,7 @@ from atlas.analysis_engine.investment_case_synthesis import (
     classify_case_open_question,
     material_case_open_questions,
 )
-from atlas.analysis_engine.pipeline import assemble_analysis
+from tests.unit.analysis_engine.valuation._issuer_basis import assemble_fixture_analysis as assemble_analysis
 from atlas.decision_engine.pipeline import run_pipeline
 from tests.unit.analysis_engine._fixtures import GENERATED_AT, build_minimal_input
 

@@ -30,7 +30,7 @@ from atlas.alpha.portfolio_status.models import (
     PortfolioSummaryMetrics,
 )
 from atlas.analysis_engine.contracts import RiskCategory
-from atlas.analysis_engine.pipeline import assemble_analysis
+from tests.unit.analysis_engine.valuation._issuer_basis import assemble_fixture_analysis as assemble_analysis
 from atlas.analysis_engine.risk.contracts import RiskStatus, severity_for_risk_status
 from atlas.analysis_engine.risk.models import EVALUATED_RISK_CATEGORIES, RiskAnalysisResult, RiskFinding
 from atlas.analysis_engine.provenance import Provenance, SourceKind, UpdateTrigger

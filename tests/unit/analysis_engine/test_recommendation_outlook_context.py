@@ -54,7 +54,7 @@ from atlas.analysis_engine.outlook import (
     OutlookMomentumKind,
     ReturnBasis,
 )
-from atlas.analysis_engine.pipeline import assemble_analysis
+from tests.unit.analysis_engine.valuation._issuer_basis import assemble_fixture_analysis as assemble_analysis
 from atlas.analysis_engine.recommendation import (
     ComputedDirectionalRecommendation,
     RecommendationAlternative,

@@ -27,7 +27,7 @@ from __future__ import annotations
 import pytest
 
 from atlas.analysis_engine import recommendation as recommendation_module
-from atlas.analysis_engine.pipeline import assemble_analysis
+from tests.unit.analysis_engine.valuation._issuer_basis import assemble_fixture_analysis as assemble_analysis
 from atlas.core.domain.case.value_objects import CaseId
 from atlas.core.domain.evidence.value_objects import Direction
 from atlas.decision_engine.contracts import DecisionEngineInput, EvidenceCoverageLevel

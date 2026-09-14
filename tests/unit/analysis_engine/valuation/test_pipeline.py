@@ -8,7 +8,7 @@ from datetime import date, datetime, timezone
 from atlas.analysis_engine.business_facts.extraction import extract_facts_from_records
 from atlas.analysis_engine.valuation.contracts import ValuationMethodKind, ValuationStatus
 from atlas.analysis_engine.valuation.facts import extract_valuation_facts_from_records
-from atlas.analysis_engine.valuation.pipeline import evaluate_valuation
+from tests.unit.analysis_engine.valuation._issuer_basis import evaluate_fixture_valuation as evaluate_valuation
 from atlas.decision_engine.contracts import EvaluationState
 from tests.unit.analysis_engine.valuation._fixtures import EVALUATED_AT, fundamentals_record, market_record, valuation_inputs
 

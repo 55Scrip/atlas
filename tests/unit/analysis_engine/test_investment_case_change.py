@@ -30,7 +30,7 @@ from atlas.analysis_engine.investment_case_change import (
     capture_snapshot,
     compare_snapshots,
 )
-from atlas.analysis_engine.pipeline import assemble_analysis
+from tests.unit.analysis_engine.valuation._issuer_basis import assemble_fixture_analysis as assemble_analysis
 from tests.unit.analysis_engine._fixtures import GENERATED_AT, run_minimal
 
 _T0 = datetime(2026, 1, 1, tzinfo=timezone.utc)

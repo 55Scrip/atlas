@@ -1,6 +1,7 @@
-"""The decision firewall around security-level share-class evidence: a closed
-set of importers, and a Case whose decision analysis is identical with and
-without the evidence -- only the descriptive `historical_market_cap` reads it."""
+"""The firewall around security-level share-class evidence: a closed set of
+importers. Case composition reads it only through `historical_market_cap`,
+whose aligned epochs the fiscal_epoch_v3 issuer basis prices -- so without an
+issuer basis builder the evidence changes nothing a Case decides."""
 from __future__ import annotations
 
 import hashlib
@@ -19,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[4]
 NOW = datetime(2026, 9, 11, 12, tzinfo=timezone.utc)
 
 #: Every module allowed to import the evidence package: its own package, the
-#: operator's write path, and the one descriptive reader with its wiring.
+#: operator's write path, and Case composition's reader with its wiring.
 _ALLOWED_IMPORTERS = {
     "atlas/alpha/security_share_evidence/dependencies.py",
     "atlas/alpha/security_share_evidence/repository.py",
@@ -33,6 +34,9 @@ _ALLOWED_IMPORTERS = {
     "atlas/alpha/investment_case/historical_market_cap.py",
     "atlas/alpha/investment_case/service.py",
     "atlas/alpha/investment_case/api/dependencies.py",
+    "atlas/alpha/discovery_context/dependencies.py",
+    "atlas/alpha/portfolio_cockpit/api/dependencies.py",
+    "atlas/alpha/monitoring/api/dependencies.py",
 }
 
 
@@ -110,7 +114,7 @@ def _harness_with_evidence(monkeypatch):
     return harness, service, rows
 
 
-def test_the_decision_analysis_is_identical_with_and_without_the_evidence(monkeypatch):
+def test_without_an_issuer_basis_the_evidence_decides_nothing(monkeypatch):
     import atlas.alpha.investment_case.service as service_module
 
     harness, service, rows = _harness_with_evidence(monkeypatch)
@@ -125,7 +129,7 @@ def test_the_decision_analysis_is_identical_with_and_without_the_evidence(monkey
     monkeypatch.setattr(service_module, "reconstruct_historical_market_caps", spy)
     without = service(False).build(case_id)
     with_evidence = service(True).build(case_id)
-    assert seen == [(), rows]  # the evidence reaches only the descriptive reader
+    assert seen == [(), rows]  # the evidence reaches only historical_market_cap
     assert with_evidence.canonical_analysis == without.canonical_analysis
     for name in ("financial_history", "market_snapshot", "historical_valuation", "growth_intelligence",
                  "financial_statement_intelligence", "capital_allocation_intelligence"):

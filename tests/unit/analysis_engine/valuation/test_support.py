@@ -39,7 +39,7 @@ from atlas.analysis_engine.recommendation_conviction import calculate_recommenda
 from atlas.analysis_engine.valuation.contracts import ValuationMethodKind, ValuationStatus
 from atlas.analysis_engine.valuation.facts import extract_valuation_facts_from_records
 from atlas.analysis_engine.valuation.models import ValuationEngineResult
-from atlas.analysis_engine.valuation.pipeline import evaluate_valuation
+from tests.unit.analysis_engine.valuation._issuer_basis import evaluate_fixture_valuation as evaluate_valuation
 from atlas.analysis_engine.valuation.support import (
     ValuationSupport,
     ValuationSupportGapKind,
@@ -475,7 +475,7 @@ class TestRegression:
         ::TestBuyAddNowWired` for the real, now-affecting `SUPPORTED`
         case) -- it is the narrower, still-true claim that these two
         *specific* statuses remain behaviorally identical."""
-        from atlas.analysis_engine.pipeline import assemble_analysis
+        from tests.unit.analysis_engine.valuation._issuer_basis import assemble_fixture_analysis as assemble_analysis
         from tests.unit.analysis_engine._fixtures import run_populated
 
         engine_input, decision_output = run_populated()

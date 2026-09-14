@@ -26,7 +26,7 @@ import pytest
 
 from atlas.analysis_engine.exceptions import AnalysisEngineContractError
 from atlas.analysis_engine.valuation import cash_flow
-from atlas.analysis_engine.valuation.cash_flow import MINIMUM_PRIOR_EPOCHS, SHARE_COUNT_METHOD
+from atlas.analysis_engine.valuation.cash_flow import MINIMUM_PRIOR_EPOCHS, SHARE_COUNT_METHOD, evaluate_fcf_yield_relative_v2
 from atlas.analysis_engine.valuation.contracts import (
     HistoricalYieldPosition as Position,
     ShareCountMethod,
@@ -39,6 +39,8 @@ from atlas.analysis_engine.valuation.contracts import (
 from atlas.analysis_engine.valuation.models import FcfYieldEpochObservation
 from atlas.decision_engine.contracts import EvidenceCoverageLevel
 from tests.unit.analysis_engine.valuation._epochs import (
+    APPLICABLE,
+    AS_OF,
     annual_history,
     evaluate,
     filed_on,
@@ -373,17 +375,20 @@ class TestApplicability:
             dataclasses.replace(evidence, current=current)
 
 
-class TestShareCountProxy:
-    def test_every_evidence_names_the_proxy(self):
-        assert SHARE_COUNT_METHOD is ShareCountMethod.CURRENT_SHARE_COUNT_PROXY
+class TestShareCountMethod:
+    def test_production_evidence_names_the_issuer_basis(self):
+        assert SHARE_COUNT_METHOD is ShareCountMethod.ISSUER_COMMON_EQUITY_MARKET_CAP
         assert evaluate(*history(today_price=11.8)).fcf_yield_evidence.share_count_method is SHARE_COUNT_METHOD
-        assert list(ShareCountMethod) == [ShareCountMethod.CURRENT_SHARE_COUNT_PROXY]
+        assert list(ShareCountMethod) == [ShareCountMethod.CURRENT_SHARE_COUNT_PROXY,
+                                          ShareCountMethod.ISSUER_COMMON_EQUITY_MARKET_CAP]
 
-    def test_no_historical_market_cap_is_called_exact(self):
-        names = {f.name for f in dataclasses.fields(FcfYieldEpochObservation)} | {
-            n for n, v in vars(FcfYieldEpochObservation).items() if isinstance(v, property)}
-        assert "market_cap_proxy" in names
-        assert not any(n in names for n in ("market_cap", "market_capitalisation", "historical_market_cap"))
+    def test_the_retired_proxy_still_calls_itself_a_proxy(self):
+        business, market = history(today_price=11.8)
+        statements = frozenset(f.source_record_id for f in business if f.source_record_id.startswith("stmt-"))
+        v2 = evaluate_fcf_yield_relative_v2(tuple(business), tuple(market), statement_record_ids=statements,
+                                            industry=APPLICABLE, evaluated_at=AS_OF)
+        assert v2.fcf_yield_evidence.share_count_method is ShareCountMethod.CURRENT_SHARE_COUNT_PROXY
+        assert not any(e.is_issuer_basis for e in v2.fcf_yield_evidence.prior_epochs)
         assert "proxy" in (FcfYieldEpochObservation.__doc__ or "")
 
 

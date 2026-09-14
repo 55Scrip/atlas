@@ -28,6 +28,7 @@ from atlas.alpha.evidence_timeline.api.dependencies import get_evidence_snapshot
 from atlas.alpha.ingestion.api.dependencies import get_ingestion_result_repository
 from atlas.alpha.case_instrument.dependencies import get_case_instrument_binding_repository
 from atlas.alpha.investment_case.api.dependencies import get_investment_case_composition_service
+from atlas.alpha.issuer_equity.dependencies import get_issuer_valuation_basis_builder
 from atlas.alpha.security_share_evidence.dependencies import get_security_share_evidence_repository
 from atlas.alpha.investment_case_change.repository import SqlAlchemyInvestmentCaseSnapshotRepository
 from atlas.alpha.investment_case_change.table import create_investment_case_snapshot_table
@@ -130,6 +131,7 @@ def _discovery_context_service(engine: Engine) -> DiscoveryContextService:
         watchlist_store=watchlist_store,
         binding_repository=get_case_instrument_binding_repository(engine=engine),
         security_share_repository=get_security_share_evidence_repository(engine=engine),
+        valuation_basis_builder=get_issuer_valuation_basis_builder(engine=engine),
     )
     portfolio_intelligence_service = PortfolioIntelligenceService(
         portfolio_store,

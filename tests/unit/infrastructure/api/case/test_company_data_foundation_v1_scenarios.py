@@ -228,14 +228,12 @@ class TestRicherDataFlowsIntoEvaluators:
         financial_risk = next(f for f in body["risk"]["findings"] if f["category"] == "financial_risk")
         assert financial_risk["status"] == "low"
 
-    def test_current_fcf_yield_is_computable_with_one_period_of_richer_data(self, client):
-        """A single fundamentals period plus a market snapshot is not
-        enough for a real UNDERVALUED/FAIRLY_VALUED/EXPENSIVE
-        classification (no history to be relative *to* -- doctrine,
-        unchanged by this sprint), but `currentYield` itself is real
-        and populated the moment FCF, share price, and share count all
-        exist -- exactly ATLAS-032's own "Current FCF Yield does not
-        require a historical range" rule."""
+    def test_current_fcf_yield_needs_the_issuers_own_share_evidence(self, client):
+        """(fiscal_epoch_v3) A fundamentals period plus a market snapshot
+        with the provider's share count is not a current FCF yield any more:
+        the provider's single-listing count is never the issuer's common
+        equity. Without persisted issuer share evidence the valuation is
+        withheld, with its reason -- never priced on the provider count."""
         case_id = _import_holding(client, "AAPL")
         _persist(
             client,
@@ -248,11 +246,12 @@ class TestRicherDataFlowsIntoEvaluators:
         body = client.get(f"/cases/{case_id}/analysis").json()
         fcf_yield = next(f for f in body["valuation"]["findings"] if f["kind"] == "fcf_yield_relative")
         assert fcf_yield["status"] == "insufficient_input"
-        assert fcf_yield["currentYield"] is not None
-        # Describable, not decidable: no earlier fiscal year to compare with.
+        assert fcf_yield["currentYield"] is None
+        assert "denominator_evidence_missing" in fcf_yield["missingEvidence"]
         assert fcf_yield["evidence"]["eligibility"] == "insufficient"
-        assert fcf_yield["evidence"]["priorEpochCount"] == 0
-        assert fcf_yield["evidence"]["shareCountMethod"] == "current_share_count_proxy"
+        assert fcf_yield["evidence"]["withheldReasons"] == ["denominator_evidence_missing"]
+        assert fcf_yield["evidence"]["shareCountMethod"] == "issuer_common_equity_market_cap"
+        assert fcf_yield["evidence"]["nciTreatment"] == "unmeasured"
 
 
 class TestUnsupportedQualitativeDimensionsStayHonest:

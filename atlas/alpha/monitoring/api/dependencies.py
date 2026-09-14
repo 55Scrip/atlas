@@ -37,7 +37,9 @@ from atlas.alpha.investment_case.service import InvestmentCaseCompositionService
 from atlas.alpha.investment_case_change.api.dependencies import get_investment_case_snapshot_repository
 from atlas.alpha.monitoring.repository import SqlAlchemyMonitoringResultRepository, SqlAlchemyMonitoringRunRecordRepository
 from atlas.alpha.monitoring.service import MonitoringService
+from atlas.alpha.issuer_equity.valuation_basis import IssuerValuationBasisBuilder
 from atlas.alpha.monitoring.table import create_monitoring_result_table, create_monitoring_run_record_table
+from atlas.alpha.security_share_evidence.dependencies import get_security_share_evidence_repository
 from atlas.alpha.portfolio.api.dependencies import get_alpha_portfolio_store, get_alpha_trade_log_store
 from atlas.alpha.portfolio.store import AlphaPortfolioStore
 from atlas.alpha.portfolio_fit.api.dependencies import get_portfolio_fit_service
@@ -83,8 +85,10 @@ def build_monitoring_service(engine: Engine) -> MonitoringService:
         watchlist_store=watchlist_store,
         snapshot_repository=get_investment_case_snapshot_repository(engine=engine),
         binding_repository=get_case_instrument_binding_repository(engine=engine),
-        # Monitoring reads no descriptive historical market cap.
-        security_share_repository=None,
+        # fiscal_epoch_v3: monitoring composes every Case exactly as the
+        # Investment Case does -- the same issuer valuation basis.
+        security_share_repository=get_security_share_evidence_repository(engine=engine),
+        valuation_basis_builder=IssuerValuationBasisBuilder.from_engine(engine),
     )
     stance_service = get_stance_service(
         composition_service=composition_service,

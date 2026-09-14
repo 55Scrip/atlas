@@ -341,8 +341,7 @@ def _insufficient_business_analysis(output):
 def _insufficient_valuation_engine():
     from atlas.analysis_engine.business_facts.extraction import extract_facts_from_records
     from atlas.analysis_engine.valuation.facts import extract_valuation_facts_from_records
-    from atlas.analysis_engine.valuation.pipeline import evaluate_valuation
-
+    from tests.unit.analysis_engine.valuation._issuer_basis import evaluate_fixture_valuation as evaluate_valuation
     business_facts = extract_facts_from_records((), evaluated_at=GENERATED_AT)
     market_facts = extract_valuation_facts_from_records((), evaluated_at=GENERATED_AT)
     return evaluate_valuation(

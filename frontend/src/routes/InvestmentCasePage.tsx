@@ -744,7 +744,10 @@ interface ValuationEvidenceView {
   currentFiscalPeriod: string | null;
   earliestPriorEpoch: string | null;
   spanYears: number | null;
-  shareCountMethod: "current_share_count_proxy";
+  shareCountMethod: "current_share_count_proxy" | "issuer_common_equity_market_cap";
+  withheldReasons?: string[];
+  numeratorMethod?: string | null;
+  nciTreatment?: string | null;
 }
 
 interface ValuationFindingView {

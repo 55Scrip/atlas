@@ -261,13 +261,14 @@ class TestChangeIntelligence:
 
     def test_a_captured_snapshot_records_the_construction(self):
         from atlas.analysis_engine.investment_case_change import capture_snapshot
-        from atlas.analysis_engine.pipeline import assemble_analysis
-        from atlas.analysis_engine.valuation.cash_flow import FCF_YIELD_METHODOLOGY
+        from tests.unit.analysis_engine.valuation._issuer_basis import assemble_fixture_analysis as assemble_analysis
+        from atlas.analysis_engine.valuation.cash_flow import VALUATION_METHODOLOGY
         from tests.unit.analysis_engine._fixtures import run_minimal
 
         engine_input, output = run_minimal()
         analysis = assemble_analysis(engine_input, output, is_thesis_stale=False, business_records=(), generated_at=GENERATED_AT)
-        assert capture_snapshot(analysis).valuation_methodology == FCF_YIELD_METHODOLOGY == "fiscal_epoch_v2"
+        assert capture_snapshot(analysis).valuation_methodology == VALUATION_METHODOLOGY
+        assert VALUATION_METHODOLOGY.startswith("fiscal_epoch_v3+")
 
 
 class TestTheFindingKindIsUnchanged:

@@ -17,7 +17,7 @@ from atlas.analysis_engine.contracts import RiskCategory
 from atlas.analysis_engine.conviction import ConvictionLevel
 from atlas.analysis_engine.growth import MetricTrend
 from atlas.analysis_engine.investment_case_synthesis import HighlightKind, OpenQuestionOrigin, ThesisPosture
-from atlas.analysis_engine.pipeline import assemble_analysis
+from tests.unit.analysis_engine.valuation._issuer_basis import assemble_fixture_analysis as assemble_analysis
 from atlas.analysis_engine.risk.contracts import RiskStatus
 from atlas.analysis_engine.valuation.contracts import ValuationStatus
 from tests.unit.analysis_engine._fixtures import GENERATED_AT, run_minimal

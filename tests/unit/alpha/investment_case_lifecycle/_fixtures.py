@@ -24,7 +24,7 @@ from atlas.alpha.investment_case.models import CurrentThesis, InvestmentCaseComp
 from atlas.analysis_engine.business_data.models import RawBusinessDocument
 from atlas.analysis_engine.business_data.pipeline import IngestedRecord, ingest
 from atlas.analysis_engine.conviction import ConvictionAssessment, ConvictionLevel
-from atlas.analysis_engine.pipeline import assemble_analysis
+from tests.unit.analysis_engine.valuation._issuer_basis import assemble_fixture_analysis as assemble_analysis
 from atlas.analysis_engine.recommendation import (
     ComputedDirectionalRecommendation,
     RecommendationConvictionLevel,

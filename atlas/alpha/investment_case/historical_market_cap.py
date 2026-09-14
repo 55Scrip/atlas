@@ -1,22 +1,22 @@
-"""Aligned historical market capitalisation -- descriptive evidence only
-(Aligned Historical Market Cap).
+"""Aligned historical market capitalisation (Aligned Historical Market Cap).
 
-`fiscal_epoch_v2` prices each prior fiscal epoch as the split- and
+`fiscal_epoch_v2` priced each prior fiscal epoch as the split- and
 dividend-adjusted close times *today's* share count
-(`CURRENT_SHARE_COUNT_PROXY`). That proxy is what Atlas decides on, and it
-stays so. This module reconstructs, beside it, what each epoch's market
-capitalisation actually was -- the raw close times the period-end share
+(`CURRENT_SHARE_COUNT_PROXY`). This module reconstructs what each epoch's
+market capitalisation actually was -- the raw close times the period-end share
 count *on the raw close's own share basis* -- wherever persisted evidence
 can prove it, and withholds it everywhere else.
 
-**Descriptive, never decision-facing.** The result lives on the
-`InvestmentCaseComposition`, never on `CanonicalAnalysis`: valuation
-position, status, ValuationRisk, Valuation Support, sensitivity,
-recommendation, change intelligence and the Decision Layer never see it,
-and `atlas.analysis_engine` cannot import it (architecture boundary). It
-reads the decision's own epochs -- one construction, as
-`historical_valuation.py` does -- and never adds an epoch, removes one or
-mixes its values into them.
+**The historical denominator of fiscal_epoch_v3.** Case composition
+reconstructs these for the fiscal epochs the valuation compares, before the
+analysis runs; `atlas.alpha.issuer_equity.valuation_basis` turns each aligned
+epoch into the issuer's common-equity market capitalisation (as is for a
+single listing's issuer-level count; composed class by class where the count
+is a class count), and the FCF-yield evaluator prices the epoch on it. An
+epoch withheld here is left out of the valuation -- never priced another
+way. The evidence also stays on the `InvestmentCaseComposition`, describing
+the same epochs; `atlas.analysis_engine` cannot import this module
+(architecture boundary).
 
 **The share basis, from Atlas's own evidence.** For one stored monthly bar,
 `R = raw_close / adjusted_close` is every later split and dividend
@@ -109,8 +109,8 @@ __all__ = [
     "reconstruct_historical_market_caps",
 ]
 
-#: The descriptive construction's own identity. Not `FCF_YIELD_METHODOLOGY`:
-#: `fiscal_epoch_v2` stays the decision-active method.
+#: This construction's own identity; the valuation's comparability identity
+#: is `cash_flow.VALUATION_METHODOLOGY`, which composes it.
 HISTORICAL_MARKET_CAP_METHODOLOGY = "raw_price_split_aligned_shares_v1"
 
 #: A step inside this band is dividend drift (and price rounding). The

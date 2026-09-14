@@ -18,6 +18,7 @@ from atlas.analysis_engine.provenance import Provenance, SourceKind, UpdateTrigg
 from atlas.analysis_engine.valuation.cash_flow import evaluate_fcf_yield_relative
 from atlas.analysis_engine.valuation.facts import ValuationFact, ValuationFactKind
 from atlas.analysis_engine.valuation.models import ValuationFinding
+from tests.unit.analysis_engine.valuation._issuer_basis import single_class_basis
 from tests.unit.analysis_engine.valuation._real_cases import CASES
 
 AS_OF = datetime(2026, 9, 11, 12, 0, tzinfo=timezone.utc)
@@ -86,10 +87,16 @@ def evaluate(
     at: datetime = AS_OF,
     statements: frozenset[str] | None = None,
 ) -> ValuationFinding:
+    """The production (fiscal_epoch_v3) evaluator, over the fixture company's
+    own price and share-count facts as its exact single-class issuer basis --
+    so every fiscal-epoch rule is exercised on the production path."""
     if statements is None:
         statements = frozenset(f.source_record_id for f in business_facts if f.source_record_id.startswith("stmt-"))
+    basis = single_class_basis(tuple(business_facts), tuple(valuation_facts), statement_record_ids=statements,
+                               industry=industry, evaluated_at=at)
     return evaluate_fcf_yield_relative(
-        tuple(business_facts), tuple(valuation_facts), statement_record_ids=statements, industry=industry, evaluated_at=at
+        tuple(business_facts), tuple(valuation_facts), statement_record_ids=statements, industry=industry, evaluated_at=at,
+        basis=basis,
     )
 
 

@@ -367,6 +367,11 @@ class ValuationEvidenceView(CamelModel):
     earliest_prior_epoch: str | None
     span_years: float | None
     share_count_method: str
+    #: (fiscal_epoch_v3) Why the valuation is withheld, if it is; how its
+    #: numerator is formed; and that noncontrolling interests are unmeasured.
+    withheld_reasons: list[str] = []
+    numerator_method: str | None = None
+    nci_treatment: str | None = None
 
     @classmethod
     def from_domain(cls, evidence: FcfYieldEvidence) -> "ValuationEvidenceView":
@@ -379,6 +384,9 @@ class ValuationEvidenceView(CamelModel):
             earliest_prior_epoch=evidence.earliest_prior_epoch,
             span_years=evidence.span_years,
             share_count_method=evidence.share_count_method.value,
+            withheld_reasons=[r.value for r in evidence.withheld_reasons],
+            numerator_method=evidence.numerator_method,
+            nci_treatment=evidence.nci_treatment,
         )
 
 

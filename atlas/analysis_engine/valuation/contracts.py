@@ -134,6 +134,37 @@ class ValuationDataGapKind(str, Enum):
     -- always true this sprint, for all three scenario methods; see
     `scenarios.py`."""
 
+    # -- fiscal_epoch_v3: why an issuer-basis valuation is withheld. Each is
+    # a reason Atlas cannot support the valuation yet; none is ever answered
+    # by falling back to another construction.
+
+    DENOMINATOR_EVIDENCE_MISSING = "denominator_evidence_missing"
+    """The issuer's common-equity market capitalisation cannot be composed
+    for the current observation: a share class of unrecorded economics, no
+    usable class count, or a count and a price that may straddle a
+    share-basis change (`issuer_basis`)."""
+
+    CURRENT_ISSUER_PRICE_NOT_SYNCHRONIZED = "current_issuer_price_not_synchronized"
+    """Another listed share class of the issuer has no price on the Case's
+    own current date, so the issuer's market capitalisation cannot be
+    formed for that date -- and a composition from an earlier date is not
+    current evidence."""
+
+    TEMPORAL_EVIDENCE_GAP = "temporal_evidence_gap"
+    """The denominator evidence is not dated on the observation it would
+    price (or precedes the fiscal year's own publication)."""
+
+    NUMERATOR_EVIDENCE_MISSING = "numerator_evidence_missing"
+    """A senior claim on the fiscal year's free cash flow is evidenced but
+    cannot be quantified for it (its rate, share count or timing is
+    unproven), so the free cash flow attributable to common equity is
+    unknown."""
+
+    BOUNDED_DENOMINATOR_DISAGREEMENT = "bounded_denominator_disagreement"
+    """The denominator (or a senior claim) is known only as an interval,
+    and the two ends of it place today's yield differently against the
+    company's own history."""
+
 
 class ValuationAssumptionKind(str, Enum):
     """Reserved -- named now so a future scenario-assumption input
@@ -188,7 +219,8 @@ class HistoricalYieldPosition(str, Enum):
 class ShareCountMethod(str, Enum):
     """How market capitalisation is formed for every observation.
 
-    `CURRENT_SHARE_COUNT_PROXY`: the market-data provider reports only
+    `CURRENT_SHARE_COUNT_PROXY` (fiscal_epoch_v2, retained for interpreting
+    history and for migration comparisons): the market-data provider reports only
     today's shares outstanding (its current company overview), and the
     historical prices it returns are adjusted to today's share basis --
     for splits and, as Historical Price-Basis Integrity proved, for
@@ -199,6 +231,14 @@ class ShareCountMethod(str, Enum):
     capitalisation."""
 
     CURRENT_SHARE_COUNT_PROXY = "current_share_count_proxy"
+
+    ISSUER_COMMON_EQUITY_MARKET_CAP = "issuer_common_equity_market_cap"
+    """(fiscal_epoch_v3) Every observation's market capitalisation is the
+    issuer's common equity on that observation's own date: each outstanding
+    common class at a price that prices it (raw prices; period share counts
+    aligned to the raw price's share basis), participating preferred
+    as-converted, senior preferred left out. Exact, equivalent or an
+    evidence-derived interval -- see `issuer_basis`."""
 
 
 class ValuationFactExclusionReason(str, Enum):

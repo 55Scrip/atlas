@@ -23,7 +23,7 @@ from atlas.alpha.knowledge_coverage import DOMAIN_GROUP, KnowledgeDomain, Missin
 from atlas.analysis_engine.business_data.models import RawBusinessDocument
 from atlas.analysis_engine.business_data.pipeline import IngestedRecord, ingest
 from atlas.analysis_engine.business_facts.extraction import extract_facts_from_records
-from atlas.analysis_engine.pipeline import assemble_analysis
+from tests.unit.analysis_engine.valuation._issuer_basis import assemble_fixture_analysis as assemble_analysis
 from atlas.analysis_engine.valuation.facts import extract_valuation_facts_from_records
 from tests.unit.analysis_engine._fixtures import GENERATED_AT, run_minimal
 

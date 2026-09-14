@@ -19,7 +19,7 @@ from atlas.alpha.stance import StanceLevel, StanceReasonCode, compare_stance, de
 from atlas.analysis_engine.business_data.models import RawBusinessDocument
 from atlas.analysis_engine.business_data.pipeline import IngestedRecord, ingest
 from atlas.analysis_engine.investment_case_change import ChangeIntelligence, ThesisImpact
-from atlas.analysis_engine.pipeline import assemble_analysis
+from tests.unit.analysis_engine.valuation._issuer_basis import assemble_fixture_analysis as assemble_analysis
 from tests.unit.analysis_engine._fixtures import GENERATED_AT, run_minimal, run_populated
 
 

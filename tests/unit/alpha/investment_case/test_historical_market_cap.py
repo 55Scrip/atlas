@@ -132,9 +132,9 @@ class TestStepRule:
         assert min(splits) > hmc.LARGE_STEP
         assert not [s for s in steps if hmc.SMALL_STEP[1] < s < hmc.LARGE_STEP]
 
-    def test_methodology_is_its_own_and_the_decision_method_is_untouched(self):
+    def test_methodology_is_its_own_and_the_valuation_names_its_own(self):
         assert HISTORICAL_MARKET_CAP_METHODOLOGY == "raw_price_split_aligned_shares_v1"
-        assert FCF_YIELD_METHODOLOGY == "fiscal_epoch_v2"
+        assert FCF_YIELD_METHODOLOGY == "fiscal_epoch_v3"
 
 
 # -- real controls ------------------------------------------------------------------------------------------
@@ -673,9 +673,11 @@ _ALLOWED_IMPORTERS = {
     "atlas/alpha/investment_case/models.py",
     "atlas/alpha/investment_case/service.py",
     "atlas/alpha/investment_case/api/schemas.py",
-    # Borrows the share-basis event reader; itself descriptive and firewalled
-    # (tests/unit/alpha/class_rights_evidence/test_firewall.py).
+    # Borrows the share-basis event reader (firewalled in
+    # tests/unit/alpha/class_rights_evidence/test_firewall.py).
     "atlas/alpha/issuer_equity/reader.py",
+    # fiscal_epoch_v3: prices each aligned epoch as the issuer's common equity.
+    "atlas/alpha/issuer_equity/valuation_basis.py",
 }
 
 
@@ -704,11 +706,13 @@ class TestDecisionFirewall:
         for cls in (CanonicalAnalysis, ValuationFinding, Evidence, FcfYieldEpochObservation):
             assert not [f.name for f in fields(cls) if "aligned" in f.name or "historical_market_cap" in f.name]
 
-    def test_the_service_reads_decision_epochs_and_hands_back_nothing(self, monkeypatch):
-        """The descriptive evidence is computed after the decision analysis,
-        from its epochs and the same records, and lands only on its own field:
-        replacing it changes nothing that decides."""
+    def test_the_service_reconstructs_the_valuations_own_epochs_before_the_analysis(self, monkeypatch):
+        """The aligned caps are reconstructed for exactly the fiscal epochs the
+        valuation compares, from the same records, before the analysis runs --
+        they reach the decision only through the issuer valuation basis, so a
+        service without a basis builder decides nothing from them."""
         import atlas.alpha.investment_case.service as service_module
+        from atlas.analysis_engine.pipeline import fiscal_epochs_for_records
         from tests.unit.alpha.investment_case.test_service import _Harness, _new_engine
 
         monkeypatch.setattr(service_module, "_utc_now", lambda: NOW)
@@ -725,9 +729,8 @@ class TestDecisionFirewall:
         spied = harness.fresh_composition_service().build(case_id)
         assert spied.historical_market_cap is sentinel
         assert spied.canonical_analysis == reference.canonical_analysis
-        ((evidence, _, shared_issuer, security_share_counts, as_of),) = seen
-        fcf = next(f for f in spied.canonical_analysis.valuation_engine.findings if f.fcf_yield_evidence is not None)
-        assert evidence is fcf.fcf_yield_evidence and shared_issuer is False
+        ((evidence, records, shared_issuer, security_share_counts, as_of),) = seen
+        assert evidence == fiscal_epochs_for_records(records, generated_at=NOW) and shared_issuer is False
         # No security-level repository wired: no class counts, read as of the Case's own clock.
         assert security_share_counts == () and as_of == NOW.date()
 

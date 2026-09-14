@@ -820,7 +820,7 @@ class TestRevisionIsNotCompanyNews:
     identity carry no price or yield."""
 
     def _analysis(self, scale):
-        from atlas.analysis_engine.pipeline import assemble_analysis
+        from tests.unit.analysis_engine.valuation._issuer_basis import assemble_fixture_analysis as assemble_analysis
         from tests.unit.analysis_engine._fixtures import run_minimal
 
         def rec(kind, ident, day, published, ref="ref://x", **metadata):

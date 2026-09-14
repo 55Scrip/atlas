@@ -27,13 +27,16 @@ import json
 from atlas.analysis_engine.business_facts.growth_primitives import ROLLING_GROWTH_METHODOLOGY
 from atlas.analysis_engine.outlook import OUTLOOK_METHODOLOGY
 from atlas.analysis_engine.risk.financial_risk import FINANCIAL_RISK_METHODOLOGY
-from atlas.analysis_engine.valuation.cash_flow import FCF_YIELD_METHODOLOGY
+from atlas.analysis_engine.valuation.cash_flow import VALUATION_METHODOLOGY
 
 __all__ = ["ANALYSIS_METHODOLOGY", "METHODOLOGY_KEY", "stamp_methodology", "comparable_payload"]
 
 _COMPONENTS = {
     "financial_risk": FINANCIAL_RISK_METHODOLOGY,
-    "valuation": FCF_YIELD_METHODOLOGY,
+    # fiscal_epoch_v3 over the issuer common-equity denominator and the
+    # common-attributable numerator: one identity, so a change to any of
+    # the three re-baselines once rather than narrating a new ruler as news.
+    "valuation": VALUATION_METHODOLOGY,
     "rolling_growth": ROLLING_GROWTH_METHODOLOGY,
     # Outlook became a sensitivity and left Portfolio Fit, which the
     # Decision Layer reads through Stance.

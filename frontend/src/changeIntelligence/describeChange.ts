@@ -302,7 +302,12 @@ export type ValuationDataGapKind =
   | "valuation_method_not_applicable"
   | "valuation_applicability_unknown"
   | "currency_mismatch"
-  | "missing_scenario_assumptions";
+  | "missing_scenario_assumptions"
+  | "denominator_evidence_missing"
+  | "current_issuer_price_not_synchronized"
+  | "temporal_evidence_gap"
+  | "numerator_evidence_missing"
+  | "bounded_denominator_disagreement";
 
 export const VALUATION_DATA_GAP_KEY: Record<ValuationDataGapKind, TranslationKey> = {
   missing_market_price: "investmentCase.analysis.valuation.gap.missingMarketPrice",
@@ -318,6 +323,11 @@ export const VALUATION_DATA_GAP_KEY: Record<ValuationDataGapKind, TranslationKey
   valuation_applicability_unknown: "investmentCase.analysis.valuation.gap.valuationApplicabilityUnknown",
   currency_mismatch: "investmentCase.analysis.valuation.gap.currencyMismatch",
   missing_scenario_assumptions: "investmentCase.analysis.valuation.gap.missingScenarioAssumptions",
+  denominator_evidence_missing: "investmentCase.analysis.valuation.gap.denominatorEvidenceMissing",
+  current_issuer_price_not_synchronized: "investmentCase.analysis.valuation.gap.currentIssuerPriceNotSynchronized",
+  temporal_evidence_gap: "investmentCase.analysis.valuation.gap.temporalEvidenceGap",
+  numerator_evidence_missing: "investmentCase.analysis.valuation.gap.numeratorEvidenceMissing",
+  bounded_denominator_disagreement: "investmentCase.analysis.valuation.gap.boundedDenominatorDisagreement",
 };
 
 export type RiskDataGapKind =

@@ -29,7 +29,7 @@ from atlas.analysis_engine.outlook import (
     ScenarioKind,
     derive_outlook_momentum,
 )
-from atlas.analysis_engine.pipeline import assemble_analysis
+from tests.unit.analysis_engine.valuation._issuer_basis import assemble_fixture_analysis as assemble_analysis
 from tests.unit.analysis_engine._fixtures import GENERATED_AT, run_minimal, run_populated
 
 _RANK = {

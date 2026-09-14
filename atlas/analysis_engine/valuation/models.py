@@ -70,9 +70,22 @@ class FcfYieldEpochObservation:
     `observed_on` is the market observation's own trading date, never
     before `available_from`.
 
-    Market capitalisation is `share_price * shares_outstanding` under
-    `ShareCountMethod.CURRENT_SHARE_COUNT_PROXY` -- a proxy, never an
-    exact historical market capitalisation; see that member.
+    **Issuer basis (fiscal_epoch_v3).** `market_cap_low`/`market_cap_high`
+    are the issuer's common-equity market capitalisation on `observed_on`
+    (equal unless the evidence bounds it); `share_price` is this security's
+    own raw price that day and `shares_outstanding` the issuer's common
+    equity expressed in this security's shares at that price. `free_cash_flow`
+    is the free cash flow attributable to common equity -- `raw_free_cash_flow`
+    (OCF − capex) less the senior claims accrued over the fiscal year
+    (`senior_claim_low`/`_high`), at the middle of their interval.
+    `fcf_yield` is taken at the middle of both intervals; `fcf_yield_low`/
+    `fcf_yield_high` are its evidence-derived ends.
+
+    **Provider proxy (fiscal_epoch_v2, kept for history and migration
+    comparisons).** Without issuer fields, market capitalisation is
+    `share_price * shares_outstanding` under
+    `ShareCountMethod.CURRENT_SHARE_COUNT_PROXY` -- a proxy, never an exact
+    historical market capitalisation; see that member.
     """
 
     fiscal_period: str
@@ -84,7 +97,13 @@ class FcfYieldEpochObservation:
     currency: str
     free_cash_flow_fact_id: str
     share_price_fact_id: str
-    shares_outstanding_fact_id: str
+    shares_outstanding_fact_id: str | None
+    market_cap_low: float | None = None
+    market_cap_high: float | None = None
+    raw_free_cash_flow: float | None = None
+    senior_claim_low: float = 0.0
+    senior_claim_high: float = 0.0
+    denominator_quality: str | None = None
 
     def __post_init__(self) -> None:
         if not (self.free_cash_flow > 0 and self.share_price > 0 and self.shares_outstanding > 0):
@@ -93,21 +112,67 @@ class FcfYieldEpochObservation:
             _fail("A fiscal year's figures cannot be available before the fiscal year ends.")
         if date.fromisoformat(self.observed_on) < self.available_from:
             _fail("An epoch cannot be priced before its free cash flow was available (look-ahead).")
-        ids = (self.free_cash_flow_fact_id, self.share_price_fact_id, self.shares_outstanding_fact_id)
-        if not all(ids) or len(set(ids)) != 3:
-            _fail("An FCF-yield epoch names three distinct facts.")
+        if self.is_issuer_basis:
+            if not (self.market_cap_low is not None and self.market_cap_high is not None
+                    and 0 < self.market_cap_low <= self.market_cap_high):
+                _fail("An issuer-basis epoch needs 0 < market_cap_low <= market_cap_high.")
+            if self.raw_free_cash_flow is None or not 0 <= self.senior_claim_low <= self.senior_claim_high:
+                _fail("An issuer-basis epoch names its raw free cash flow and 0 <= claim low <= claim high.")
+            if not self.raw_free_cash_flow - self.senior_claim_high > 0:
+                _fail("Free cash flow attributable to common equity must be positive at every end of its interval.")
+            if abs(self.free_cash_flow - (self.raw_free_cash_flow - (self.senior_claim_low + self.senior_claim_high) / 2)) > 1e-6 * self.raw_free_cash_flow:
+                _fail("Common free cash flow is the raw figure less the middle of the claim interval.")
+            ids = (self.free_cash_flow_fact_id, self.share_price_fact_id)
+            if not all(ids) or len(set(ids)) != 2 or self.shares_outstanding_fact_id is not None:
+                _fail("An issuer-basis epoch names its free cash flow and price facts; no provider share count.")
+        else:
+            if (self.market_cap_high is not None or self.raw_free_cash_flow is not None
+                    or self.senior_claim_low or self.senior_claim_high):
+                _fail("A provider-proxy epoch carries no issuer-basis fields.")
+            ids = (self.free_cash_flow_fact_id, self.share_price_fact_id, self.shares_outstanding_fact_id)
+            if not all(ids) or len(set(ids)) != 3:
+                _fail("An FCF-yield epoch names three distinct facts.")
+
+    @property
+    def is_issuer_basis(self) -> bool:
+        return self.market_cap_low is not None
 
     @property
     def market_cap_proxy(self) -> float:
         return self.share_price * self.shares_outstanding
 
     @property
-    def fcf_yield(self) -> float:
-        return self.free_cash_flow / self.market_cap_proxy
+    def market_cap(self) -> float:
+        """The market capitalisation the yield is taken over: the middle of
+        the issuer interval, or the provider proxy."""
+        if self.is_issuer_basis:
+            return (self.market_cap_low + self.market_cap_high) / 2
+        return self.market_cap_proxy
 
     @property
-    def fact_ids(self) -> tuple[str, str, str]:
-        return (self.free_cash_flow_fact_id, self.share_price_fact_id, self.shares_outstanding_fact_id)
+    def fcf_yield(self) -> float:
+        return self.free_cash_flow / self.market_cap
+
+    @property
+    def fcf_yield_low(self) -> float:
+        """The lowest yield the evidence allows: the largest claim over the
+        largest market capitalisation."""
+        if self.is_issuer_basis:
+            return (self.raw_free_cash_flow - self.senior_claim_high) / self.market_cap_high
+        return self.fcf_yield
+
+    @property
+    def fcf_yield_high(self) -> float:
+        """The highest yield the evidence allows: the smallest claim over the
+        smallest market capitalisation."""
+        if self.is_issuer_basis:
+            return (self.raw_free_cash_flow - self.senior_claim_low) / self.market_cap_low
+        return self.fcf_yield
+
+    @property
+    def fact_ids(self) -> tuple[str, ...]:
+        ids = (self.free_cash_flow_fact_id, self.share_price_fact_id, self.shares_outstanding_fact_id)
+        return tuple(i for i in ids if i is not None)
 
 
 @dataclass(frozen=True)
@@ -150,6 +215,14 @@ class FcfYieldEvidence:
     position: HistoricalYieldPosition | None = None
     consolidated_observations: tuple[str, ...] = ()
     excluded: tuple[FcfYieldExclusion, ...] = ()
+    #: (fiscal_epoch_v3) Why the valuation is withheld although observations
+    #: may exist -- denominator, timing, numerator or bound failures. A
+    #: withheld valuation never classifies.
+    withheld_reasons: tuple[ValuationDataGapKind, ...] = ()
+    #: (fiscal_epoch_v3) The numerator's construction and the noncontrolling-
+    #: interest treatment, `None` under the provider proxy.
+    numerator_method: str | None = None
+    nci_treatment: str | None = None
 
     def __post_init__(self) -> None:
         if self.minimum_prior_epochs < 1:
@@ -163,13 +236,18 @@ class FcfYieldEvidence:
             return
         if self.current is not None and any(p >= self.current.fiscal_period for p in periods):
             _fail("Every prior epoch precedes the current fiscal year.")
+        bases = {epoch.is_issuer_basis for epoch in (*self.prior_epochs, *((self.current,) if self.current else ()))}
+        if len(bases) > 1 or (bases and bases.pop() != (self.share_count_method is ShareCountMethod.ISSUER_COMMON_EQUITY_MARKET_CAP)):
+            _fail("Every observation is priced on the evidence's one share-count method -- never mixed.")
         expected_position = (
             position_of(self.current.fcf_yield, self.prior_yields)
-            if self.current is not None and self.prior_epochs else None
+            if self.current is not None and self.prior_epochs and not self.withheld_reasons else None
         )
         if self.position is not expected_position:
             _fail("The historical position must be the one the observations imply.")
-        if self.current is None or not self.prior_epochs:
+        if self.withheld_reasons:
+            expected = ValuationDecisionEligibility.INSUFFICIENT
+        elif self.current is None or not self.prior_epochs:
             expected = ValuationDecisionEligibility.INSUFFICIENT
         elif len(self.prior_epochs) < self.minimum_prior_epochs:
             expected = ValuationDecisionEligibility.LIMITED

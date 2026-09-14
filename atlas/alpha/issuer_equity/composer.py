@@ -1,12 +1,12 @@
-"""Issuer common-equity market capitalisation -- descriptive, never
-decision-facing (Issuer Common-Equity Market Cap v1).
+"""Issuer common-equity market capitalisation (Issuer Common-Equity Market
+Cap v1) -- the denominator of fiscal_epoch_v3 (`ISSUER_MARKET_CAP_METHODOLOGY`).
 
 Atlas's free cash flow is the issuer's, so the market capitalisation it is
 comparable with is the issuer's common equity: every outstanding common
 class, each at a price that prices *it*. This module composes that value
 for one issuer, one economic date and one set of class counts, from
-persisted evidence only, and grades it. Nothing that values, recommends or
-narrates reads it.
+persisted evidence only, and grades it; `valuation_basis` hands it to the
+valuation, which never prices an epoch it grades insufficient.
 
 **Counts.** One set, from one filing and one instant: every class-axis
 member with outstanding shares (an issuer-level undimensioned count when
@@ -63,6 +63,7 @@ from enum import Enum
 from itertools import combinations
 
 from atlas.alpha.class_rights_evidence.models import ClassRightsObservation, EvidenceStrength, RightKind
+from atlas.analysis_engine.valuation.issuer_basis import ISSUER_MARKET_CAP_METHODOLOGY
 
 __all__ = [
     "ISSUER_EQUITY_METHODOLOGY",
@@ -77,7 +78,7 @@ __all__ = [
     "issuer_fcf_yield",
 ]
 
-ISSUER_EQUITY_METHODOLOGY = "issuer_common_equity_market_cap_v1"
+ISSUER_EQUITY_METHODOLOGY = ISSUER_MARKET_CAP_METHODOLOGY
 
 _STATEMENTS = (EvidenceStrength.CONTRACTUAL, EvidenceStrength.FILING_STATEMENT)
 #: A sum of members equal to another member within this relative tolerance

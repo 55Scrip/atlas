@@ -189,7 +189,8 @@ class TestNearZeroAnchorWithholdsTheEndpoint:
         finding = _fcf_finding(analysis)
         evidence = finding.fcf_yield_evidence
         priors = list(evidence.prior_epochs)[1:]  # an even count: 8
-        lowered = [dataclasses.replace(e, free_cash_flow=0.5) if i < 4 else e for i, e in enumerate(priors)]
+        lowered = [dataclasses.replace(e, free_cash_flow=0.5, raw_free_cash_flow=0.5) if i < 4 else e
+                   for i, e in enumerate(priors)]
         evidence = dataclasses.replace(evidence, prior_epochs=tuple(lowered))
         facts = extract_facts_from_records(_cal_growth_records(_REVENUE, _CLEAN_FCF, tag="mdzf"), evaluated_at=GENERATED_AT)
         result = _long_term_valuation(

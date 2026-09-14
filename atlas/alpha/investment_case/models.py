@@ -380,8 +380,8 @@ class InvestmentCaseComposition:
     historical_market_cap: HistoricalMarketCapEvidence | None = None
     """(Aligned Historical Market Cap) Each prior fiscal epoch's market
     capitalisation reconstructed from its raw close and split-aligned
-    period-end shares, where persisted evidence proves it -- descriptive
-    only; see `historical_market_cap.py`. Deliberately here, never on
-    `canonical_analysis`: nothing that decides, compares snapshots or
-    persists Decision Layer results reads it. `None` when the FCF-yield
-    method formed no evidence or does not apply."""
+    period-end shares, where persisted evidence proves it; see
+    `historical_market_cap.py`. The same reconstruction feeds the issuer
+    basis the fiscal_epoch_v3 valuation is priced on (composed before the
+    analysis); this field keeps it as evidence beside the result. `None`
+    when the FCF-yield method formed no epochs or does not apply."""

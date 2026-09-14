@@ -65,13 +65,25 @@ policy, not a statistical truth.
 **5. Applicability.** Banks, dealers and insurers get `NOT_APPLICABLE`
 (`valuation.applicability`), never a yield.
 
-**Share count.** Market capitalisation is share price times the share count
-the provider reports today (`ShareCountMethod.CURRENT_SHARE_COUNT_PROXY`):
-historical prices are adjusted to today's share basis, so splits are
-consistent, but buybacks and issuance since each observation are not, and
-the adjustment also removes every later dividend from the price. The
-evidence says so; nothing here calls a historical market capitalisation
-exact.
+**6. The issuer basis (fiscal_epoch_v3).** The epochs above are method-
+independent; what each is priced on is not. In production every epoch is
+priced on the issuer basis (`issuer_basis`): the issuer's common-equity
+market capitalisation on the observation's own date (raw prices, period
+share counts aligned to the raw price's share basis, multi-class issuers
+composed class by class, same-date sibling prices) over the free cash flow
+attributable to common equity (OCF − capex, less the contractual claims of
+senior non-participating preferred accrued over the fiscal year). Atlas's
+free cash flow is levered cash flow to all equity claimants -- after interest,
+before preferred dividends and distributions to noncontrolling interests --
+never FCFE. Noncontrolling interests are unmeasured: a disclosed limitation,
+never assumed to be zero. An epoch the basis cannot price is left out; a
+current observation it cannot price (no composition on the Case's own date, a
+stale sibling price, an unquantified claim, bounds that disagree) withholds
+the valuation with its reason. There is no fallback: `fiscal_epoch_v2`'s
+provider proxy (adjusted price times today's provider share count,
+`ShareCountMethod.CURRENT_SHARE_COUNT_PROXY`) is kept only as
+`evaluate_fcf_yield_relative_v2`, to interpret history persisted under it and
+for migration comparisons.
 
 A mismatch between the free cash flow currency and the share price currency
 (an ADR over foreign-currency statements) forms no observation: dividing
@@ -84,6 +96,7 @@ anywhere in this codebase, so none is invented here;
 from __future__ import annotations
 
 from bisect import bisect_right
+from dataclasses import dataclass
 from datetime import date, datetime
 
 from atlas.analysis_engine.business_facts.contracts import BusinessFactKind
@@ -99,6 +112,14 @@ from atlas.analysis_engine.valuation.contracts import (
     severity_for_valuation_status,
 )
 from atlas.analysis_engine.valuation.facts import ValuationFact, ValuationFactKind
+from atlas.analysis_engine.valuation.issuer_basis import (
+    COMMON_FCF_NUMERATOR_METHODOLOGY,
+    ISSUER_MARKET_CAP_METHODOLOGY,
+    NCI_TREATMENT,
+    IssuerMarketCap,
+    IssuerValuationBasis,
+    SeniorClaim,
+)
 from atlas.analysis_engine.valuation.models import (
     FcfYieldEpochObservation,
     FcfYieldEvidence,
@@ -110,21 +131,31 @@ from atlas.decision_engine.contracts import EvidenceCoverageLevel
 
 __all__ = [
     "FCF_YIELD_METHODOLOGY",
+    "FISCAL_EPOCH_V2",
     "MINIMUM_PRIOR_EPOCHS",
     "SHARE_COUNT_METHOD",
+    "VALUATION_METHODOLOGY",
     "evaluate_fcf_yield_relative",
+    "evaluate_fcf_yield_relative_v2",
+    "fiscal_epochs",
 ]
 
-#: Identifies this construction in change intelligence: snapshots taken
-#: under a different construction are not compared on valuation.
-FCF_YIELD_METHODOLOGY = "fiscal_epoch_v2"
+#: The fiscal-epoch construction in production.
+FCF_YIELD_METHODOLOGY = "fiscal_epoch_v3"
+#: The retired provider-proxy construction: history persisted under it keeps
+#: this identity and is never compared with v3 on valuation.
+FISCAL_EPOCH_V2 = "fiscal_epoch_v2"
+
+#: What "the same valuation measurement" means to change intelligence and the
+#: Decision Layer: the epoch construction with the denominator and numerator
+#: it composes -- any one of them changing is a new ruler, never company news.
+VALUATION_METHODOLOGY = f"{FCF_YIELD_METHODOLOGY}+{ISSUER_MARKET_CAP_METHODOLOGY}+{COMMON_FCF_NUMERATOR_METHODOLOGY}"
 
 #: Prior fiscal epochs required before the comparison may classify.
 MINIMUM_PRIOR_EPOCHS = 3
 
-#: See the module docstring: the only share-count basis Atlas's market
-#: data provides.
-SHARE_COUNT_METHOD = ShareCountMethod.CURRENT_SHARE_COUNT_PROXY
+#: How every production observation's market capitalisation is formed.
+SHARE_COUNT_METHOD = ShareCountMethod.ISSUER_COMMON_EQUITY_MARKET_CAP
 
 #: 52 weeks, the shortest fiscal year: a prior epoch's observation taken
 #: within this many days of its fiscal year end precedes the following
@@ -214,29 +245,34 @@ def _epoch(fiscal_period: str, available_from: date, observed_on: str, fcf: Busi
     )
 
 
-def evaluate_fcf_yield_relative(
+@dataclass(frozen=True)
+class _Epochs:
+    """The fiscal epochs, before any valuation: which fiscal year each market
+    observation belongs to and which observation represents it. Priced here
+    on the provider proxy -- the only pricing the facts alone carry; the
+    issuer basis re-prices the same epochs."""
+
+    applies: bool | None
+    excluded: tuple[FcfYieldExclusion, ...]
+    missing: tuple[ValuationDataGapKind, ...]
+    current: FcfYieldEpochObservation | None = None
+    prior: tuple[FcfYieldEpochObservation, ...] = ()
+    consolidated: tuple[str, ...] = ()
+    #: Gaps that explain an absent current observation.
+    no_current_gaps: tuple[ValuationDataGapKind, ...] = ()
+
+
+def _fiscal_epochs(
     business_facts: tuple[BusinessFact, ...],
     valuation_facts: tuple[ValuationFact, ...],
     *,
     statement_record_ids: frozenset[str],
     industry: str | None,
     evaluated_at: datetime,
-) -> ValuationFinding:
-    """Deterministic, and independent of input order: identical facts
-    always produce a deeply equal `ValuationFinding`. Reads only
-    `BusinessFact`/`ValuationFact`, the ids of the records that are annual
-    financial statements, and the company-profile industry."""
+) -> _Epochs:
     applies = fcf_yield_applies(industry)
     if applies is False:
-        evidence = FcfYieldEvidence(
-            eligibility=ValuationDecisionEligibility.NOT_APPLICABLE,
-            minimum_prior_epochs=MINIMUM_PRIOR_EPOCHS,
-            share_count_method=SHARE_COUNT_METHOD,
-        )
-        return _finding(
-            evidence, [ValuationDataGapKind.VALUATION_METHOD_NOT_APPLICABLE], evaluated_at,
-            confidence=EvidenceCoverageLevel.NOT_APPLICABLE,
-        )
+        return _Epochs(False, (), (ValuationDataGapKind.VALUATION_METHOD_NOT_APPLICABLE,))
 
     cutoff = evaluated_at.date()
     fcf_by_period, excluded = _eligible_free_cash_flow(
@@ -257,8 +293,7 @@ def evaluate_fcf_yield_relative(
         # input missing, that gap already says why nothing was valued.
         if not missing:
             missing.append(ValuationDataGapKind.VALUATION_APPLICABILITY_UNKNOWN)
-        return _finding(_insufficient_evidence(excluded), missing, evaluated_at, business_facts=business_facts,
-                        valuation_facts=valuation_facts)
+        return _Epochs(None, excluded, tuple(missing))
 
     filing_dates = _statement_filing_dates(
         business_facts, statement_record_ids=statement_record_ids, evaluated_at=evaluated_at
@@ -334,6 +369,53 @@ def evaluate_fcf_yield_relative(
     if current_year is not None:
         prior = [epoch for epoch in prior if epoch.fiscal_period < current_year]
 
+    no_current: list[ValuationDataGapKind] = []
+    if current is None:
+        if non_positive:
+            no_current.append(ValuationDataGapKind.CASH_FLOW_NOT_POSITIVE)
+        if currency_mismatch:
+            no_current.append(ValuationDataGapKind.CURRENCY_MISMATCH)
+        if unpaired or (market_dates and fcf_by_period and not fiscal_years):
+            no_current.append(ValuationDataGapKind.NO_ELIGIBLE_FUNDAMENTALS_AS_OF_OBSERVATION)
+        if not fcf_by_period and ValuationDataGapKind.MISSING_FREE_CASH_FLOW_HISTORY not in missing:
+            no_current.append(ValuationDataGapKind.MISSING_FREE_CASH_FLOW_HISTORY)
+    return _Epochs(True, excluded, tuple(missing), current, tuple(prior), tuple(sorted(consolidated)), tuple(no_current))
+
+
+def _not_applicable_finding(evaluated_at: datetime, method: ShareCountMethod) -> ValuationFinding:
+    evidence = FcfYieldEvidence(
+        eligibility=ValuationDecisionEligibility.NOT_APPLICABLE,
+        minimum_prior_epochs=MINIMUM_PRIOR_EPOCHS,
+        share_count_method=method,
+    )
+    return _finding(
+        evidence, [ValuationDataGapKind.VALUATION_METHOD_NOT_APPLICABLE], evaluated_at,
+        confidence=EvidenceCoverageLevel.NOT_APPLICABLE,
+    )
+
+
+def fiscal_epochs(
+    business_facts: tuple[BusinessFact, ...],
+    valuation_facts: tuple[ValuationFact, ...],
+    *,
+    statement_record_ids: frozenset[str],
+    industry: str | None,
+    evaluated_at: datetime,
+) -> FcfYieldEvidence | None:
+    """The fiscal epochs the issuer basis is asked to price: the same current
+    and prior observations every construction compares, each still priced on
+    the provider proxy (`fiscal_epoch_v2`'s own evidence). A description of
+    *which* observations exist -- never a valuation. `None` when the method
+    does not apply or its applicability is unknown."""
+    epochs = _fiscal_epochs(business_facts, valuation_facts, statement_record_ids=statement_record_ids,
+                            industry=industry, evaluated_at=evaluated_at)
+    if not epochs.applies:
+        return None
+    return _proxy_evidence(epochs)
+
+
+def _proxy_evidence(epochs: _Epochs) -> FcfYieldEvidence:
+    current, prior = epochs.current, epochs.prior
     if current is not None and prior:
         eligibility = (
             ValuationDecisionEligibility.ELIGIBLE if len(prior) >= MINIMUM_PRIOR_EPOCHS
@@ -343,39 +425,190 @@ def evaluate_fcf_yield_relative(
     else:
         eligibility = ValuationDecisionEligibility.INSUFFICIENT
         position = None
-    evidence = FcfYieldEvidence(
+    return FcfYieldEvidence(
         eligibility=eligibility,
         minimum_prior_epochs=MINIMUM_PRIOR_EPOCHS,
-        share_count_method=SHARE_COUNT_METHOD,
+        share_count_method=ShareCountMethod.CURRENT_SHARE_COUNT_PROXY,
         current=current,
-        prior_epochs=tuple(prior),
+        prior_epochs=prior,
         position=position,
-        consolidated_observations=tuple(sorted(consolidated)),
-        excluded=excluded,
+        consolidated_observations=epochs.consolidated,
+        excluded=epochs.excluded,
     )
 
-    if eligibility is ValuationDecisionEligibility.ELIGIBLE:
+
+def evaluate_fcf_yield_relative_v2(
+    business_facts: tuple[BusinessFact, ...],
+    valuation_facts: tuple[ValuationFact, ...],
+    *,
+    statement_record_ids: frozenset[str],
+    industry: str | None,
+    evaluated_at: datetime,
+) -> ValuationFinding:
+    """`fiscal_epoch_v2` -- the retired provider-proxy construction (adjusted
+    price times today's provider share count), kept callable only to
+    interpret history persisted under it and for migration comparisons.
+    Production never calls it (`evaluate_valuation` is v3 only)."""
+    epochs = _fiscal_epochs(business_facts, valuation_facts, statement_record_ids=statement_record_ids,
+                            industry=industry, evaluated_at=evaluated_at)
+    if epochs.applies is False:
+        return _not_applicable_finding(evaluated_at, ShareCountMethod.CURRENT_SHARE_COUNT_PROXY)
+    missing = list(epochs.missing)
+    if epochs.applies is None:
+        return _finding(_insufficient_evidence(epochs.excluded, ShareCountMethod.CURRENT_SHARE_COUNT_PROXY), missing,
+                        evaluated_at, business_facts=business_facts, valuation_facts=valuation_facts)
+    evidence = _proxy_evidence(epochs)
+    if evidence.eligibility is ValuationDecisionEligibility.ELIGIBLE:
         return _finding(evidence, missing, evaluated_at)
-    if current is not None:
+    if evidence.current is not None:
         missing.append(ValuationDataGapKind.INSUFFICIENT_HISTORICAL_VALUATION_PERIODS)
     else:
-        if non_positive:
-            missing.append(ValuationDataGapKind.CASH_FLOW_NOT_POSITIVE)
-        if currency_mismatch:
-            missing.append(ValuationDataGapKind.CURRENCY_MISMATCH)
-        if unpaired or (market_dates and fcf_by_period and not fiscal_years):
-            missing.append(ValuationDataGapKind.NO_ELIGIBLE_FUNDAMENTALS_AS_OF_OBSERVATION)
-        if not fcf_by_period and ValuationDataGapKind.MISSING_FREE_CASH_FLOW_HISTORY not in missing:
-            missing.append(ValuationDataGapKind.MISSING_FREE_CASH_FLOW_HISTORY)
+        missing.extend(epochs.no_current_gaps)
     return _finding(evidence, list(dict.fromkeys(missing)), evaluated_at, business_facts=business_facts,
                     valuation_facts=valuation_facts)
 
 
-def _insufficient_evidence(excluded: tuple[FcfYieldExclusion, ...]) -> FcfYieldEvidence:
+def _issuer_epoch(epoch: FcfYieldEpochObservation, cap: IssuerMarketCap, claim: SeniorClaim | None
+                  ) -> FcfYieldEpochObservation | ValuationDataGapKind:
+    """One epoch re-priced on the issuer basis, or why it cannot be."""
+    if cap.economic_date != date.fromisoformat(epoch.observed_on) or cap.economic_date < epoch.available_from:
+        return ValuationDataGapKind.TEMPORAL_EVIDENCE_GAP
+    if cap.currency != epoch.currency:
+        return ValuationDataGapKind.CURRENCY_MISMATCH
+    low, high = (claim.low, claim.high) if claim is not None else (0.0, 0.0)
+    raw = epoch.free_cash_flow
+    if raw - high <= 0:
+        return ValuationDataGapKind.CASH_FLOW_NOT_POSITIVE
+    middle = (cap.market_cap_low + cap.market_cap_high) / 2
+    return FcfYieldEpochObservation(
+        fiscal_period=epoch.fiscal_period,
+        available_from=epoch.available_from,
+        observed_on=epoch.observed_on,
+        free_cash_flow=raw - (low + high) / 2,
+        share_price=cap.share_price,
+        shares_outstanding=middle / cap.share_price,
+        currency=epoch.currency,
+        free_cash_flow_fact_id=epoch.free_cash_flow_fact_id,
+        share_price_fact_id=epoch.share_price_fact_id,
+        shares_outstanding_fact_id=None,
+        market_cap_low=cap.market_cap_low,
+        market_cap_high=cap.market_cap_high,
+        raw_free_cash_flow=raw,
+        senior_claim_low=low,
+        senior_claim_high=high,
+        denominator_quality=cap.quality.value,
+    )
+
+
+def _reprice(epoch: FcfYieldEpochObservation, cap: IssuerMarketCap | ValuationDataGapKind,
+             basis: IssuerValuationBasis) -> FcfYieldEpochObservation | ValuationDataGapKind:
+    if isinstance(cap, ValuationDataGapKind):
+        return cap
+    claim = basis.claim_for(epoch.fiscal_period)
+    if isinstance(claim, ValuationDataGapKind):
+        return claim
+    return _issuer_epoch(epoch, cap, claim)
+
+
+def evaluate_fcf_yield_relative(
+    business_facts: tuple[BusinessFact, ...],
+    valuation_facts: tuple[ValuationFact, ...],
+    *,
+    statement_record_ids: frozenset[str],
+    industry: str | None,
+    evaluated_at: datetime,
+    basis: IssuerValuationBasis | None,
+) -> ValuationFinding:
+    """`fiscal_epoch_v3` -- the production FCF-yield evaluator. Deterministic
+    and independent of input order. The fiscal epochs are the ones every
+    construction compares (`fiscal_epochs`); each is priced on `basis`, the
+    issuer's common equity on the observation's own date, over the free cash
+    flow attributable to common equity. An epoch the basis cannot price is
+    left out; a current observation it cannot price -- or no basis at all --
+    withholds the valuation (`FcfYieldEvidence.withheld_reasons`). Nothing
+    here ever prices an observation on the provider proxy."""
+    method = ShareCountMethod.ISSUER_COMMON_EQUITY_MARKET_CAP
+    epochs = _fiscal_epochs(business_facts, valuation_facts, statement_record_ids=statement_record_ids,
+                            industry=industry, evaluated_at=evaluated_at)
+    if epochs.applies is False:
+        return _not_applicable_finding(evaluated_at, method)
+    missing = list(epochs.missing)
+    if epochs.applies is None:
+        return _finding(_insufficient_evidence(epochs.excluded, method), missing, evaluated_at,
+                        business_facts=business_facts, valuation_facts=valuation_facts)
+
+    withheld: list[ValuationDataGapKind] = []
+    prior: list[FcfYieldEpochObservation] = []
+    current: FcfYieldEpochObservation | None = None
+    if basis is None:
+        if epochs.current is not None:
+            withheld.append(ValuationDataGapKind.DENOMINATOR_EVIDENCE_MISSING)
+    else:
+        for epoch in epochs.prior:
+            priced = _reprice(epoch, basis.denominator_for(epoch.fiscal_period, epoch.observed_on), basis)
+            if not isinstance(priced, ValuationDataGapKind):
+                prior.append(priced)
+        if epochs.current is not None:
+            cap = basis.current if basis.current is not None else (
+                basis.current_gap or ValuationDataGapKind.DENOMINATOR_EVIDENCE_MISSING)
+            if isinstance(cap, IssuerMarketCap) and cap.economic_date != date.fromisoformat(epochs.current.observed_on):
+                # Strict current timing: a composition from another date is not
+                # current evidence, however recent.
+                cap = ValuationDataGapKind.CURRENT_ISSUER_PRICE_NOT_SYNCHRONIZED
+            priced = _reprice(epochs.current, cap, basis)
+            if isinstance(priced, ValuationDataGapKind):
+                withheld.append(priced)
+            else:
+                current = priced
+
+    position = None
+    if current is not None and prior and not withheld:
+        # Both ends of every interval must place today's yield the same way.
+        at_cheapest = position_of(current.fcf_yield_high, tuple(p.fcf_yield_low for p in prior))
+        at_dearest = position_of(current.fcf_yield_low, tuple(p.fcf_yield_high for p in prior))
+        if at_cheapest is at_dearest:
+            position = position_of(current.fcf_yield, tuple(p.fcf_yield for p in prior))
+        else:
+            withheld.append(ValuationDataGapKind.BOUNDED_DENOMINATOR_DISAGREEMENT)
+    if withheld:
+        eligibility = ValuationDecisionEligibility.INSUFFICIENT
+    elif current is None or not prior:
+        eligibility = ValuationDecisionEligibility.INSUFFICIENT
+    elif len(prior) < MINIMUM_PRIOR_EPOCHS:
+        eligibility = ValuationDecisionEligibility.LIMITED
+    else:
+        eligibility = ValuationDecisionEligibility.ELIGIBLE
+    evidence = FcfYieldEvidence(
+        eligibility=eligibility,
+        minimum_prior_epochs=MINIMUM_PRIOR_EPOCHS,
+        share_count_method=method,
+        current=current,
+        prior_epochs=tuple(prior),
+        position=position,
+        consolidated_observations=epochs.consolidated,
+        excluded=epochs.excluded,
+        withheld_reasons=tuple(dict.fromkeys(withheld)),
+        numerator_method=COMMON_FCF_NUMERATOR_METHODOLOGY,
+        nci_treatment=basis.nci_treatment if basis is not None else NCI_TREATMENT,
+    )
+    if eligibility is ValuationDecisionEligibility.ELIGIBLE:
+        return _finding(evidence, missing, evaluated_at)
+    missing.extend(withheld)
+    if epochs.current is None:
+        missing.extend(epochs.no_current_gaps)
+    elif len(prior) < MINIMUM_PRIOR_EPOCHS:
+        # One Case may lack both a current denominator and enough history:
+        # every blocker is named, never only the first.
+        missing.append(ValuationDataGapKind.INSUFFICIENT_HISTORICAL_VALUATION_PERIODS)
+    return _finding(evidence, list(dict.fromkeys(missing)), evaluated_at, business_facts=business_facts,
+                    valuation_facts=valuation_facts)
+
+
+def _insufficient_evidence(excluded: tuple[FcfYieldExclusion, ...], method: ShareCountMethod) -> FcfYieldEvidence:
     return FcfYieldEvidence(
         eligibility=ValuationDecisionEligibility.INSUFFICIENT,
         minimum_prior_epochs=MINIMUM_PRIOR_EPOCHS,
-        share_count_method=SHARE_COUNT_METHOD,
+        share_count_method=method,
         excluded=excluded,
     )
 

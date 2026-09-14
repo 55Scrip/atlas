@@ -59,7 +59,7 @@ from atlas.analysis_engine.contracts import RiskCategory
 from atlas.analysis_engine.investment_case_synthesis import HighlightKind, OpenQuestionOrigin
 from atlas.analysis_engine.risk.contracts import RiskStatus
 from atlas.analysis_engine.risk.financial_risk import FINANCIAL_RISK_METHODOLOGY
-from atlas.analysis_engine.valuation.cash_flow import FCF_YIELD_METHODOLOGY
+from atlas.analysis_engine.valuation.cash_flow import VALUATION_METHODOLOGY
 
 if TYPE_CHECKING:
     # `capture_snapshot`'s own parameter type only -- `models.py` now
@@ -272,7 +272,9 @@ class AnalyticalSnapshot:
     how it measures is not the company changing."""
     valuation_methodology: str | None = None
     """How the FCF-yield valuation history was constructed
-    (`cash_flow.FCF_YIELD_METHODOLOGY`); `None` for snapshots persisted
+    (`cash_flow.VALUATION_METHODOLOGY`: the epoch construction with its
+    denominator and numerator; `fiscal_epoch_v2` for snapshots taken under
+    the retired provider proxy); `None` for snapshots persisted
     before it was recorded. Snapshots under different constructions are
     not compared on valuation -- neither the valuation status, Valuation
     Risk, nor the valuation highlights -- for the same reason."""
@@ -337,7 +339,7 @@ def capture_snapshot(canonical_analysis: CanonicalAnalysis) -> AnalyticalSnapsho
         # Part of the identity: a new method re-baselines every Case once,
         # rather than leaving a stale-method snapshot to compare against.
         "financial_risk_methodology": FINANCIAL_RISK_METHODOLOGY,
-        "valuation_methodology": FCF_YIELD_METHODOLOGY,
+        "valuation_methodology": VALUATION_METHODOLOGY,
     }
     content_hash = hashlib.sha256(json.dumps(hashed_content, sort_keys=True).encode("utf-8")).hexdigest()
 
@@ -355,7 +357,7 @@ def capture_snapshot(canonical_analysis: CanonicalAnalysis) -> AnalyticalSnapsho
         content_hash=content_hash,
         captured_at=canonical_analysis.generated_at,
         financial_risk_methodology=FINANCIAL_RISK_METHODOLOGY,
-        valuation_methodology=FCF_YIELD_METHODOLOGY,
+        valuation_methodology=VALUATION_METHODOLOGY,
     )
 
 

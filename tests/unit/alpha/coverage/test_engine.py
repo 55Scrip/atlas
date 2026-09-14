@@ -13,7 +13,7 @@ from atlas.alpha.coverage.models import ConfidenceReasonCode
 from atlas.analysis_engine.analysis_coverage import AnalysisCoverageLevel
 from atlas.analysis_engine.business_data.models import RawBusinessDocument
 from atlas.analysis_engine.business_data.pipeline import IngestedRecord, ingest
-from atlas.analysis_engine.pipeline import assemble_analysis
+from tests.unit.analysis_engine.valuation._issuer_basis import assemble_fixture_analysis as assemble_analysis
 from tests.unit.analysis_engine._fixtures import GENERATED_AT, run_minimal
 
 
