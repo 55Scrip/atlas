@@ -22,9 +22,11 @@ def _importers(fragment: str, *, skip_dir: str = "") -> set[str]:
 def test_rights_evidence_is_read_only_by_its_write_path_and_the_composer():
     assert _importers("class_rights_evidence", skip_dir="atlas/alpha/class_rights_evidence/") == {
         "atlas/alpha/business_data_refresh/class_rights_evidence.py",
+        "atlas/alpha/issuer_equity/claims.py",
         "atlas/alpha/issuer_equity/composer.py",
         "atlas/alpha/issuer_equity/reader.py",
         "atlas/dev/backfill_class_rights_evidence.py",
+        "atlas/dev/derive_class_rights_series_terms.py",
     }
 
 

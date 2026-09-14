@@ -62,6 +62,28 @@ class SqlAlchemyClassRightsEvidenceRepository:
                 out.setdefault(accession, set()).add(version)
         return {k: frozenset(v) for k, v in out.items()}
 
+    def filings(self, issuer_ciks: frozenset[str]) -> tuple[ClassRightsFiling, ...]:
+        """Every recorded filing of the issuers, under every version."""
+        if not issuer_ciks or not self._has_tables():
+            return ()
+        with self._engine.connect() as connection:
+            rows = connection.execute(select(_filings).where(_filings.c.issuer_cik.in_(tuple(issuer_ciks)))).mappings().all()
+        return tuple(sorted((ClassRightsFiling(
+            issuer_cik=r["issuer_cik"], accession=r["accession"], form=r["form"],
+            filing_date=date.fromisoformat(r["filing_date"]),
+            document_period_end=date.fromisoformat(r["document_period_end"]) if r["document_period_end"] else None,
+            presented_from=date.fromisoformat(r["presented_from"]) if r["presented_from"] else None,
+            instance_url=r["instance_url"], observations=r["observations"], parser_version=r["parser_version"],
+            retrieved_at=datetime.fromisoformat(r["retrieved_at"]), recorded_at=datetime.fromisoformat(r["recorded_at"]),
+        ) for r in rows), key=lambda f: (f.issuer_cik, f.accession, f.parser_version)))
+
+    def issuer_ciks(self) -> frozenset[str]:
+        """Every issuer with recorded rights evidence."""
+        if not self._has_tables():
+            return frozenset()
+        with self._engine.connect() as connection:
+            return frozenset(r[0] for r in connection.execute(select(_filings.c.issuer_cik).distinct()).all())
+
     def record_filing(self, filing: ClassRightsFiling, observations: tuple[ClassRightsObservation, ...]) -> bool:
         if any(o.accession != filing.accession or o.issuer_cik != filing.issuer_cik
                or o.parser_version != filing.parser_version for o in observations):

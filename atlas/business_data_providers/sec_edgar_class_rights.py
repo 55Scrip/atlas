@@ -93,6 +93,12 @@ class RightKind(str, Enum):
     NON_VOTING = "non_voting"
     SENIOR_TO_COMMON = "senior_to_common"
     NOT_CONVERTIBLE = "not_convertible"
+    #: Series terms -- one vocabulary with the evidence store. The parser
+    #: emits none of these; they are derived from its tabulated rows
+    #: (`atlas.alpha.class_rights_evidence.series_terms`).
+    SERIES_ISSUED_ON = "series_issued_on"
+    DIVIDEND_RATE_RESETS_ON = "dividend_rate_resets_on"
+    SERIES_TERMINATED_ON = "series_terminated_on"
 
 
 class EvidenceStrength(str, Enum):

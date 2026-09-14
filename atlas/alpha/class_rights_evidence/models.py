@@ -7,6 +7,11 @@ other filed statement, `STRUCTURED_FILING` for an XBRL fact,
 span it holds for: `effective_from`..`effective_to`, an instant or the
 periods its filing presents. A reader applies it inside that span, or
 forward from it -- never backward.
+
+Series terms (`SERIES_ISSUED_ON`, `DIVIDEND_RATE_RESETS_ON`, and a series'
+fixed rate from its issuance to its reset) are dated by the instrument
+itself: a filing may state them long after the fact, and they then describe
+exactly the dates they name (`class_rights_evidence.series_terms`).
 """
 from __future__ import annotations
 
@@ -36,6 +41,13 @@ class RightKind(str, Enum):
     NON_VOTING = "non_voting"
     SENIOR_TO_COMMON = "senior_to_common"
     NOT_CONVERTIBLE = "not_convertible"
+    #: A preferred series' issuance date (its claim's economic onset).
+    SERIES_ISSUED_ON = "series_issued_on"
+    #: The date a series' fixed dividend rate stops applying (it floats from
+    #: then on, on terms Atlas does not price).
+    DIVIDEND_RATE_RESETS_ON = "dividend_rate_resets_on"
+    #: A series ended -- redeemed, converted or otherwise extinguished.
+    SERIES_TERMINATED_ON = "series_terminated_on"
 
 
 class EvidenceStrength(str, Enum):

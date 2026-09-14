@@ -32,6 +32,7 @@ from atlas.alpha.business_data_refresh.class_rights_evidence import (
 )
 from atlas.alpha.canonical_security_gate.factory import build_listing_mic_reader
 from atlas.alpha.class_rights_evidence.repository import SqlAlchemyClassRightsEvidenceRepository
+from atlas.alpha.class_rights_evidence.series_terms import record_series_terms
 from atlas.alpha.class_rights_evidence.table import create_class_rights_evidence_tables
 from atlas.alpha.issuer_equity.reader import IssuerEquityReader
 from atlas.alpha.security_share_evidence.repository import SqlAlchemySecurityShareEvidenceRepository
@@ -147,6 +148,12 @@ def main() -> int:
         print(f"  {accession}: {form} filed {filed}  observations {len(observations)}")
     if saved is not None and not arguments.from_fetched:
         (saved / "requests.json").write_text(json.dumps(log, indent=1))
+    if not arguments.dry_run:
+        # The structured series terms fiscal_epoch_v3's claims read, derived
+        # from what was just recorded -- no further request.
+        for accession, count, wrote in record_series_terms(rights, rights.issuer_ciks(), recorded_at=_now()):
+            if wrote:
+                print(f"  {accession}: {count} series-term observations derived")
 
     print(f"\nissuer common-equity market cap (descriptive; evaluated {as_of}):")
     for ticker in tickers:
