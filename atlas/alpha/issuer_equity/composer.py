@@ -15,6 +15,16 @@ more others in the same set is an aggregate (a "B-1 and B-2" or "all
 common" member) and is excluded, never added beside its parts. A class
 with no shares contributes nothing, whatever its rights.
 
+**Which classes an issuer-level count spans.** A filing that dimensions any
+share fact by the class axis "reports share classes" -- a boolean that
+cannot tell a second common class from an incidental tag. An undimensioned
+count in such a filing is taken as the whole common equity only when the
+evidence proves one common class: that filing's own class-axis share facts
+(`class_inventory`) show at most one common class holding shares (a class it
+counts at zero contributes nothing; preferred is not common), and no class
+it names only on concepts that count nothing. A filing recorded before
+those facts were kept falls back to its kind-only inventory.
+
 **Prices.** A class listed on an Atlas security -- proven by the filing's
 own cover (`PROVEN_BY_SHARED_DIMENSION`) -- takes that security's own raw
 price on the economic date: two listed siblings are never normalised to
@@ -77,6 +87,9 @@ __all__ = [
     "SeniorEquity",
     "IssuerCommonEquityMarketCap",
     "IssuerFcfYield",
+    "ClassInventoryState",
+    "ClassInventory",
+    "class_inventory",
     "compose_issuer_common_equity_market_cap",
     "issuer_fcf_yield",
 ]
@@ -283,6 +296,107 @@ def _aggregates(counts: list[ClassCount], rights: tuple[ClassRightsObservation, 
     return out
 
 
+class ClassInventoryState(str, Enum):
+    """What a filing's own class-axis share facts prove about its common
+    classes (`class_inventory`)."""
+
+    #: At most one common class holds shares; any other common class the
+    #: filing names is reported with none.
+    SINGLE_COMMON_CLASS = "single_common_class"
+    #: As above, beside preferred (non-common) classes.
+    COMMON_PLUS_NONCOMMON = "common_plus_noncommon"
+    MULTIPLE_COMMON_CLASSES = "multiple_common_classes"
+    #: A class the filing names only on concepts that neither count its shares
+    #: nor mark it preferred -- it may be a class, it may be a tag.
+    AMBIGUOUS_CLASS_AXIS = "ambiguous_class_axis"
+    #: No class-axis share facts recorded for the filing (a boolean "classes
+    #: reported" alone proves nothing).
+    INSUFFICIENT_EVIDENCE = "insufficient_evidence"
+
+
+@dataclass(frozen=True)
+class ClassInventory:
+    state: ClassInventoryState
+    participating: tuple[str, ...] = ()
+    zero_share: tuple[str, ...] = ()
+    noncommon: tuple[str, ...] = ()
+    unexplained: tuple[str, ...] = ()
+    evidence: tuple[str, ...] = ()
+
+
+#: A class's own share count, most specific first.
+_CLASS_COUNT_CONCEPTS = ("us-gaap:CommonStockSharesOutstanding", "dei:EntityCommonStockSharesOutstanding",
+                         "us-gaap:CommonStockSharesIssued")
+
+
+def _counted(facts) -> list[ClassRightsObservation]:
+    """A class's own share counts: an instant, no dimension but the class."""
+    return [f for f in facts if f.concept in _CLASS_COUNT_CONCEPTS and f.value is not None
+            and f.effective_from == f.effective_to and not f.related_labels]
+
+
+def _class_count_at(facts, at: date | None) -> tuple[float | None, str | None]:
+    """A member's share count at `at`, and the fact that says so; `(None,
+    None)` when the filing reports none there."""
+    found = sorted((f for f in _counted(facts) if f.effective_to == at),
+                   key=lambda f: (_CLASS_COUNT_CONCEPTS.index(f.concept), f.observation_key))
+    return (found[0].value, found[0].observation_key) if found else (None, None)
+
+
+def class_inventory(rights: tuple[ClassRightsObservation, ...], instant: date, accession: str) -> ClassInventory:
+    """The common classes the filing that reported a share count names, read
+    from that same filing's class-axis share facts dated on or before the
+    count's instant -- never from another filing, never from a later date.
+
+    The generic "common stock" member alone is the undimensioned common
+    stock itself, named on the axis; beside a named common class holding
+    shares it is no further class only when its count is theirs summed at
+    the same instant -- otherwise it may be one, and is unexplained.
+
+    Another member is a common class when a common share-count concept
+    carries it: it holds shares unless the filing counts it at zero at its
+    latest class-count instant (then it contributes nothing, like any class
+    with no shares) -- a zero at an earlier date, or under a further
+    dimension, proves nothing now. Preferred when only preferred concepts
+    carry it; unexplained otherwise. Deterministic."""
+    facts = [o for o in rights if o.kind is RightKind.CLASS_AXIS_SHARE_FACT and o.accession == accession
+             and o.effective_to <= instant and o.subject_member]
+    if not facts:
+        return ClassInventory(ClassInventoryState.INSUFFICIENT_EVIDENCE)
+    balance = max((f.effective_to for f in _counted(facts)), default=None)
+    by_member: dict[str, list[ClassRightsObservation]] = {}
+    for f in facts:
+        by_member.setdefault(f.subject_member, []).append(f)
+    participating, zero, noncommon, unexplained, evidence = [], [], [], [], []
+    for member, member_facts in sorted(by_member.items()):
+        kinds = {f.equity_kind for f in member_facts}
+        count, key = _class_count_at(member_facts, balance)
+        if key:
+            evidence.append(key)
+        if member == _GENERIC_COMMON:
+            continue
+        if "common" in kinds:
+            (zero if count == 0 else participating).append(member)
+        elif "preferred" in kinds:
+            noncommon.append(member)
+        else:
+            unexplained.append(member)
+    if _GENERIC_COMMON in by_member and participating:
+        total, _ = _class_count_at(by_member[_GENERIC_COMMON], balance)
+        parts = [_class_count_at(by_member[m], balance)[0] for m in participating]
+        if total is None or None in parts or abs(sum(parts) - total) > _AGGREGATE_TOLERANCE * max(total, 1):
+            unexplained.append(_GENERIC_COMMON)
+    if unexplained:
+        state = ClassInventoryState.AMBIGUOUS_CLASS_AXIS
+    elif len(participating) > 1:
+        state = ClassInventoryState.MULTIPLE_COMMON_CLASSES
+    elif noncommon:
+        state = ClassInventoryState.COMMON_PLUS_NONCOMMON
+    else:
+        state = ClassInventoryState.SINGLE_COMMON_CLASS
+    return ClassInventory(state, tuple(participating), tuple(zero), tuple(noncommon), tuple(unexplained), tuple(evidence))
+
+
 def compose_issuer_common_equity_market_cap(
     issuer_cik: str,
     economic_date: date,
@@ -345,10 +459,19 @@ def compose_issuer_common_equity_market_cap(
             return result(DenominatorQuality.INSUFFICIENT_EVIDENCE, None, None, instant=instant, accession=accession)
         distinct = common_members - {_GENERIC_COMMON}
         nonzero_breakdown = {m for m, shares, _ in class_breakdown if shares > 0}
+        # The count's own filing's class-axis share facts (class_rights_v2),
+        # when recorded, decide what "classes reported" means; the kind-only
+        # inventory of a filing recorded before them keeps its own rule.
+        axis = class_inventory(visible, instant, accession)
+        facts_recorded = axis.state is not ClassInventoryState.INSUFFICIENT_EVIDENCE
         evidence: tuple[str, ...] = ()
         if not classes_reported:
             quality, treatment = DenominatorQuality.ISSUER_EXACT, "no_share_classes_reported"
-        elif inventory and len(distinct) <= 1:
+        elif axis.state in (ClassInventoryState.SINGLE_COMMON_CLASS, ClassInventoryState.COMMON_PLUS_NONCOMMON):
+            quality, treatment = DenominatorQuality.ISSUER_EXACT, "one_common_class_with_shares"
+            evidence = (f"class_inventory:{axis.state.value}", *axis.evidence)
+            gaps.extend(f"zero_share_class:{m}" for m in axis.zero_share)
+        elif not facts_recorded and inventory and len(distinct) <= 1:
             quality, treatment = DenominatorQuality.ISSUER_EXACT, "one_common_class_in_inventory"
             evidence = tuple(sorted(f"{o.accession}:{o.observation_key}" for o in inventory))
         elif class_breakdown and len(nonzero_breakdown) <= 1:
@@ -364,7 +487,9 @@ def compose_issuer_common_equity_market_cap(
             if group[2]:
                 gaps.append(f"rights_carried_forward:{group[2]}d")
         else:
-            gaps.append("class_structure_unrecorded" if not (inventory or class_breakdown)
+            if facts_recorded:
+                gaps.append(f"class_inventory:{axis.state.value}")
+            gaps.append("class_structure_unrecorded" if not (inventory or class_breakdown or facts_recorded)
                         else "issuer_level_count_spans_classes_of_unknown_economics")
             return result(DenominatorQuality.INSUFFICIENT_EVIDENCE, None, None, instant=instant, accession=accession)
         participating = [m for m in _preferred_members(visible)

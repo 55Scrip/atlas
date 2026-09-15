@@ -311,6 +311,19 @@ class TestWithheldCasesNeverFallBack:
         assert f.fcf_yield_evidence.current.is_issuer_basis and f.fcf_yield_evidence.prior_epochs == ()
         assert f.missing_evidence == (G.INSUFFICIENT_HISTORICAL_VALUATION_PERIODS,)
 
+    def test_valid_current_and_every_prior_unpriced_never_falls_back(self):  # MCO, once its current composes
+        business, market = _facts()
+        basis = basis_for_epochs(_epochs(business, market))
+        basis = replace(basis, epochs=tuple(EpochDenominator(e.fiscal_period, e.observed_on, gap=G.DENOMINATOR_EVIDENCE_MISSING)
+                                            for e in basis.epochs))
+        v2 = evaluate_fcf_yield_relative_v2(tuple(business), tuple(market), statement_record_ids=_statements(business),
+                                            industry=APPLICABLE, evaluated_at=AS_OF)
+        assert v2.status is ValuationStatus.EXPENSIVE  # the retired proxy would have priced the same history
+        f = _evaluate(business, market, basis)
+        assert f.status is ValuationStatus.INSUFFICIENT_INPUT and f.fcf_yield_evidence.current.is_issuer_basis
+        assert f.fcf_yield_evidence.prior_epochs == () and f.fcf_yield_evidence.position is None
+        assert f.missing_evidence == (G.INSUFFICIENT_HISTORICAL_VALUATION_PERIODS,)
+
     def test_two_priors_describe_but_never_classify(self):  # AMZN, DE
         business, market = _facts(prices={2023: 25.0, 2024: 40.0, 2025: 50.0})
         f = _evaluate(business, market, basis_for_epochs(_epochs(business, market)))

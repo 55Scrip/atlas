@@ -107,10 +107,17 @@ class IssuerEquityReader:
         return ciks.pop() if len(ciks) == 1 else None
 
     def rights(self, issuer_cik: str, evaluated_on: date):
-        """The issuer's rights evidence filed by the evaluation date."""
+        """The issuer's rights evidence filed by the evaluation date -- each
+        observation once: a filing re-read by a later parser version records
+        its unchanged facts again under the same key, and the same fact read
+        twice is one fact (its first record kept)."""
         key = (issuer_cik, evaluated_on)
         if key not in self._rights_by:
-            self._rights_by[key] = self._rights.observations_for_issuers(frozenset({issuer_cik}), filed_by=evaluated_on)[issuer_cik]
+            first: dict[tuple[str, str], object] = {}
+            observations = self._rights.observations_for_issuers(frozenset({issuer_cik}), filed_by=evaluated_on)[issuer_cik]
+            for o in sorted(observations, key=lambda o: (o.recorded_at, o.parser_version)):
+                first.setdefault((o.accession, o.observation_key), o)
+            self._rights_by[key] = tuple(sorted(first.values(), key=lambda o: (o.filing_date, o.accession, o.observation_key)))
         return self._rights_by[key]
 
     def _listed(self, symbol: str | None, mic: str | None) -> str | None:
