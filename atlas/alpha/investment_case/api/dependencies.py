@@ -24,7 +24,13 @@ from fastapi import Depends
 from atlas.alpha.case_instrument.dependencies import get_case_instrument_binding_repository
 from atlas.alpha.case_instrument.repository import CaseInstrumentBindingRepository
 from atlas.alpha.investment_case.service import InvestmentCaseCompositionService
-from atlas.alpha.issuer_equity.dependencies import get_issuer_valuation_basis_builder
+# The sibling resolver is re-exported for the case router: this module is
+# the case surface's one gateway to `issuer_equity`.
+from atlas.alpha.issuer_equity.dependencies import (  # noqa: F401
+    ListedSiblingResolver,
+    get_issuer_valuation_basis_builder,
+    get_listed_sibling_resolver,
+)
 from atlas.alpha.issuer_equity.valuation_basis import IssuerValuationBasisBuilder
 from atlas.alpha.portfolio.api.dependencies import get_alpha_portfolio_store, get_alpha_trade_log_store
 from atlas.alpha.portfolio.store import AlphaPortfolioStore

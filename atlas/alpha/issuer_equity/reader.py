@@ -233,6 +233,21 @@ class IssuerEquityReader:
                 return composed
         return first
 
+    def listed_siblings(self, ticker: str, evaluated_on: date) -> tuple[str, ...]:
+        """The other listed classes a current composition of `ticker`'s
+        issuer must price on its date: the listed, outstanding classes of
+        the latest count set dated and filed by `evaluated_on` -- exactly
+        the set `on_date` requires -- less `ticker`. Unlisted classes are
+        priced through rights evidence and never appear. `()` for a single
+        listing or an unknown issuer."""
+        cik = self.issuer_cik(ticker)
+        if cik is None:
+            return ()
+        usable = [s for s in self.count_sets(cik) if s.instant <= evaluated_on and s.filing_date <= evaluated_on]
+        if not usable:
+            return ()
+        return tuple(sorted({c.symbol for c in usable[-1].counts if c.symbol and c.shares > 0} - {ticker}))
+
     def on_date(self, ticker: str, on: date, evaluated_on: date) -> IssuerCommonEquityMarketCap | None:
         """The composition on exactly `on` -- never an earlier date. A listed
         sibling class with no price that day leaves it insufficient

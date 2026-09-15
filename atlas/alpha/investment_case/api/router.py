@@ -79,6 +79,7 @@ composition from scratch; here `Explanation` already exists.
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 
@@ -97,9 +98,10 @@ from atlas.alpha.business_data_refresh.api.dependencies import (
     get_price_refresh_coordinator,
 )
 from atlas.alpha.business_data_refresh.price_refresh import (
+    CoordinatedPriceRefreshOutcome,
     PriceRefreshCoordinator,
     price_freshness_status,
-    refresh_price_only,
+    refresh_prices_with_listed_siblings,
 )
 from atlas.alpha.business_data_refresh.quota import AlphaVantageQuotaTracker
 from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecordRepository
@@ -121,7 +123,11 @@ from atlas.alpha.evidence_timeline.models import EvidenceHistory
 from atlas.alpha.evidence_timeline.repository import SqlAlchemyEvidenceSnapshotRepository
 from atlas.alpha.explainability import explain
 from atlas.alpha.investment_case.api.decision_layer_bundle_schemas import InvestmentCaseDecisionLayerBundleView
-from atlas.alpha.investment_case.api.dependencies import get_investment_case_composition_service
+from atlas.alpha.investment_case.api.dependencies import (
+    ListedSiblingResolver,
+    get_investment_case_composition_service,
+    get_listed_sibling_resolver,
+)
 from atlas.alpha.investment_case.api.schemas import (
     ConfidenceReasonView,
     DimensionCoverageView,
@@ -166,6 +172,29 @@ from atlas.analysis_engine.business_data.versioning import latest_versions
 
 router = APIRouter(prefix="/cases", tags=["investment-case"])
 _logger = logging.getLogger(__name__)
+
+
+def _refresh_with_listed_siblings(
+    ticker: str,
+    *,
+    resolve_siblings: ListedSiblingResolver,
+    provider,
+    repository: SqlAlchemyBusinessRecordRepository,
+    quota: AlphaVantageQuotaTracker,
+    coordinator: PriceRefreshCoordinator,
+) -> CoordinatedPriceRefreshOutcome:
+    """A price refresh of `ticker` together with its issuer's other listed
+    classes (`price_refresh.refresh_prices_with_listed_siblings`). Siblings
+    are resolved here, when the refresh runs; if they cannot be read the
+    security is refreshed alone, as before -- the valuation's own
+    same-date rule still decides whether the issuer can be valued."""
+    try:
+        siblings = resolve_siblings(ticker, datetime.now(timezone.utc).date())
+    except Exception:  # noqa: BLE001 -- a refresh never fails the page over sibling lookup
+        _logger.warning("listed sibling lookup failed for %s; refreshing it alone", ticker, exc_info=True)
+        siblings = ()
+    return refresh_prices_with_listed_siblings(ticker, siblings=siblings, provider=provider, repository=repository,
+                                               quota=quota, coordinator=coordinator)
 
 
 def _ticker_for_composition(composition: InvestmentCaseComposition) -> str | None:
@@ -338,6 +367,7 @@ def get_investment_case_analysis(
     price_quota: AlphaVantageQuotaTracker = Depends(get_alpha_vantage_quota_tracker),
     price_refresh_coordinator: PriceRefreshCoordinator = Depends(get_price_refresh_coordinator),
     identity_gate: CanonicalSecurityIdentityGate = Depends(get_canonical_security_identity_gate),
+    resolve_listed_siblings: ListedSiblingResolver = Depends(get_listed_sibling_resolver),
 ) -> InvestmentCaseAnalysisView:
     composition = service.build(case_id)
     if composition is None:
@@ -449,8 +479,9 @@ def get_investment_case_analysis(
         view.market_snapshot.price_freshness = status
         if status in ("stale", "failed"):
             background_tasks.add_task(
-                refresh_price_only,
+                _refresh_with_listed_siblings,
                 ticker,
+                resolve_siblings=resolve_listed_siblings,
                 provider=price_provider,
                 repository=business_record_repository,
                 quota=price_quota,
@@ -488,16 +519,20 @@ def refresh_investment_case_price(
     price_provider=Depends(get_alpha_vantage_price_provider),
     price_quota: AlphaVantageQuotaTracker = Depends(get_alpha_vantage_quota_tracker),
     price_refresh_coordinator: PriceRefreshCoordinator = Depends(get_price_refresh_coordinator),
+    resolve_listed_siblings: ListedSiblingResolver = Depends(get_listed_sibling_resolver),
 ) -> PriceRefreshResponseView:
     """Internal Alpha Stabilization 1 (MSFT price root cause fix) --
-    the manual "Uppdatera" escape hatch. Calls the identical
-    `refresh_price_only` the lazy background trigger on `GET
-    .../analysis` uses -- same dedup/serialization (a click while a
-    refresh is already in flight for this ticker is a no-op, reported
+    the manual "Uppdatera" escape hatch. Runs the identical refresh the
+    lazy background trigger on `GET .../analysis` runs -- this security
+    together with its issuer's other listed classes, if any
+    (`_refresh_with_listed_siblings`) -- with the same dedup/serialization
+    (a click while a refresh is already in flight is a no-op, reported
     honestly as `attempted: false`), same quota, same "never touch the
-    last good snapshot on failure" guarantee. Synchronous (unlike the
-    lazy trigger): an explicit user action should see its own real
-    outcome, not just an immediate "started."
+    last good snapshot on failure" guarantee. `attempted`/`succeeded`
+    describe this security; `reason` also names a sibling that failed or
+    siblings left on different dates. Synchronous (unlike the lazy
+    trigger): an explicit user action should see its own real outcome,
+    not just an immediate "started."
     """
     composition = service.build(case_id)
     if composition is None:
@@ -506,8 +541,9 @@ def refresh_investment_case_price(
     if ticker is None:
         raise HTTPException(status_code=400, detail="No ticker resolvable for this Case")
 
-    outcome = refresh_price_only(
+    outcome = _refresh_with_listed_siblings(
         ticker,
+        resolve_siblings=resolve_listed_siblings,
         provider=price_provider,
         repository=business_record_repository,
         quota=price_quota,

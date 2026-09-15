@@ -146,6 +146,46 @@ class TestAlphabet:
         assert {c.symbol for c in cap.contributions if c.symbol} == {"GOOG", "GOOGL"}
 
 
+class TestListedSiblings:
+    """The listed classes a current composition must price together, read
+    off the issuer's own count evidence -- never a ticker list."""
+
+    def test_each_alphabet_listing_names_the_other_and_never_the_unlisted_class_b(self, reader):
+        assert reader.listed_siblings("GOOG", EVAL) == ("GOOGL",)
+        assert reader.listed_siblings("GOOGL", EVAL) == ("GOOG",)
+
+    def test_they_are_exactly_the_classes_the_current_composition_prices(self, reader):
+        cap = reader.current("GOOG", EVAL)
+        assert {c.symbol for c in cap.contributions if c.symbol} == {"GOOG", *reader.listed_siblings("GOOG", EVAL)}
+
+    def test_an_unlisted_second_class_is_no_sibling(self, reader):
+        assert reader.listed_siblings("MA", EVAL) == ()
+
+    def test_a_single_listing_and_an_unknown_issuer_have_none(self, reader):
+        assert reader.listed_siblings("ONE", EVAL) == ()
+        assert reader.listed_siblings("NOPE", EVAL) == ()
+
+    def test_siblings_come_from_the_count_evidence_of_any_issuer(self, reader, monkeypatch):
+        from atlas.alpha.issuer_equity.composer import ClassCount
+        from atlas.alpha.issuer_equity.reader import CountSet
+
+        def cc(member, shares, symbol=None):
+            return ClassCount(member, shares, date(2026, 7, 1), "acc-2", date(2026, 7, 20), symbol, "XNAS" if symbol else None)
+
+        sets = [
+            CountSet(date(2026, 3, 31), date(2026, 4, 20), "acc-1", (cc("m:A", 10, "XXA"), cc("m:E", 3, "XXE")), True),
+            CountSet(date(2026, 7, 1), date(2026, 7, 20), "acc-2",
+                     (cc("m:A", 10, "XXA"), cc("m:B", 5), cc("m:C", 7, "XXC"), cc("m:D", 0, "XXD")), True),
+            CountSet(date(2026, 9, 30), date(2026, 10, 20), "acc-3", (cc("m:A", 10, "XXA"), cc("m:F", 2, "XXF")), True),
+        ]
+        monkeypatch.setattr(reader, "issuer_cik", lambda ticker: "0000000009")
+        monkeypatch.setattr(reader, "count_sets", lambda cik: sets)
+        # The latest set filed by the evaluation date: its listed, outstanding classes. The unlisted
+        # class B, the zero-share D, the superseded E and the not-yet-filed F are never siblings.
+        assert reader.listed_siblings("XXA", EVAL) == ("XXC",)
+        assert reader.listed_siblings("XXC", EVAL) == ("XXA",)
+
+
 class TestOthers:
     def test_mastercard_b_priced_from_a_by_filed_conversion_with_the_carry_shown(self, reader):
         cap = reader.current("MA", EVAL)
