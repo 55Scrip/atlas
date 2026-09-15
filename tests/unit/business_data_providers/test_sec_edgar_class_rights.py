@@ -5,6 +5,11 @@ fetched (`fixtures/class_rights/<accession>.xml`: dei facts, cover rows,
 per-class EPS, conversion and as-converted facts, preferred facts, one share
 fact per class member, and only the text-block sentences the parser keeps);
 each trimmed copy was checked to parse identically to the full instance.
+AMD's and Moody's 10-Qs (`0000002488-26-000123`, `0001628280-26-049398`)
+were added by the class-inventory plan: every dei fact, every share fact,
+the income facts that date the presented period, and their contexts --
+checked to parse identically under the class-rights, cover and share-class
+parsers.
 """
 from __future__ import annotations
 
@@ -20,6 +25,7 @@ from atlas.business_data_providers.sec_edgar_class_rights import (
     SecEdgarClassRightsProvider,
     parse_class_rights,
 )
+from atlas.business_data_providers.sec_edgar_share_classes import parse_cover_share_counts
 from tests.unit.business_data_providers.test_sec_edgar_share_classes import _code_without_docstrings, _instance
 
 FIXTURES = Path(__file__).parent / "fixtures" / "class_rights"
@@ -156,6 +162,69 @@ class TestSynthetic:
         assert f.related_members == ("abc:SpecialMember",)  # Class Y: no member of its own anywhere
 
 
+class TestClassAxisShareFacts:
+    """Which member, on which concept and context, made a filing "report share
+    classes" -- kept fact by fact, never reduced to the boolean. AMD's and
+    Moody's 10-Qs are real controls (`0000002488-26-000123`,
+    `0001628280-26-049398`)."""
+
+    @staticmethod
+    def _axis(filing):
+        return _facts(filing, RightKind.CLASS_AXIS_SHARE_FACT)
+
+    def test_every_class_axis_share_fact_is_kept_with_its_provenance(self):
+        axis = self._axis(_read("0001628280-26-049398"))
+        at = {(f.subject_member, f.concept, f.effective_to): (f.value, f.context_id, f.equity_kind) for f in axis}
+        series, non_series = "mco:SeriesCommonStockMember", "mco:NonSeriesCommonStockMember"
+        assert at[(series, "us-gaap:CommonStockSharesOutstanding", date(2026, 6, 30))] == (0.0, "c-11", "common")
+        assert at[(series, "us-gaap:CommonStockSharesIssued", date(2026, 6, 30))] == (0.0, "c-11", "common")
+        assert at[(non_series, "us-gaap:CommonStockSharesIssued", date(2026, 6, 30))] == (342_902_272.0, "c-12", "common")
+        # Authorized shares count nothing outstanding: kept, of no equity kind.
+        assert at[(non_series, "us-gaap:CommonStockSharesAuthorized", date(2026, 6, 30))] == (1_000_000_000.0, "c-12", None)
+        assert len(axis) == 10 and {f.unit for f in axis} == {"shares"}
+        assert {f.strength for f in axis} == {EvidenceStrength.STRUCTURED_FILING}
+
+    def test_the_members_behind_the_boolean_are_exactly_the_facts_kept(self):
+        for accession in ("0000002488-26-000123", "0001628280-26-049398"):
+            text = (FIXTURES / f"{accession}.xml").read_text()
+            assert parse_cover_share_counts(text).share_classes_reported
+            member_of = {m.group(1): m.group(2) for m in re.finditer(
+                r'<context id="([^"]+)">(?:(?!</context>).)*?dimension="us-gaap:StatementClassOfStockAxis">([^<]+)<', text, re.S)}
+            share_contexts = {re.search(r'contextRef="([^"]+)"', tag).group(1)
+                              for tag in re.findall(r'<[^>]*unitRef="shares"[^>]*>', text)}
+            axis = self._axis(_read(accession))
+            assert {f.subject_member for f in axis} == {member_of[c] for c in share_contexts if c in member_of}, accession
+            assert {f.context_id for f in axis} == share_contexts & set(member_of)
+
+    def test_amds_flag_is_the_generic_common_member_on_incidental_concepts_too(self):
+        axis = self._axis(_read("0000002488-26-000123"))
+        assert {f.subject_member for f in axis} == {"us-gaap:CommonStockMember"}
+        counts = {f.effective_to: f.value for f in axis if f.concept == "us-gaap:CommonStockSharesIssued"}
+        assert counts[date(2026, 6, 27)] == 1_632_000_000.0
+        incidental = {f.concept for f in axis if f.equity_kind is None}
+        assert "us-gaap:StockRepurchasedDuringPeriodShares" in incidental
+        spans = {(f.effective_from, f.effective_to) for f in axis if f.concept == "us-gaap:StockRepurchasedDuringPeriodShares"}
+        assert (date(2026, 3, 29), date(2026, 6, 27)) in spans  # a duration: its own period, never an instant
+
+    def test_a_further_dimension_is_kept_beside_the_member(self):
+        extra = ('<xbrli:context id="two"><xbrli:entity><xbrli:identifier scheme="http://www.sec.gov/CIK">0000000001'
+                 '</xbrli:identifier><xbrli:segment><xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">'
+                 'abc:SeriesXMember</xbrldi:explicitMember><xbrldi:explicitMember dimension="dei:LegalEntityAxis">'
+                 'abc:SubsidiaryMember</xbrldi:explicitMember></xbrli:segment></xbrli:entity><xbrli:period>'
+                 '<xbrli:instant>2025-12-31</xbrli:instant></xbrli:period></xbrli:context>')
+        fact = '<us-gaap:CommonStockSharesOutstanding contextRef="two" unitRef="shares" decimals="0">0</us-gaap:CommonStockSharesOutstanding>'
+        text = _instance(facts=[("us-gaap:CommonStockSharesOutstanding", "abc:ClassXMember", "2025-12-31", "5000", "shares")],
+                         extra_contexts=extra).replace("</xbrli:xbrl>", fact + "</xbrli:xbrl>")
+        axis = {f.subject_member: f for f in _facts(parse_class_rights(text), RightKind.CLASS_AXIS_SHARE_FACT)}
+        assert axis["abc:SeriesXMember"].related_labels == ("dei:LegalEntityAxis=abc:SubsidiaryMember",)
+        assert (axis["abc:ClassXMember"].related_labels, axis["abc:ClassXMember"].value) == ((), 5000.0)
+
+    def test_monetary_and_undimensioned_facts_are_not_class_axis_share_facts(self):
+        text = _instance(facts=[("us-gaap:CommonStockSharesOutstanding", None, "2025-12-31", "9000", "shares"),
+                                ("us-gaap:CommonStockValue", "abc:ClassXMember", "2025-12-31", "90", "usd")])
+        assert _facts(parse_class_rights(text), RightKind.CLASS_AXIS_SHARE_FACT) == []
+
+
 class TestFetching:
     def test_one_request_to_a_recorded_edgar_instance_only(self):
         calls, counted = [], []
@@ -169,6 +238,7 @@ class TestFetching:
 
 def test_the_adapter_names_no_issuer_symbol_or_class():
     code = _code_without_docstrings(MODULE)
-    for name in ("GOOG", "GOOGL", "MA", "V", "META", "VST", "Alphabet", "Visa", "Mastercard", "Vistra"):
+    for name in ("GOOG", "GOOGL", "MA", "V", "META", "VST", "AMD", "MCO", "Alphabet", "Visa", "Mastercard", "Vistra",
+                 "Moody", "mco", "amd"):
         assert not re.search(rf"\b{name}\b", code), name
     assert not re.search(r"CommonClass[A-Z]Member|Class[A-Z]\d", code.replace("CommonClass{letter}Member", ""))

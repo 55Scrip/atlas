@@ -15,6 +15,7 @@ from pathlib import Path
 import pytest
 
 import atlas.dev.backfill_class_rights_evidence as command
+from atlas.alpha.class_rights_evidence.models import RightKind
 from atlas.alpha.class_rights_evidence.repository import SqlAlchemyClassRightsEvidenceRepository
 from sqlalchemy import create_engine
 from tests.unit.alpha.issuer_equity.test_reader import reader as _reader_fixture  # noqa: F401 -- the shared database
@@ -96,7 +97,8 @@ def test_one_logged_request_per_filing_then_a_rerun_asks_nothing(monkeypatch, ca
         n: r for n, r in before.items() if not n.startswith("class_rights")}  # nothing else touched
     assert "GOOG   issuer_equivalent" in out
     _, rerun, out = _run(monkeypatch, capsys, database, "--tickers", "GOOG", "--accessions", f"{Q2},{FY}")
-    assert rerun.requests == [] and out.count("already recorded (class_rights_v1)") == 2
+    assert rerun.requests == [] and out.count(f"already recorded ({command.RIGHTS_PARSER_VERSION})") == 2
+    assert "filings: recorded 0  already recorded 2" in out
 
 
 def test_a_failed_request_is_logged_and_retried_next_run(monkeypatch, capsys, database):
@@ -130,4 +132,6 @@ def test_fetch_once_then_apply_elsewhere_with_no_request(monkeypatch, capsys, da
         repo = SqlAlchemyClassRightsEvidenceRepository(create_engine(f"sqlite:///{path}"))
         return {replace(o, recorded_at=NOW) for o in repo.observations_for_issuers(frozenset({"0001652044"}))["0001652044"]}
 
-    assert facts(other) == facts(database) and len(facts(other)) == 52
+    assert facts(other) == facts(database) and len(facts(other)) == 64
+    # 52 rights facts, plus each class-axis share fact on its own (class_rights_v2).
+    assert sum(1 for o in facts(other) if o.kind is RightKind.CLASS_AXIS_SHARE_FACT) == 12

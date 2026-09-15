@@ -74,7 +74,7 @@ def main() -> int:
     processed = rights.processed(tuple(accessions))
     saved = Path(arguments.from_fetched or arguments.save_fetched) if (arguments.from_fetched or arguments.save_fetched) else None
 
-    plan, refused = [], []
+    plan, refused, already = [], [], 0
     for accession in accessions:
         if accession not in located:
             refused.append(f"{accession}: not a filing Atlas's share evidence has read")
@@ -86,6 +86,7 @@ def main() -> int:
             continue
         if RIGHTS_PARSER_VERSION in processed.get(accession, frozenset()):
             print(f"  {accession}  already recorded ({RIGHTS_PARSER_VERSION}) -- no request")
+            already += 1
             continue
         plan.append((accession, cik, form, filed, url, owners))
     print(f"database        : {path}")
@@ -106,7 +107,7 @@ def main() -> int:
     create_class_rights_evidence_tables(engine)
     provider = None if arguments.from_fetched else get_default_class_rights_provider()
     log: list[dict] = []
-    counts = {"recorded": 0, "already": 0, "refused": 0, "failed": 0, "missing": 0}
+    counts = {"recorded": 0, "already": already, "refused": 0, "failed": 0, "missing": 0}
     manifest_path = saved / "manifest.json" if saved else None
     manifest = json.loads(manifest_path.read_text()) if manifest_path and manifest_path.exists() else {}
     for accession, cik, form, filed, url, owners in plan:

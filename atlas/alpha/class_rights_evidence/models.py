@@ -35,6 +35,9 @@ class RightKind(str, Enum):
     LIQUIDATION_PREFERENCE = "liquidation_preference"
     PREFERRED_DIVIDEND_RATE = "preferred_dividend_rate"
     CLASS_INVENTORY = "class_inventory"
+    #: One share-unit fact dimensioned by a class-axis member: member, concept,
+    #: context, value, instant or duration (`class_rights_v2`).
+    CLASS_AXIS_SHARE_FACT = "class_axis_share_fact"
     ECONOMIC_PARITY = "economic_parity"
     CONVERTIBLE_INTO = "convertible_into"
     VOTES_PER_SHARE = "votes_per_share"

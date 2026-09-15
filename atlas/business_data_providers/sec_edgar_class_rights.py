@@ -25,6 +25,18 @@ carries it, `preferred` for a preferred-stock concept), so a reader can tell
 a single-common-class issuer that tags only preferred series from one with
 several common classes.
 
+**Class-axis share facts** (`class_rights_v2`). The inventory keeps only a
+member's kind; it cannot say which fact put a member on the class axis, what
+it counted, or that a class it names has no shares. So every share-unit fact
+dimensioned by one class-axis member -- exactly the facts that make a filing
+"report share classes" (`sec_edgar_share_classes`) -- is also recorded as
+itself: member, concept, context, its own instant or duration, its value,
+any other dimensions on its context, and its equity kind (`common` for a
+common share-count concept, `preferred` for a preferred one, none for any
+other concept, such as shares repurchased or withheld for tax). A reader can
+then tell a class that holds shares from one authorized with none, and an
+incidental tag from a class.
+
 **Text, narrowly.** The rights themselves are often stated only in the
 equity and EPS notes. A handful of sentence patterns over those standard
 text blocks -- economic parity "except with respect to voting" / "identical
@@ -66,7 +78,7 @@ __all__ = [
     "SecEdgarClassRightsProvider",
 ]
 
-RIGHTS_PARSER_VERSION = "class_rights_v1"
+RIGHTS_PARSER_VERSION = "class_rights_v2"
 
 #: The standard text blocks whose sentences may state class rights.
 RIGHTS_TEXT_BLOCKS = frozenset({
@@ -87,6 +99,8 @@ class RightKind(str, Enum):
     LIQUIDATION_PREFERENCE = "liquidation_preference"
     PREFERRED_DIVIDEND_RATE = "preferred_dividend_rate"
     CLASS_INVENTORY = "class_inventory"
+    #: One share-unit fact dimensioned by a class-axis member (v2).
+    CLASS_AXIS_SHARE_FACT = "class_axis_share_fact"
     ECONOMIC_PARITY = "economic_parity"
     CONVERTIBLE_INTO = "convertible_into"
     VOTES_PER_SHARE = "votes_per_share"
@@ -365,6 +379,27 @@ def _precision(decimals: str | None) -> float:
     return float("inf") if decimals == "INF" else float(decimals)
 
 
+def _class_axis_share_facts(facts) -> list[RightsFact]:
+    """Every share-unit fact on one class-axis member, as itself -- the exact
+    facts behind a filing's "share classes reported" (same rule as
+    `sec_edgar_share_classes.parse_cover_share_counts`)."""
+    out = []
+    for concept, ctx, unit, text, decimals in facts:
+        member, _ = _class_member(ctx)
+        if unit != "shares" or member is None:
+            continue
+        kind = ("preferred" if concept in _PREFERRED_SHARE_CONCEPTS else
+                "common" if concept in _COMMON_SHARE_CONCEPTS else None)
+        others = tuple(sorted(f"{d}={m}" for d, m in ctx.explicit if d != CLASS_AXIS))
+        others += (f"typed={ctx.typed}",) if ctx.typed else ()
+        start, end = (ctx.instant, ctx.instant) if ctx.instant else (ctx.start, ctx.end)
+        if start is None or end is None:
+            continue
+        out.append(RightsFact(RightKind.CLASS_AXIS_SHARE_FACT, EvidenceStrength.STRUCTURED_FILING, member, None, None, None,
+                              (), others, _num(text), None, None, "shares", decimals, kind, start, end, concept, ctx.id, None))
+    return out
+
+
 def parse_class_rights(instance_xml: str) -> ClassRightsFiling:
     contexts, facts = _read_instance(instance_xml)
     document_period_end = _entity_wide(facts, "dei:DocumentPeriodEndDate")
@@ -386,7 +421,7 @@ def parse_class_rights(instance_xml: str) -> ClassRightsFiling:
     # One fact per key: the same value reported twice at different precision
     # keeps its most precise report.
     best: dict[str, RightsFact] = {}
-    for f in structured + inventory_facts + text:
+    for f in structured + inventory_facts + _class_axis_share_facts(facts) + text:
         kept = best.get(f.key)
         if kept is None or _precision(f.decimals) > _precision(kept.decimals):
             best[f.key] = f
