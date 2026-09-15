@@ -64,6 +64,18 @@ from atlas.decision_engine.pipeline import run_pipeline
 __all__ = ["InvestmentCaseCompositionService"]
 
 
+def _sec_cik_by_ticker(records_by_ticker: dict[str, tuple[BusinessRecord, ...]]) -> dict[str, str]:
+    """Each ticker's SEC filer, from the CIK of its own SEC statements (any
+    version): exactly one filer, else none."""
+    out = {}
+    for ticker, records in records_by_ticker.items():
+        ciks = {str(r.metadata["sec_cik"]) for r in records
+                if r.document_type is SourceKind.FINANCIAL_STATEMENT and r.metadata.get("sec_cik")}
+        if len(ciks) == 1:
+            out[ticker] = ciks.pop()
+    return out
+
+
 def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -189,6 +201,7 @@ class InvestmentCaseCompositionService:
         shared_issuer: bool,
         security_share_counts: tuple[SecurityShareCountObservation, ...] = (),
         every_version: tuple[BusinessRecord, ...] = (),
+        issuer_class_counts: tuple[SecurityShareCountObservation, ...] = (),
     ) -> InvestmentCaseComposition:
         """The one per-Case assembly implementation -- both `build` and
         `build_many` call only this. Never duplicated, never
@@ -224,6 +237,7 @@ class InvestmentCaseCompositionService:
         historical_market_cap = reconstruct_historical_market_caps(
             fiscal_epochs, business_records, shared_issuer=shared_issuer,
             security_share_counts=security_share_counts, as_of=evaluated_at.date(),
+            issuer_class_counts=issuer_class_counts,
         )
         valuation_basis = None
         if self._valuation_basis_builder is not None and ticker is not None:
@@ -480,6 +494,7 @@ class InvestmentCaseCompositionService:
         business_records: tuple[BusinessRecord, ...] = ()
         shared_issuer = False
         security_share_counts: tuple[SecurityShareCountObservation, ...] = ()
+        issuer_class_counts: tuple[SecurityShareCountObservation, ...] = ()
         every_version: tuple[BusinessRecord, ...] = ()
         if ticker is not None:
             trades_for_ticker = tuple(t for t in all_trades if t.security == ticker)
@@ -487,6 +502,7 @@ class InvestmentCaseCompositionService:
             business_records = latest_versions(every_version)
             shared_issuer = bool(self._companies_sharing_an_issuer({ticker: every_version}).get(ticker))
             security_share_counts = self._security_share_counts({ticker: every_version}).get(ticker, ())
+            issuer_class_counts = self._issuer_class_counts({ticker: every_version}).get(ticker, ())
 
         return self._assemble(
             case_id_str,
@@ -502,6 +518,7 @@ class InvestmentCaseCompositionService:
             shared_issuer=shared_issuer,
             security_share_counts=security_share_counts,
             every_version=every_version if ticker is not None else (),
+            issuer_class_counts=issuer_class_counts,
         )
 
     def _security_share_counts(
@@ -512,13 +529,20 @@ class InvestmentCaseCompositionService:
         none), its symbol and its listing's MIC. One query for them all."""
         if self._security_share_repository is None:
             return {}
-        cik_by_ticker = {}
-        for ticker, records in records_by_ticker.items():
-            ciks = {str(r.metadata["sec_cik"]) for r in records
-                    if r.document_type is SourceKind.FINANCIAL_STATEMENT and r.metadata.get("sec_cik")}
-            if len(ciks) == 1:
-                cik_by_ticker[ticker] = ciks.pop()
-        return self._security_share_repository.proven_for_securities(cik_by_ticker)
+        return self._security_share_repository.proven_for_securities(_sec_cik_by_ticker(records_by_ticker))
+
+    def _issuer_class_counts(
+        self, records_by_ticker: dict[str, tuple[BusinessRecord, ...]]
+    ) -> dict[str, tuple[SecurityShareCountObservation, ...]]:
+        """Each ticker's SEC filer's annual class-count observations, whatever
+        their link (the same one-filer rule). The historical reconstruction
+        uses them only for a single listing with no other count source. One
+        query for them all."""
+        if self._security_share_repository is None:
+            return {}
+        cik_by_ticker = _sec_cik_by_ticker(records_by_ticker)
+        by_cik = self._security_share_repository.class_counts_for_issuers(frozenset(cik_by_ticker.values()))
+        return {ticker: by_cik.get(cik, ()) for ticker, cik in cik_by_ticker.items()}
 
     def _companies_sharing_an_issuer(
         self, records_by_ticker: dict[str, tuple[BusinessRecord, ...]]
@@ -622,6 +646,7 @@ class InvestmentCaseCompositionService:
         business_records_by_ticker = self._business_record_repository.get_by_companies(wanted_tickers)
         sharing_by_ticker = self._companies_sharing_an_issuer(business_records_by_ticker)
         security_shares_by_ticker = self._security_share_counts(business_records_by_ticker)
+        issuer_classes_by_ticker = self._issuer_class_counts(business_records_by_ticker)
 
         evaluated_at = _utc_now()
         results: dict[str, InvestmentCaseComposition] = {}
@@ -645,5 +670,6 @@ class InvestmentCaseCompositionService:
                 shared_issuer=bool(holding is not None and sharing_by_ticker.get(holding.ticker)),
                 security_share_counts=security_shares_by_ticker.get(holding.ticker, ()) if holding is not None else (),
                 every_version=tuple(business_records_by_ticker.get(holding.ticker, ())) if holding is not None else (),
+                issuer_class_counts=issuer_classes_by_ticker.get(holding.ticker, ()) if holding is not None else (),
             )
         return results

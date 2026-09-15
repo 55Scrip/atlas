@@ -7,9 +7,11 @@ For each fiscal epoch the Case's FCF-yield valuation will compare:
   (`historical_market_cap`: raw close × period share count on the raw close's
   own share basis). A single-listing issuer's issuer-level count is its whole
   common equity, so that product is exact. Where the Case's count is a class
-  count (a multi-class issuer), the issuer's common equity is composed class
-  by class at the epoch -- the same filing's counts, every listed class's own
-  raw price that day, rights that held then (`IssuerEquityReader.at_epoch`).
+  count (a multi-class issuer) -- its own linked class, or the issuer's
+  whole unlinked class count set -- the issuer's common equity is composed
+  class by class at the epoch -- the same filing's counts, every listed
+  class's own raw price that day, rights that held then
+  (`IssuerEquityReader.at_epoch`).
   An epoch neither can price is absent, with its reason.
 - **the current observation** -- the issuer composition on exactly the Case's
   own current market date (`IssuerEquityReader.on_date`). A listed sibling
@@ -132,10 +134,12 @@ class IssuerValuationBasisBuilder:
         return self._market_cap(composition, own.price, epochs.current.currency), None
 
     def _prior(self, ticker, epoch, he, evaluated_on: date) -> IssuerMarketCap | ValuationDataGapKind:
-        if he is None or he.quality not in ALIGNED_QUALITIES or not he.raw_close or not he.market_cap:
+        if he is None or he.quality not in ALIGNED_QUALITIES or not he.raw_close:
             return ValuationDataGapKind.DENOMINATOR_EVIDENCE_MISSING
         observed = date.fromisoformat(epoch.observed_on)
         if he.share_count_accession is None:
+            if not he.market_cap:
+                return ValuationDataGapKind.DENOMINATOR_EVIDENCE_MISSING
             # A single listing's issuer-level count is its whole common equity.
             return IssuerMarketCap(observed, he.raw_close, he.market_cap, he.market_cap, IssuerDenominatorQuality.EXACT,
                                    epoch.currency, tuple(i for i in (he.statement_record_id, he.price_record_id) if i))

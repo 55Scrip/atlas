@@ -1,0 +1,650 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xbrl
+  xml:lang="en-US"
+  xmlns="http://www.xbrl.org/2003/instance"
+  xmlns:country="http://xbrl.sec.gov/country/2024"
+  xmlns:cyd="http://xbrl.sec.gov/cyd/2024"
+  xmlns:dei="http://xbrl.sec.gov/dei/2024"
+  xmlns:ecd="http://xbrl.sec.gov/ecd/2024"
+  xmlns:iso4217="http://www.xbrl.org/2003/iso4217"
+  xmlns:link="http://www.xbrl.org/2003/linkbase"
+  xmlns:meta="http://www.facebook.com/20241231"
+  xmlns:srt="http://fasb.org/srt/2024"
+  xmlns:us-gaap="http://fasb.org/us-gaap/2024"
+  xmlns:xbrldi="http://xbrl.org/2006/xbrldi"
+  xmlns:xhtml="http://www.w3.org/1999/xhtml"
+  xmlns:xlink="http://www.w3.org/1999/xlink"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <link:schemaRef xlink:href="meta-20241231.xsd" xlink:type="simple"/>
+        <context id="c-1">
+        <entity>
+            <identifier scheme="http://www.sec.gov/CIK">0001326801</identifier>
+        </entity>
+        <period>
+            <startDate>2024-01-01</startDate>
+            <endDate>2024-12-31</endDate>
+        </period>
+    </context>
+    <context id="c-2">
+        <entity>
+            <identifier scheme="http://www.sec.gov/CIK">0001326801</identifier>
+        </entity>
+        <period>
+            <instant>2024-06-30</instant>
+        </period>
+    </context>
+    <context id="c-3">
+        <entity>
+            <identifier scheme="http://www.sec.gov/CIK">0001326801</identifier>
+            <segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassAMember</xbrldi:explicitMember>
+            </segment>
+        </entity>
+        <period>
+            <instant>2025-01-24</instant>
+        </period>
+    </context>
+    <context id="c-4">
+        <entity>
+            <identifier scheme="http://www.sec.gov/CIK">0001326801</identifier>
+            <segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassBMember</xbrldi:explicitMember>
+            </segment>
+        </entity>
+        <period>
+            <instant>2025-01-24</instant>
+        </period>
+    </context>
+    <context id="c-7">
+        <entity>
+            <identifier scheme="http://www.sec.gov/CIK">0001326801</identifier>
+            <segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassAMember</xbrldi:explicitMember>
+            </segment>
+        </entity>
+        <period>
+            <instant>2023-12-31</instant>
+        </period>
+    </context>
+    <context id="c-8">
+        <entity>
+            <identifier scheme="http://www.sec.gov/CIK">0001326801</identifier>
+            <segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassAMember</xbrldi:explicitMember>
+            </segment>
+        </entity>
+        <period>
+            <instant>2024-12-31</instant>
+        </period>
+    </context>
+    <context id="c-9">
+        <entity>
+            <identifier scheme="http://www.sec.gov/CIK">0001326801</identifier>
+            <segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassBMember</xbrldi:explicitMember>
+            </segment>
+        </entity>
+        <period>
+            <instant>2024-12-31</instant>
+        </period>
+    </context>
+    <context id="c-10">
+        <entity>
+            <identifier scheme="http://www.sec.gov/CIK">0001326801</identifier>
+            <segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassBMember</xbrldi:explicitMember>
+            </segment>
+        </entity>
+        <period>
+            <instant>2023-12-31</instant>
+        </period>
+    </context>
+    <context id="c-11">
+        <entity>
+            <identifier scheme="http://www.sec.gov/CIK">0001326801</identifier>
+        </entity>
+        <period>
+            <startDate>2023-01-01</startDate>
+            <endDate>2023-12-31</endDate>
+        </period>
+    </context>
+    <context id="c-12">
+        <entity>
+            <identifier scheme="http://www.sec.gov/CIK">0001326801</identifier>
+        </entity>
+        <period>
+            <startDate>2022-01-01</startDate>
+            <endDate>2022-12-31</endDate>
+        </period>
+    </context>
+    <context id="c-13">
+        <entity>
+            <identifier scheme="http://www.sec.gov/CIK">0001326801</identifier>
+            <segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementEquityComponentsAxis">us-gaap:CommonStockMember</xbrldi:explicitMember>
+            </segment>
+        </entity>
+        <period>
+            <instant>2021-12-31</instant>
+        </period>
+    </context>
+    <context id="c-18">
+        <entity>
+            <identifier scheme="http://www.sec.gov/CIK">0001326801</identifier>
+            <segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementEquityComponentsAxis">us-gaap:CommonStockMember</xbrldi:explicitMember>
+            </segment>
+        </entity>
+        <period>
+            <startDate>2022-01-01</startDate>
+            <endDate>2022-12-31</endDate>
+        </period>
+    </context>
+    <context id="c-22">
+        <entity>
+            <identifier scheme="http://www.sec.gov/CIK">0001326801</identifier>
+            <segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementEquityComponentsAxis">us-gaap:CommonStockMember</xbrldi:explicitMember>
+            </segment>
+        </entity>
+        <period>
+            <instant>2022-12-31</instant>
+        </period>
+    </context>
+    <context id="c-27">
+        <entity>
+            <identifier scheme="http://www.sec.gov/CIK">0001326801</identifier>
+            <segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementEquityComponentsAxis">us-gaap:CommonStockMember</xbrldi:explicitMember>
+            </segment>
+        </entity>
+        <period>
+            <startDate>2023-01-01</startDate>
+            <endDate>2023-12-31</endDate>
+        </period>
+    </context>
+    <context id="c-31">
+        <entity>
+            <identifier scheme="http://www.sec.gov/CIK">0001326801</identifier>
+            <segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementEquityComponentsAxis">us-gaap:CommonStockMember</xbrldi:explicitMember>
+            </segment>
+        </entity>
+        <period>
+            <instant>2023-12-31</instant>
+        </period>
+    </context>
+    <context id="c-35">
+        <entity>
+            <identifier scheme="http://www.sec.gov/CIK">0001326801</identifier>
+            <segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementEquityComponentsAxis">us-gaap:CommonStockMember</xbrldi:explicitMember>
+            </segment>
+        </entity>
+        <period>
+            <startDate>2024-01-01</startDate>
+            <endDate>2024-12-31</endDate>
+        </period>
+    </context>
+    <context id="c-39">
+        <entity>
+            <identifier scheme="http://www.sec.gov/CIK">0001326801</identifier>
+            <segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementEquityComponentsAxis">us-gaap:CommonStockMember</xbrldi:explicitMember>
+            </segment>
+        </entity>
+        <period>
+            <instant>2024-12-31</instant>
+        </period>
+    </context>
+    <context id="c-47">
+        <entity>
+            <identifier scheme="http://www.sec.gov/CIK">0001326801</identifier>
+            <segment>
+                <xbrldi:explicitMember dimension="us-gaap:AwardTypeAxis">us-gaap:RestrictedStockUnitsRSUMember</xbrldi:explicitMember>
+            </segment>
+        </entity>
+        <period>
+            <startDate>2024-01-01</startDate>
+            <endDate>2024-12-31</endDate>
+        </period>
+    </context>
+    <context id="c-131">
+        <entity>
+            <identifier scheme="http://www.sec.gov/CIK">0001326801</identifier>
+            <segment>
+                <xbrldi:explicitMember dimension="us-gaap:AwardTypeAxis">us-gaap:RestrictedStockUnitsRSUMember</xbrldi:explicitMember>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassAMember</xbrldi:explicitMember>
+            </segment>
+        </entity>
+        <period>
+            <startDate>2023-01-01</startDate>
+            <endDate>2023-12-31</endDate>
+        </period>
+    </context>
+    <context id="c-132">
+        <entity>
+            <identifier scheme="http://www.sec.gov/CIK">0001326801</identifier>
+            <segment>
+                <xbrldi:explicitMember dimension="us-gaap:AwardTypeAxis">us-gaap:RestrictedStockUnitsRSUMember</xbrldi:explicitMember>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassAMember</xbrldi:explicitMember>
+            </segment>
+        </entity>
+        <period>
+            <startDate>2022-01-01</startDate>
+            <endDate>2022-12-31</endDate>
+        </period>
+    </context>
+    <context id="c-133">
+        <entity>
+            <identifier scheme="http://www.sec.gov/CIK">0001326801</identifier>
+            <segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassAMember</xbrldi:explicitMember>
+            </segment>
+        </entity>
+        <period>
+            <startDate>2024-01-01</startDate>
+            <endDate>2024-12-31</endDate>
+        </period>
+    </context>
+    <context id="c-134">
+        <entity>
+            <identifier scheme="http://www.sec.gov/CIK">0001326801</identifier>
+            <segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassAMember</xbrldi:explicitMember>
+            </segment>
+        </entity>
+        <period>
+            <startDate>2023-01-01</startDate>
+            <endDate>2023-12-31</endDate>
+        </period>
+    </context>
+    <context id="c-135">
+        <entity>
+            <identifier scheme="http://www.sec.gov/CIK">0001326801</identifier>
+            <segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassAMember</xbrldi:explicitMember>
+            </segment>
+        </entity>
+        <period>
+            <startDate>2022-01-01</startDate>
+            <endDate>2022-12-31</endDate>
+        </period>
+    </context>
+    <context id="c-136">
+        <entity>
+            <identifier scheme="http://www.sec.gov/CIK">0001326801</identifier>
+            <segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassBMember</xbrldi:explicitMember>
+            </segment>
+        </entity>
+        <period>
+            <startDate>2024-01-01</startDate>
+            <endDate>2024-12-31</endDate>
+        </period>
+    </context>
+    <context id="c-137">
+        <entity>
+            <identifier scheme="http://www.sec.gov/CIK">0001326801</identifier>
+            <segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassBMember</xbrldi:explicitMember>
+            </segment>
+        </entity>
+        <period>
+            <startDate>2023-01-01</startDate>
+            <endDate>2023-12-31</endDate>
+        </period>
+    </context>
+    <context id="c-138">
+        <entity>
+            <identifier scheme="http://www.sec.gov/CIK">0001326801</identifier>
+            <segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassBMember</xbrldi:explicitMember>
+            </segment>
+        </entity>
+        <period>
+            <startDate>2022-01-01</startDate>
+            <endDate>2022-12-31</endDate>
+        </period>
+    </context>
+    <context id="c-274">
+        <entity>
+            <identifier scheme="http://www.sec.gov/CIK">0001326801</identifier>
+            <segment>
+                <xbrldi:explicitMember dimension="us-gaap:PlanNameAxis">meta:EquityIncentivePlan2012Member</xbrldi:explicitMember>
+            </segment>
+        </entity>
+        <period>
+            <instant>2024-12-31</instant>
+        </period>
+    </context>
+    <context id="c-287">
+        <entity>
+            <identifier scheme="http://www.sec.gov/CIK">0001326801</identifier>
+            <segment>
+                <xbrldi:explicitMember dimension="us-gaap:AwardTypeAxis">us-gaap:RestrictedStockUnitsRSUMember</xbrldi:explicitMember>
+            </segment>
+        </entity>
+        <period>
+            <instant>2023-12-31</instant>
+        </period>
+    </context>
+    <context id="c-288">
+        <entity>
+            <identifier scheme="http://www.sec.gov/CIK">0001326801</identifier>
+            <segment>
+                <xbrldi:explicitMember dimension="us-gaap:AwardTypeAxis">us-gaap:RestrictedStockUnitsRSUMember</xbrldi:explicitMember>
+            </segment>
+        </entity>
+        <period>
+            <instant>2024-12-31</instant>
+        </period>
+    </context>
+    <context id="c-305">
+        <entity>
+            <identifier scheme="http://www.sec.gov/CIK">0001326801</identifier>
+            <segment>
+                <xbrldi:explicitMember dimension="ecd:IndividualAxis">meta:ChristopherK.CoxMember</xbrldi:explicitMember>
+            </segment>
+        </entity>
+        <period>
+            <instant>2024-12-31</instant>
+        </period>
+    </context>
+    <unit id="usd">
+        <measure>iso4217:USD</measure>
+    </unit>
+    <unit id="shares">
+        <measure>shares</measure>
+    </unit>
+    <unit id="usdPerShare">
+        <divide>
+            <unitNumerator>
+                <measure>iso4217:USD</measure>
+            </unitNumerator>
+            <unitDenominator>
+                <measure>shares</measure>
+            </unitDenominator>
+        </divide>
+    </unit>
+    <unit id="segment">
+        <measure>meta:segment</measure>
+    </unit>
+    <unit id="unit">
+        <measure>meta:unit</measure>
+    </unit>
+    <unit id="number">
+        <measure>pure</measure>
+    </unit>
+    <unit id="employee">
+        <measure>meta:employee</measure>
+    </unit>
+    <unit id="objector">
+        <measure>meta:objector</measure>
+    </unit>
+    <unit id="appeal">
+        <measure>meta:appeal</measure>
+    </unit>
+    <unit id="eur">
+        <measure>iso4217:EUR</measure>
+    </unit>
+    <unit id="classaction">
+        <measure>meta:classAction</measure>
+    </unit>
+    <unit id="vote">
+        <measure>meta:vote</measure>
+    </unit>
+    <unit id="sharebasedcompensationplan">
+        <measure>meta:shareBasedCompensationPlan</measure>
+    </unit>
+    <unit id="notice">
+        <measure>meta:notice</measure>
+    </unit>
+    <dei:AmendmentFlag contextRef="c-1" id="f-33">false</dei:AmendmentFlag>
+    <dei:DocumentFiscalYearFocus contextRef="c-1" id="f-34">2024</dei:DocumentFiscalYearFocus>
+    <dei:DocumentFiscalPeriodFocus contextRef="c-1" id="f-35">FY</dei:DocumentFiscalPeriodFocus>
+    <dei:EntityCentralIndexKey contextRef="c-1" id="f-36">0001326801</dei:EntityCentralIndexKey>
+    <dei:DocumentType contextRef="c-1" id="f-1">10-K</dei:DocumentType>
+    <dei:DocumentAnnualReport contextRef="c-1" id="f-2">true</dei:DocumentAnnualReport>
+    <dei:DocumentPeriodEndDate contextRef="c-1" id="f-4">2024-12-31</dei:DocumentPeriodEndDate>
+    <dei:CurrentFiscalYearEndDate contextRef="c-1" id="f-3">--12-31</dei:CurrentFiscalYearEndDate>
+    <dei:DocumentTransitionReport contextRef="c-1" id="f-5">false</dei:DocumentTransitionReport>
+    <dei:EntityFileNumber contextRef="c-1" id="f-6">001-35551</dei:EntityFileNumber>
+    <dei:EntityRegistrantName contextRef="c-1" id="f-7">Meta Platforms, Inc.</dei:EntityRegistrantName>
+    <dei:EntityIncorporationStateCountryCode contextRef="c-1" id="f-8">DE</dei:EntityIncorporationStateCountryCode>
+    <dei:EntityTaxIdentificationNumber contextRef="c-1" id="f-9">20-1665019</dei:EntityTaxIdentificationNumber>
+    <dei:EntityAddressAddressLine1 contextRef="c-1" id="f-10">1 Meta Way</dei:EntityAddressAddressLine1>
+    <dei:EntityAddressCityOrTown contextRef="c-1" id="f-11">Menlo Park</dei:EntityAddressCityOrTown>
+    <dei:EntityAddressStateOrProvince contextRef="c-1" id="f-12">CA</dei:EntityAddressStateOrProvince>
+    <dei:EntityAddressPostalZipCode contextRef="c-1" id="f-13">94025</dei:EntityAddressPostalZipCode>
+    <dei:CityAreaCode contextRef="c-1" id="f-14">650</dei:CityAreaCode>
+    <dei:LocalPhoneNumber contextRef="c-1" id="f-15">543-4800</dei:LocalPhoneNumber>
+    <dei:Security12bTitle contextRef="c-1" id="f-16">Class A Common Stock, $0.000006 par value</dei:Security12bTitle>
+    <dei:TradingSymbol contextRef="c-1" id="f-17">META</dei:TradingSymbol>
+    <dei:SecurityExchangeName contextRef="c-1" id="f-18">NASDAQ</dei:SecurityExchangeName>
+    <dei:EntityWellKnownSeasonedIssuer contextRef="c-1" id="f-19">Yes</dei:EntityWellKnownSeasonedIssuer>
+    <dei:EntityVoluntaryFilers contextRef="c-1" id="f-20">No</dei:EntityVoluntaryFilers>
+    <dei:EntityCurrentReportingStatus contextRef="c-1" id="f-21">Yes</dei:EntityCurrentReportingStatus>
+    <dei:EntityInteractiveDataCurrent contextRef="c-1" id="f-22">Yes</dei:EntityInteractiveDataCurrent>
+    <dei:EntityFilerCategory contextRef="c-1" id="f-23">Large Accelerated Filer</dei:EntityFilerCategory>
+    <dei:EntitySmallBusiness contextRef="c-1" id="f-24">false</dei:EntitySmallBusiness>
+    <dei:EntityEmergingGrowthCompany contextRef="c-1" id="f-25">false</dei:EntityEmergingGrowthCompany>
+    <dei:IcfrAuditorAttestationFlag contextRef="c-1" id="f-26">true</dei:IcfrAuditorAttestationFlag>
+    <dei:DocumentFinStmtErrorCorrectionFlag contextRef="c-1" id="f-27">false</dei:DocumentFinStmtErrorCorrectionFlag>
+    <dei:EntityShellCompany contextRef="c-1" id="f-28">false</dei:EntityShellCompany>
+    <dei:EntityPublicFloat contextRef="c-2" decimals="-9" id="f-29" unitRef="usd">1103000000000</dei:EntityPublicFloat>
+    <dei:EntityCommonStockSharesOutstanding contextRef="c-3" decimals="INF" id="f-30" unitRef="shares">2189898148</dei:EntityCommonStockSharesOutstanding>
+    <dei:EntityCommonStockSharesOutstanding contextRef="c-4" decimals="INF" id="f-31" unitRef="shares">343761117</dei:EntityCommonStockSharesOutstanding>
+    <dei:DocumentsIncorporatedByReferenceTextBlock contextRef="c-1" id="f-32">Portions of the registrant's Proxy Statement for the 2025 Annual Meeting of Stockholders are incorporated herein by reference in Part&#160;III of this Annual Report on Form 10-K to the extent stated herein. Such proxy statement will be filed with the Securities and Exchange Commission within 120&#160;days of the registrant's fiscal year ended December&#160;31, 2024.</dei:DocumentsIncorporatedByReferenceTextBlock>
+    <dei:AuditorFirmId contextRef="c-1" id="f-52">42</dei:AuditorFirmId>
+    <dei:AuditorName contextRef="c-1" id="f-53">Ernst &amp; Young LLP</dei:AuditorName>
+    <dei:AuditorLocation contextRef="c-1" id="f-54">San Jose, California</dei:AuditorLocation>
+    <dei:AuditorName contextRef="c-1" id="f-55">Ernst &amp; Young LLP</dei:AuditorName>
+    <dei:AuditorLocation contextRef="c-1" id="f-56">San Jose, California</dei:AuditorLocation>
+    <us-gaap:CommonStockSharesAuthorized contextRef="c-7" decimals="-6" id="f-101" unitRef="shares">5000000000</us-gaap:CommonStockSharesAuthorized>
+    <us-gaap:CommonStockSharesAuthorized contextRef="c-8" decimals="-6" id="f-102" unitRef="shares">5000000000</us-gaap:CommonStockSharesAuthorized>
+    <us-gaap:CommonStockSharesIssued contextRef="c-8" decimals="-6" id="f-103" unitRef="shares">2190000000</us-gaap:CommonStockSharesIssued>
+    <us-gaap:CommonStockSharesOutstanding contextRef="c-8" decimals="-6" id="f-104" unitRef="shares">2190000000</us-gaap:CommonStockSharesOutstanding>
+    <us-gaap:CommonStockSharesOutstanding contextRef="c-7" decimals="-6" id="f-105" unitRef="shares">2211000000</us-gaap:CommonStockSharesOutstanding>
+    <us-gaap:CommonStockSharesIssued contextRef="c-7" decimals="-6" id="f-106" unitRef="shares">2211000000</us-gaap:CommonStockSharesIssued>
+    <us-gaap:CommonStockSharesAuthorized contextRef="c-9" decimals="-6" id="f-107" unitRef="shares">4141000000</us-gaap:CommonStockSharesAuthorized>
+    <us-gaap:CommonStockSharesAuthorized contextRef="c-10" decimals="-6" id="f-108" unitRef="shares">4141000000</us-gaap:CommonStockSharesAuthorized>
+    <us-gaap:CommonStockSharesOutstanding contextRef="c-9" decimals="-6" id="f-109" unitRef="shares">344000000</us-gaap:CommonStockSharesOutstanding>
+    <us-gaap:CommonStockSharesIssued contextRef="c-9" decimals="-6" id="f-110" unitRef="shares">344000000</us-gaap:CommonStockSharesIssued>
+    <us-gaap:CommonStockSharesIssued contextRef="c-10" decimals="-6" id="f-111" unitRef="shares">350000000</us-gaap:CommonStockSharesIssued>
+    <us-gaap:CommonStockSharesOutstanding contextRef="c-10" decimals="-6" id="f-112" unitRef="shares">350000000</us-gaap:CommonStockSharesOutstanding>
+    <us-gaap:NetIncomeLoss contextRef="c-1" decimals="-6" id="f-155" unitRef="usd">62360000000</us-gaap:NetIncomeLoss>
+    <us-gaap:NetIncomeLoss contextRef="c-11" decimals="-6" id="f-156" unitRef="usd">39098000000</us-gaap:NetIncomeLoss>
+    <us-gaap:NetIncomeLoss contextRef="c-12" decimals="-6" id="f-157" unitRef="usd">23200000000</us-gaap:NetIncomeLoss>
+    <us-gaap:EarningsPerShareBasic
+      contextRef="c-1"
+      decimals="2"
+      id="f-158"
+      unitRef="usdPerShare">24.61</us-gaap:EarningsPerShareBasic>
+    <us-gaap:EarningsPerShareBasic
+      contextRef="c-11"
+      decimals="2"
+      id="f-159"
+      unitRef="usdPerShare">15.19</us-gaap:EarningsPerShareBasic>
+    <us-gaap:EarningsPerShareBasic
+      contextRef="c-12"
+      decimals="2"
+      id="f-160"
+      unitRef="usdPerShare">8.63</us-gaap:EarningsPerShareBasic>
+    <us-gaap:EarningsPerShareDiluted
+      contextRef="c-1"
+      decimals="2"
+      id="f-161"
+      unitRef="usdPerShare">23.86</us-gaap:EarningsPerShareDiluted>
+    <us-gaap:EarningsPerShareDiluted
+      contextRef="c-11"
+      decimals="2"
+      id="f-162"
+      unitRef="usdPerShare">14.87</us-gaap:EarningsPerShareDiluted>
+    <us-gaap:EarningsPerShareDiluted
+      contextRef="c-12"
+      decimals="2"
+      id="f-163"
+      unitRef="usdPerShare">8.59</us-gaap:EarningsPerShareDiluted>
+    <us-gaap:WeightedAverageNumberOfSharesOutstandingBasic contextRef="c-1" decimals="-6" id="f-164" unitRef="shares">2534000000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+    <us-gaap:WeightedAverageNumberOfSharesOutstandingBasic contextRef="c-11" decimals="-6" id="f-165" unitRef="shares">2574000000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+    <us-gaap:WeightedAverageNumberOfSharesOutstandingBasic contextRef="c-12" decimals="-6" id="f-166" unitRef="shares">2687000000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+    <us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding contextRef="c-1" decimals="-6" id="f-167" unitRef="shares">2614000000</us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding>
+    <us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding contextRef="c-11" decimals="-6" id="f-168" unitRef="shares">2629000000</us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding>
+    <us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding contextRef="c-12" decimals="-6" id="f-169" unitRef="shares">2702000000</us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding>
+    <us-gaap:NetIncomeLoss contextRef="c-1" decimals="-6" id="f-170" unitRef="usd">62360000000</us-gaap:NetIncomeLoss>
+    <us-gaap:NetIncomeLoss contextRef="c-11" decimals="-6" id="f-171" unitRef="usd">39098000000</us-gaap:NetIncomeLoss>
+    <us-gaap:NetIncomeLoss contextRef="c-12" decimals="-6" id="f-172" unitRef="usd">23200000000</us-gaap:NetIncomeLoss>
+    <us-gaap:CommonStockSharesOutstanding contextRef="c-13" decimals="-6" id="f-182" unitRef="shares">2741000000</us-gaap:CommonStockSharesOutstanding>
+    <us-gaap:StockIssuedDuringPeriodSharesNewIssues contextRef="c-18" decimals="-6" id="f-188" unitRef="shares">54000000</us-gaap:StockIssuedDuringPeriodSharesNewIssues>
+    <us-gaap:SharesPaidForTaxWithholdingForShareBasedCompensation contextRef="c-18" decimals="-6" id="f-189" unitRef="shares">20000000</us-gaap:SharesPaidForTaxWithholdingForShareBasedCompensation>
+    <us-gaap:StockRepurchasedAndRetiredDuringPeriodShares contextRef="c-18" decimals="-6" id="f-195" unitRef="shares">161000000</us-gaap:StockRepurchasedAndRetiredDuringPeriodShares>
+    <us-gaap:NetIncomeLoss contextRef="c-12" decimals="-6" id="f-201" unitRef="usd">23200000000</us-gaap:NetIncomeLoss>
+    <us-gaap:CommonStockSharesOutstanding contextRef="c-22" decimals="-6" id="f-202" unitRef="shares">2614000000</us-gaap:CommonStockSharesOutstanding>
+    <us-gaap:StockIssuedDuringPeriodSharesNewIssues contextRef="c-27" decimals="-6" id="f-208" unitRef="shares">65000000</us-gaap:StockIssuedDuringPeriodSharesNewIssues>
+    <us-gaap:SharesPaidForTaxWithholdingForShareBasedCompensation contextRef="c-27" decimals="-6" id="f-209" unitRef="shares">26000000</us-gaap:SharesPaidForTaxWithholdingForShareBasedCompensation>
+    <us-gaap:StockRepurchasedAndRetiredDuringPeriodShares contextRef="c-27" decimals="-6" id="f-215" unitRef="shares">92000000</us-gaap:StockRepurchasedAndRetiredDuringPeriodShares>
+    <us-gaap:NetIncomeLoss contextRef="c-11" decimals="-6" id="f-221" unitRef="usd">39098000000</us-gaap:NetIncomeLoss>
+    <us-gaap:CommonStockSharesOutstanding contextRef="c-31" decimals="-6" id="f-222" unitRef="shares">2561000000</us-gaap:CommonStockSharesOutstanding>
+    <us-gaap:StockIssuedDuringPeriodSharesNewIssues contextRef="c-35" decimals="-6" id="f-228" unitRef="shares">65000000</us-gaap:StockIssuedDuringPeriodSharesNewIssues>
+    <us-gaap:SharesPaidForTaxWithholdingForShareBasedCompensation contextRef="c-35" decimals="-6" id="f-229" unitRef="shares">27000000</us-gaap:SharesPaidForTaxWithholdingForShareBasedCompensation>
+    <us-gaap:StockRepurchasedAndRetiredDuringPeriodShares contextRef="c-35" decimals="-6" id="f-235" unitRef="shares">65000000</us-gaap:StockRepurchasedAndRetiredDuringPeriodShares>
+    <us-gaap:NetIncomeLoss contextRef="c-1" decimals="-6" id="f-246" unitRef="usd">62360000000</us-gaap:NetIncomeLoss>
+    <us-gaap:CommonStockSharesOutstanding contextRef="c-39" decimals="-6" id="f-247" unitRef="shares">2534000000</us-gaap:CommonStockSharesOutstanding>
+    <us-gaap:NetIncomeLoss contextRef="c-1" decimals="-6" id="f-253" unitRef="usd">62360000000</us-gaap:NetIncomeLoss>
+    <us-gaap:NetIncomeLoss contextRef="c-11" decimals="-6" id="f-254" unitRef="usd">39098000000</us-gaap:NetIncomeLoss>
+    <us-gaap:NetIncomeLoss contextRef="c-12" decimals="-6" id="f-255" unitRef="usd">23200000000</us-gaap:NetIncomeLoss>
+    <us-gaap:EarningsPerShareTextBlock contextRef="c-1" id="f-510">&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:700;line-height:120%"&gt;Earnings per Share&lt;/span&gt;&lt;div style="text-align:justify;text-indent:27pt"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:120%"&gt;The holders of our Class A and Class B common stock (together, "common stock") have identical liquidation and dividend rights but different voting rights. Accordingly, we present the earnings per share (EPS) for Class A and Class B common stock together. &lt;/span&gt;&lt;/div&gt;&lt;div style="text-align:justify;text-indent:27pt"&gt;&lt;span&gt;&lt;br/&gt;&lt;/span&gt;&lt;/div&gt;&lt;div style="text-align:justify;text-indent:27pt"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:120%"&gt;Basic EPS is computed by dividing net income by the weighted-average number of shares of our common stock outstanding. Diluted EPS is computed by dividing net income by the weighted-average number of fully diluted common stock outstanding and assumes the conversion of our Class B common stock to Class A common stock. &lt;/span&gt;&lt;/div&gt;&lt;div style="text-align:justify;text-indent:27pt"&gt;&lt;span&gt;&lt;br/&gt;&lt;/span&gt;&lt;/div&gt;&lt;div style="text-align:justify;text-indent:27pt"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:120%"&gt;Class A common stock equivalent of restricted stock units (RSUs) with anti-dilutive effect were not material for the year ended December&#160;31, 2024. For the years ended December&#160;31, 2023, and 2022, approximately 16&#160;million and 95&#160;million shares of RSUs were excluded from the diluted EPS calculation, respectively, as including them would have an anti-dilutive effect.&lt;/span&gt;&lt;/div&gt;&lt;div style="text-align:justify;text-indent:27pt"&gt;&lt;span&gt;&lt;br/&gt;&lt;/span&gt;&lt;/div&gt;&lt;div style="text-align:justify;text-indent:27pt"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:120%"&gt;The numerators and denominators of the basic and diluted EPS computations for our common stock are calculated as follows (in millions, except per share amounts):&lt;/span&gt;&lt;/div&gt;&lt;div style="margin-top:9pt"&gt;&lt;table style="border-collapse:collapse;display:inline-table;margin-bottom:5pt;vertical-align:text-bottom;width:100.000%"&gt;&lt;tr&gt;&lt;td style="width:1.0%"&gt;&lt;/td&gt;&lt;td style="width:58.572%"&gt;&lt;/td&gt;&lt;td style="width:0.1%"&gt;&lt;/td&gt;&lt;td style="width:1.0%"&gt;&lt;/td&gt;&lt;td style="width:11.846%"&gt;&lt;/td&gt;&lt;td style="width:0.1%"&gt;&lt;/td&gt;&lt;td style="width:0.1%"&gt;&lt;/td&gt;&lt;td style="width:0.544%"&gt;&lt;/td&gt;&lt;td style="width:0.1%"&gt;&lt;/td&gt;&lt;td style="width:1.0%"&gt;&lt;/td&gt;&lt;td style="width:11.846%"&gt;&lt;/td&gt;&lt;td style="width:0.1%"&gt;&lt;/td&gt;&lt;td style="width:0.1%"&gt;&lt;/td&gt;&lt;td style="width:0.544%"&gt;&lt;/td&gt;&lt;td style="width:0.1%"&gt;&lt;/td&gt;&lt;td style="width:1.0%"&gt;&lt;/td&gt;&lt;td style="width:11.848%"&gt;&lt;/td&gt;&lt;td style="width:0.1%"&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td colspan="3" style="padding:2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:4pt;font-weight:400;line-height:100%"&gt;&#160;&lt;/span&gt;&lt;/td&gt;&lt;td colspan="15" style="padding:2px 1pt;text-align:center;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:8pt;font-weight:700;line-height:100%"&gt;Year Ended December 31,&lt;/span&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td colspan="3" style="padding:2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:4pt;font-weight:400;line-height:100%"&gt;&#160;&lt;/span&gt;&lt;/td&gt;&lt;td colspan="6" style="border-top:1pt solid #000000;padding:2px 1pt;text-align:center;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:8pt;font-weight:700;line-height:100%"&gt;2024&lt;/span&gt;&lt;/td&gt;&lt;td colspan="6" style="border-top:1pt solid #000000;padding:2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;div style="text-align:center"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:8pt;font-weight:700;line-height:100%"&gt;2023 &lt;/span&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:5.2pt;font-weight:700;line-height:100%;position:relative;top:-2.8pt;vertical-align:baseline"&gt;(2)&lt;/span&gt;&lt;/div&gt;&lt;/td&gt;&lt;td colspan="3" style="border-top:1pt solid #000000;padding:2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;div style="text-align:center"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:8pt;font-weight:700;line-height:100%"&gt;2022 &lt;/span&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:5.2pt;font-weight:700;line-height:100%;position:relative;top:-2.8pt;vertical-align:baseline"&gt;(2)&lt;/span&gt;&lt;/div&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td colspan="3" style="background-color:#cceeff;padding:2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%;text-decoration:underline"&gt;Basic EPS:&lt;/span&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#cceeff;border-top:1pt solid #000000;padding:2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;&#160;&lt;/span&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#cceeff;padding:0 1pt"&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#cceeff;border-top:1pt solid #000000;padding:2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;&#160;&lt;/span&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#cceeff;padding:0 1pt"&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#cceeff;border-top:1pt solid #000000;padding:2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;&#160;&lt;/span&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td colspan="3" style="background-color:#ffffff;padding:2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;Numerator&lt;/span&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#ffffff;padding:2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;&#160;&lt;/span&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#ffffff;padding:0 1pt"&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#ffffff;padding:2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;&#160;&lt;/span&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#ffffff;padding:0 1pt"&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#ffffff;padding:2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;&#160;&lt;/span&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td colspan="3" style="background-color:#cceeff;padding:2px 1pt 2px 10pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;Distributed earnings&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#cceeff;padding:2px 0 2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;$&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#cceeff;padding:2px 0;text-align:right;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;5,072&#160;&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#cceeff;padding:2px 1pt 2px 0;text-align:right;vertical-align:bottom"&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#cceeff;padding:0 1pt"&gt;&lt;/td&gt;&lt;td style="background-color:#cceeff;padding:2px 0 2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;$&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#cceeff;padding:2px 0;text-align:right;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;&#x2014;&#160;&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#cceeff;padding:2px 1pt 2px 0;text-align:right;vertical-align:bottom"&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#cceeff;padding:0 1pt"&gt;&lt;/td&gt;&lt;td style="background-color:#cceeff;padding:2px 0 2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;$&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#cceeff;padding:2px 0;text-align:right;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;&#x2014;&#160;&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#cceeff;padding:2px 1pt 2px 0;text-align:right;vertical-align:bottom"&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td colspan="3" style="background-color:#ffffff;padding:2px 1pt 2px 10pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;Undistributed earnings&lt;/span&gt;&lt;/td&gt;&lt;td colspan="2" style="background-color:#ffffff;padding:2px 0 2px 1pt;text-align:right;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;57,288&#160;&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#ffffff;padding:2px 1pt 2px 0;text-align:right;vertical-align:bottom"&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#ffffff;padding:0 1pt"&gt;&lt;/td&gt;&lt;td colspan="2" style="background-color:#ffffff;padding:2px 0 2px 1pt;text-align:right;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;39,098&#160;&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#ffffff;padding:2px 1pt 2px 0;text-align:right;vertical-align:bottom"&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#ffffff;padding:0 1pt"&gt;&lt;/td&gt;&lt;td colspan="2" style="background-color:#ffffff;padding:2px 0 2px 1pt;text-align:right;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;23,200&#160;&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#ffffff;padding:2px 1pt 2px 0;text-align:right;vertical-align:bottom"&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td colspan="3" style="background-color:#cceeff;padding:2px 1pt 2px 19pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;Net income&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#cceeff;border-top:1pt solid #000;padding:2px 0 2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;$&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#cceeff;border-top:1pt solid #000;padding:2px 0;text-align:right;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;62,360&#160;&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#cceeff;border-top:1pt solid #000;padding:2px 1pt 2px 0;text-align:right;vertical-align:bottom"&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#cceeff;padding:0 1pt"&gt;&lt;/td&gt;&lt;td style="background-color:#cceeff;border-top:1pt solid #000;padding:2px 0 2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;$&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#cceeff;border-top:1pt solid #000;padding:2px 0;text-align:right;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;39,098&#160;&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#cceeff;border-top:1pt solid #000;padding:2px 1pt 2px 0;text-align:right;vertical-align:bottom"&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#cceeff;padding:0 1pt"&gt;&lt;/td&gt;&lt;td style="background-color:#cceeff;border-top:1pt solid #000;padding:2px 0 2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;$&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#cceeff;border-top:1pt solid #000;padding:2px 0;text-align:right;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;23,200&#160;&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#cceeff;border-top:1pt solid #000;padding:2px 1pt 2px 0;text-align:right;vertical-align:bottom"&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td colspan="3" style="background-color:#ffffff;padding:2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;Denominator&lt;/span&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#ffffff;border-top:1pt solid #000;padding:2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;&#160;&lt;/span&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#ffffff;padding:0 1pt"&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#ffffff;border-top:1pt solid #000;padding:2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;&#160;&lt;/span&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#ffffff;padding:0 1pt"&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#ffffff;border-top:1pt solid #000;padding:2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;&#160;&lt;/span&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td colspan="3" style="background-color:#cceeff;padding:2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;div style="padding-left:9pt"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;Shares used in computation of basic EPS &lt;/span&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:6.5pt;font-weight:400;line-height:100%;position:relative;top:-3.5pt;vertical-align:baseline"&gt;(1)&lt;/span&gt;&lt;/div&gt;&lt;/td&gt;&lt;td colspan="2" style="background-color:#cceeff;padding:2px 0 2px 1pt;text-align:right;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;2,534&#160;&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#cceeff;padding:2px 1pt 2px 0;text-align:right;vertical-align:bottom"&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#cceeff;padding:0 1pt"&gt;&lt;/td&gt;&lt;td colspan="2" style="background-color:#cceeff;padding:2px 0 2px 1pt;text-align:right;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;2,574&#160;&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#cceeff;padding:2px 1pt 2px 0;text-align:right;vertical-align:bottom"&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#cceeff;padding:0 1pt"&gt;&lt;/td&gt;&lt;td colspan="2" style="background-color:#cceeff;padding:2px 0 2px 1pt;text-align:right;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;2,687&#160;&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#cceeff;padding:2px 1pt 2px 0;text-align:right;vertical-align:bottom"&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td colspan="3" style="background-color:#ffffff;padding:2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;Basic EPS&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#ffffff;border-top:1pt solid #000;padding:2px 0 2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;$&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#ffffff;border-top:1pt solid #000;padding:2px 0;text-align:right;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;24.61&#160;&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#ffffff;border-top:1pt solid #000;padding:2px 1pt 2px 0;text-align:right;vertical-align:bottom"&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#ffffff;padding:0 1pt"&gt;&lt;/td&gt;&lt;td style="background-color:#ffffff;border-top:1pt solid #000;padding:2px 0 2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;$&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#ffffff;border-top:1pt solid #000;padding:2px 0;text-align:right;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;15.19&#160;&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#ffffff;border-top:1pt solid #000;padding:2px 1pt 2px 0;text-align:right;vertical-align:bottom"&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#ffffff;padding:0 1pt"&gt;&lt;/td&gt;&lt;td style="background-color:#ffffff;border-top:1pt solid #000;padding:2px 0 2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;$&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#ffffff;border-top:1pt solid #000;padding:2px 0;text-align:right;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;8.63&#160;&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#ffffff;border-top:1pt solid #000;padding:2px 1pt 2px 0;text-align:right;vertical-align:bottom"&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td colspan="3" style="background-color:#cceeff;padding:2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%;text-decoration:underline"&gt;Diluted EPS:&lt;/span&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#cceeff;border-top:3pt double #000;padding:2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;&#160;&lt;/span&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#cceeff;padding:0 1pt"&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#cceeff;border-top:3pt double #000;padding:0 1pt"&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#cceeff;padding:0 1pt"&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#cceeff;border-top:3pt double #000;padding:0 1pt"&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td colspan="3" style="background-color:#ffffff;padding:2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;Numerator&lt;/span&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#ffffff;padding:2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;&#160;&lt;/span&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#ffffff;padding:0 1pt"&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#ffffff;padding:2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;&#160;&lt;/span&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#ffffff;padding:0 1pt"&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#ffffff;padding:2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;&#160;&lt;/span&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td colspan="3" style="background-color:#cceeff;padding:2px 1pt 2px 10pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;Net income for diluted EPS&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#cceeff;padding:2px 0 2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;$&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#cceeff;padding:2px 0;text-align:right;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;62,360&#160;&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#cceeff;padding:2px 1pt 2px 0;text-align:right;vertical-align:bottom"&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#cceeff;padding:0 1pt"&gt;&lt;/td&gt;&lt;td style="background-color:#cceeff;padding:2px 0 2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;$&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#cceeff;padding:2px 0;text-align:right;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;39,098&#160;&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#cceeff;padding:2px 1pt 2px 0;text-align:right;vertical-align:bottom"&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#cceeff;padding:0 1pt"&gt;&lt;/td&gt;&lt;td style="background-color:#cceeff;padding:2px 0 2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;$&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#cceeff;padding:2px 0;text-align:right;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;23,200&#160;&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#cceeff;padding:2px 1pt 2px 0;text-align:right;vertical-align:bottom"&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td colspan="3" style="background-color:#ffffff;padding:2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;Denominator&lt;/span&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#ffffff;padding:2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;&#160;&lt;/span&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#ffffff;padding:0 1pt"&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#ffffff;padding:2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;&#160;&lt;/span&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#ffffff;padding:0 1pt"&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#ffffff;padding:2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;&#160;&lt;/span&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td colspan="3" style="background-color:#cceeff;padding:2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;div style="padding-left:9pt"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;Shares used in computation of basic EPS &lt;/span&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:6.5pt;font-weight:400;line-height:100%;position:relative;top:-3.5pt;vertical-align:baseline"&gt;(1)&lt;/span&gt;&lt;/div&gt;&lt;/td&gt;&lt;td colspan="2" style="background-color:#cceeff;padding:2px 0 2px 1pt;text-align:right;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;2,534&#160;&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#cceeff;padding:2px 1pt 2px 0;text-align:right;vertical-align:bottom"&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#cceeff;padding:0 1pt"&gt;&lt;/td&gt;&lt;td colspan="2" style="background-color:#cceeff;padding:2px 0 2px 1pt;text-align:right;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;2,574&#160;&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#cceeff;padding:2px 1pt 2px 0;text-align:right;vertical-align:bottom"&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#cceeff;padding:0 1pt"&gt;&lt;/td&gt;&lt;td colspan="2" style="background-color:#cceeff;padding:2px 0 2px 1pt;text-align:right;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;2,687&#160;&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#cceeff;padding:2px 1pt 2px 0;text-align:right;vertical-align:bottom"&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td colspan="3" style="background-color:#ffffff;padding:2px 1pt 2px 10pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;Effect of dilutive RSUs&lt;/span&gt;&lt;/td&gt;&lt;td colspan="2" style="background-color:#ffffff;padding:2px 0 2px 1pt;text-align:right;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;80&#160;&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#ffffff;padding:2px 1pt 2px 0;text-align:right;vertical-align:bottom"&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#ffffff;padding:0 1pt"&gt;&lt;/td&gt;&lt;td colspan="2" style="background-color:#ffffff;padding:2px 0 2px 1pt;text-align:right;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;55&#160;&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#ffffff;padding:2px 1pt 2px 0;text-align:right;vertical-align:bottom"&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#ffffff;padding:0 1pt"&gt;&lt;/td&gt;&lt;td colspan="2" style="background-color:#ffffff;padding:2px 0 2px 1pt;text-align:right;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;15&#160;&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#ffffff;padding:2px 1pt 2px 0;text-align:right;vertical-align:bottom"&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td colspan="3" style="background-color:#cceeff;padding:2px 1pt 2px 10pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;Shares used in computation of diluted EPS&lt;/span&gt;&lt;/td&gt;&lt;td colspan="2" style="background-color:#cceeff;border-top:1pt solid #000;padding:2px 0 2px 1pt;text-align:right;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;2,614&#160;&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#cceeff;border-top:1pt solid #000;padding:2px 1pt 2px 0;text-align:right;vertical-align:bottom"&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#cceeff;padding:0 1pt"&gt;&lt;/td&gt;&lt;td colspan="2" style="background-color:#cceeff;border-top:1pt solid #000;padding:2px 0 2px 1pt;text-align:right;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;2,629&#160;&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#cceeff;border-top:1pt solid #000;padding:2px 1pt 2px 0;text-align:right;vertical-align:bottom"&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#cceeff;padding:0 1pt"&gt;&lt;/td&gt;&lt;td colspan="2" style="background-color:#cceeff;border-top:1pt solid #000;padding:2px 0 2px 1pt;text-align:right;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;2,702&#160;&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#cceeff;border-top:1pt solid #000;padding:2px 1pt 2px 0;text-align:right;vertical-align:bottom"&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td colspan="3" style="background-color:#ffffff;padding:2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;Diluted EPS&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#ffffff;border-bottom:3pt double #000000;border-top:1pt solid #000;padding:2px 0 2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;$&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#ffffff;border-bottom:3pt double #000000;border-top:1pt solid #000;padding:2px 0;text-align:right;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;23.86&#160;&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#ffffff;border-bottom:3pt double #000000;border-top:1pt solid #000;padding:2px 1pt 2px 0;text-align:right;vertical-align:bottom"&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#ffffff;padding:0 1pt"&gt;&lt;/td&gt;&lt;td style="background-color:#ffffff;border-bottom:3pt double #000000;border-top:1pt solid #000;padding:2px 0 2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;$&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#ffffff;border-bottom:3pt double #000000;border-top:1pt solid #000;padding:2px 0;text-align:right;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;14.87&#160;&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#ffffff;border-bottom:3pt double #000000;border-top:1pt solid #000;padding:2px 1pt 2px 0;text-align:right;vertical-align:bottom"&gt;&lt;/td&gt;&lt;td colspan="3" style="background-color:#ffffff;padding:0 1pt"&gt;&lt;/td&gt;&lt;td style="background-color:#ffffff;border-bottom:3pt double #000000;border-top:1pt solid #000;padding:2px 0 2px 1pt;text-align:left;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;$&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#ffffff;border-bottom:3pt double #000000;border-top:1pt solid #000;padding:2px 0;text-align:right;vertical-align:bottom"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:100%"&gt;8.59&#160;&lt;/span&gt;&lt;/td&gt;&lt;td style="background-color:#ffffff;border-bottom:3pt double #000000;border-top:1pt solid #000;padding:2px 1pt 2px 0;text-align:right;vertical-align:bottom"&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:6pt;font-weight:400;line-height:120%"&gt;____________________________________&lt;/span&gt;&lt;/div&gt;&lt;div style="padding-left:18pt;text-align:justify;text-indent:-18pt"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:9pt;font-weight:400;line-height:120%"&gt;(1)&lt;/span&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:9pt;font-weight:400;line-height:120%;padding-left:7.52pt"&gt;Includes 2,189 million, 2,220 million, and 2,285 million shares of Class A common stock and 345 million, 354 million, and 402&#160;million shares of Class B common stock, for the years ended December&#160;31, 2024, 2023, and 2022, respectively.&lt;/span&gt;&lt;/div&gt;&lt;div style="padding-left:18pt;text-align:justify;text-indent:-18pt"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:9pt;font-weight:400;line-height:120%"&gt;(2)&lt;/span&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:9pt;font-weight:400;line-height:120%;padding-left:7.52pt"&gt;The prior period EPS for Class A and Class B common stock has been presented together to conform with current period presentation, which had no impact on our previously reported basic or diluted EPS.&lt;/span&gt;&lt;/div&gt;We declared and paid four quarterly cash dividends, including dividend equivalents, totaling $2.00 for each share of common stock during the year ended December&#160;31, 2024. Total dividends and dividend equivalents paid for Class A and Class B common stock were $4.38 billion and $691&#160;million, respectively, during the year ended December&#160;31, 2024. EPS for Class B common stock is not presented separately as under the two-class method Class A and Class B EPS is not meaningfully different.</us-gaap:EarningsPerShareTextBlock>
+    <us-gaap:EarningsPerSharePolicyTextBlock contextRef="c-1" id="f-511">&lt;div style="text-align:justify;text-indent:27pt"&gt;&lt;span style="color:#000000;font-family:'Times New Roman',sans-serif;font-size:10pt;font-weight:400;line-height:120%"&gt;The holders of our Class A and Class B common stock (together, "common stock") have identical liquidation and dividend rights but different voting rights. Accordingly, we present the earnings per share (EPS) for Class A and Class B common stock together. &lt;/span&gt;&lt;/div&gt;Basic EPS is computed by dividing net income by the weighted-average number of shares of our common stock outstanding. Diluted EPS is computed by dividing net income by the weighted-average number of fully diluted common stock outstanding and assumes the conversion of our Class B common stock to Class A common stock.</us-gaap:EarningsPerSharePolicyTextBlock>
+    <us-gaap:AntidilutiveSecuritiesExcludedFromComputationOfEarningsPerShareAmount
+      contextRef="c-131"
+      decimals="-6"
+      id="f-512"
+      unitRef="shares">16000000</us-gaap:AntidilutiveSecuritiesExcludedFromComputationOfEarningsPerShareAmount>
+    <us-gaap:AntidilutiveSecuritiesExcludedFromComputationOfEarningsPerShareAmount
+      contextRef="c-132"
+      decimals="-6"
+      id="f-513"
+      unitRef="shares">95000000</us-gaap:AntidilutiveSecuritiesExcludedFromComputationOfEarningsPerShareAmount>
+    <us-gaap:NetIncomeLoss contextRef="c-1" decimals="-6" id="f-521" unitRef="usd">62360000000</us-gaap:NetIncomeLoss>
+    <us-gaap:NetIncomeLoss contextRef="c-11" decimals="-6" id="f-522" unitRef="usd">39098000000</us-gaap:NetIncomeLoss>
+    <us-gaap:NetIncomeLoss contextRef="c-12" decimals="-6" id="f-523" unitRef="usd">23200000000</us-gaap:NetIncomeLoss>
+    <us-gaap:WeightedAverageNumberOfSharesOutstandingBasic contextRef="c-1" decimals="-6" id="f-524" unitRef="shares">2534000000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+    <us-gaap:WeightedAverageNumberOfSharesOutstandingBasic contextRef="c-11" decimals="-6" id="f-525" unitRef="shares">2574000000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+    <us-gaap:WeightedAverageNumberOfSharesOutstandingBasic contextRef="c-12" decimals="-6" id="f-526" unitRef="shares">2687000000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+    <us-gaap:EarningsPerShareBasic
+      contextRef="c-1"
+      decimals="2"
+      id="f-527"
+      unitRef="usdPerShare">24.61</us-gaap:EarningsPerShareBasic>
+    <us-gaap:EarningsPerShareBasic
+      contextRef="c-11"
+      decimals="2"
+      id="f-528"
+      unitRef="usdPerShare">15.19</us-gaap:EarningsPerShareBasic>
+    <us-gaap:EarningsPerShareBasic
+      contextRef="c-12"
+      decimals="2"
+      id="f-529"
+      unitRef="usdPerShare">8.63</us-gaap:EarningsPerShareBasic>
+    <us-gaap:WeightedAverageNumberOfSharesOutstandingBasic contextRef="c-1" decimals="-6" id="f-533" unitRef="shares">2534000000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+    <us-gaap:WeightedAverageNumberOfSharesOutstandingBasic contextRef="c-11" decimals="-6" id="f-534" unitRef="shares">2574000000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+    <us-gaap:WeightedAverageNumberOfSharesOutstandingBasic contextRef="c-12" decimals="-6" id="f-535" unitRef="shares">2687000000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+    <us-gaap:IncrementalCommonSharesAttributableToShareBasedPaymentArrangements contextRef="c-1" decimals="-6" id="f-536" unitRef="shares">80000000</us-gaap:IncrementalCommonSharesAttributableToShareBasedPaymentArrangements>
+    <us-gaap:IncrementalCommonSharesAttributableToShareBasedPaymentArrangements contextRef="c-11" decimals="-6" id="f-537" unitRef="shares">55000000</us-gaap:IncrementalCommonSharesAttributableToShareBasedPaymentArrangements>
+    <us-gaap:IncrementalCommonSharesAttributableToShareBasedPaymentArrangements contextRef="c-12" decimals="-6" id="f-538" unitRef="shares">15000000</us-gaap:IncrementalCommonSharesAttributableToShareBasedPaymentArrangements>
+    <us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding contextRef="c-1" decimals="-6" id="f-539" unitRef="shares">2614000000</us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding>
+    <us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding contextRef="c-11" decimals="-6" id="f-540" unitRef="shares">2629000000</us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding>
+    <us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding contextRef="c-12" decimals="-6" id="f-541" unitRef="shares">2702000000</us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding>
+    <us-gaap:EarningsPerShareDiluted
+      contextRef="c-1"
+      decimals="2"
+      id="f-542"
+      unitRef="usdPerShare">23.86</us-gaap:EarningsPerShareDiluted>
+    <us-gaap:EarningsPerShareDiluted
+      contextRef="c-11"
+      decimals="2"
+      id="f-543"
+      unitRef="usdPerShare">14.87</us-gaap:EarningsPerShareDiluted>
+    <us-gaap:EarningsPerShareDiluted
+      contextRef="c-12"
+      decimals="2"
+      id="f-544"
+      unitRef="usdPerShare">8.59</us-gaap:EarningsPerShareDiluted>
+    <us-gaap:WeightedAverageNumberOfSharesOutstandingBasic
+      contextRef="c-133"
+      decimals="-6"
+      id="f-545"
+      unitRef="shares">2189000000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+    <us-gaap:WeightedAverageNumberOfSharesOutstandingBasic
+      contextRef="c-134"
+      decimals="-6"
+      id="f-546"
+      unitRef="shares">2220000000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+    <us-gaap:WeightedAverageNumberOfSharesOutstandingBasic
+      contextRef="c-135"
+      decimals="-6"
+      id="f-547"
+      unitRef="shares">2285000000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+    <us-gaap:WeightedAverageNumberOfSharesOutstandingBasic
+      contextRef="c-136"
+      decimals="-6"
+      id="f-548"
+      unitRef="shares">345000000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+    <us-gaap:WeightedAverageNumberOfSharesOutstandingBasic
+      contextRef="c-137"
+      decimals="-6"
+      id="f-549"
+      unitRef="shares">354000000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+    <us-gaap:WeightedAverageNumberOfSharesOutstandingBasic
+      contextRef="c-138"
+      decimals="-6"
+      id="f-550"
+      unitRef="shares">402000000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+    <us-gaap:CommonStockSharesAuthorized contextRef="c-8" decimals="INF" id="f-992" unitRef="shares">5000000000</us-gaap:CommonStockSharesAuthorized>
+    <us-gaap:CommonStockSharesAuthorized contextRef="c-9" decimals="INF" id="f-993" unitRef="shares">4141000000</us-gaap:CommonStockSharesAuthorized>
+    <us-gaap:CommonStockSharesIssued contextRef="c-8" decimals="-6" id="f-998" unitRef="shares">2190000000</us-gaap:CommonStockSharesIssued>
+    <us-gaap:CommonStockSharesOutstanding contextRef="c-8" decimals="-6" id="f-999" unitRef="shares">2190000000</us-gaap:CommonStockSharesOutstanding>
+    <us-gaap:CommonStockSharesOutstanding contextRef="c-9" decimals="-6" id="f-1000" unitRef="shares">344000000</us-gaap:CommonStockSharesOutstanding>
+    <us-gaap:CommonStockSharesIssued contextRef="c-9" decimals="-6" id="f-1001" unitRef="shares">344000000</us-gaap:CommonStockSharesIssued>
+    <us-gaap:StockRepurchasedAndRetiredDuringPeriodShares
+      contextRef="c-133"
+      decimals="-6"
+      id="f-1004"
+      unitRef="shares">65000000</us-gaap:StockRepurchasedAndRetiredDuringPeriodShares>
+    <us-gaap:CommonStockCapitalSharesReservedForFutureIssuance
+      contextRef="c-274"
+      decimals="-6"
+      id="f-1018"
+      unitRef="shares">483000000</us-gaap:CommonStockCapitalSharesReservedForFutureIssuance>
+    <us-gaap:ShareBasedCompensationArrangementByShareBasedPaymentAwardEquityInstrumentsOtherThanOptionsNonvestedNumber
+      contextRef="c-287"
+      decimals="-3"
+      id="f-1036"
+      unitRef="shares">149062000</us-gaap:ShareBasedCompensationArrangementByShareBasedPaymentAwardEquityInstrumentsOtherThanOptionsNonvestedNumber>
+    <us-gaap:ShareBasedCompensationArrangementByShareBasedPaymentAwardEquityInstrumentsOtherThanOptionsGrantsInPeriod
+      contextRef="c-47"
+      decimals="-3"
+      id="f-1038"
+      unitRef="shares">48661000</us-gaap:ShareBasedCompensationArrangementByShareBasedPaymentAwardEquityInstrumentsOtherThanOptionsGrantsInPeriod>
+    <us-gaap:ShareBasedCompensationArrangementByShareBasedPaymentAwardEquityInstrumentsOtherThanOptionsVestedInPeriod
+      contextRef="c-47"
+      decimals="-3"
+      id="f-1040"
+      unitRef="shares">64769000</us-gaap:ShareBasedCompensationArrangementByShareBasedPaymentAwardEquityInstrumentsOtherThanOptionsVestedInPeriod>
+    <us-gaap:ShareBasedCompensationArrangementByShareBasedPaymentAwardEquityInstrumentsOtherThanOptionsForfeitedInPeriod
+      contextRef="c-47"
+      decimals="-3"
+      id="f-1042"
+      unitRef="shares">10322000</us-gaap:ShareBasedCompensationArrangementByShareBasedPaymentAwardEquityInstrumentsOtherThanOptionsForfeitedInPeriod>
+    <us-gaap:ShareBasedCompensationArrangementByShareBasedPaymentAwardEquityInstrumentsOtherThanOptionsNonvestedNumber
+      contextRef="c-288"
+      decimals="-3"
+      id="f-1044"
+      unitRef="shares">122632000</us-gaap:ShareBasedCompensationArrangementByShareBasedPaymentAwardEquityInstrumentsOtherThanOptionsNonvestedNumber>
+    <ecd:TrdArrSecuritiesAggAvailAmt
+      contextRef="c-305"
+      decimals="INF"
+      id="f-1265"
+      unitRef="shares">60000</ecd:TrdArrSecuritiesAggAvailAmt>
+</xbrl>

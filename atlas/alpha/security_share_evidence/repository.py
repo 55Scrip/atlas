@@ -174,6 +174,24 @@ class SqlAlchemySecurityShareEvidenceRepository:
             out[ticker] = tuple(sorted(observations, key=lambda o: (o.period_end, o.filing_date, o.accession, o.class_member)))
         return out
 
+    def class_counts_for_issuers(self, issuer_ciks: frozenset[str]) -> dict[str, tuple[SecurityShareCountObservation, ...]]:
+        """Every annual class-count observation of each filer, whatever its
+        link -- the issuer's whole class count sets. One query for them all;
+        a filer with none maps to `()`."""
+        out: dict[str, tuple[SecurityShareCountObservation, ...]] = {cik: () for cik in issuer_ciks}
+        if not issuer_ciks or not self._has_tables(_observations.name):
+            return out
+        with self._engine.connect() as connection:
+            rows = connection.execute(
+                select(_observations).where(_observations.c.issuer_cik.in_(tuple(sorted(issuer_ciks))))
+            ).mappings().all()
+        found: dict[str, list[SecurityShareCountObservation]] = {}
+        for row in rows:
+            found.setdefault(row["issuer_cik"], []).append(_to_observation(row))
+        for cik, observations in found.items():
+            out[cik] = tuple(sorted(observations, key=lambda o: (o.period_end, o.filing_date, o.accession, o.class_member)))
+        return out
+
     # -- current cover-page share counts (Current Share-Count Evidence v1) ----------------------------
 
     def current_processed(self, accessions: tuple[str, ...]) -> dict[str, frozenset[str]]:

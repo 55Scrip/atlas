@@ -531,6 +531,113 @@ class TestSecurityLevelCounts:
         assert (epoch["shareCountClassMember"], epoch["shareCountAccession"]) == ("abc:ClassCMember", "0000000001-21-000001")
 
 
+# -- issuer class count sets (META Historical Class Composition v1) --------------------------------------------
+
+
+def _issuer_classes(counts, *, shared_issuer=False, security=(), as_of=None, **kwargs):
+    records, evidence = _case("SYN", **kwargs)
+    return reconstruct_historical_market_caps(evidence, records, shared_issuer=shared_issuer,
+                                              security_share_counts=tuple(security), as_of=as_of,
+                                              issuer_class_counts=tuple(counts))
+
+
+A_CLASS, B_CLASS = "us-gaap:CommonClassAMember", "us-gaap:CommonClassBMember"
+
+
+def _unlinked(member, shares, *, filed="2021-02-10", period="2020-12-31", kind=ShareClassLinkKind.AMBIGUOUS, **kw):
+    return replace(_class_count(period=period, filed=filed, shares=shares, member=member, kind=kind, **kw),
+                   cover_symbol=None, cover_mic=None)
+
+
+class TestIssuerClassSets:
+    """A single listing whose issuer files neither an issuer-level count nor a
+    class count linked to its symbol: the issuer's whole class count set,
+    handed to the valuation basis to compose -- never priced here."""
+
+    NO_SPLIT = [1.0] * 10
+
+    def _pair(self, a=40.0, b=60.0, **kw):
+        return [_unlinked(A_CLASS, a, **kw), _unlinked(B_CLASS, b, **kw)]
+
+    def test_a_sole_listing_without_counts_carries_its_issuers_class_set(self):
+        _synthetic(self.NO_SPLIT, shares=None)
+        result = _issuer_classes(self._pair())
+        e = result.epochs[0]
+        assert (result.security_scope, result.share_count_scope) == (SecurityScope.SINGLE_SECURITY, ShareCountScope.ISSUER_CLASSES)
+        assert (e.quality, e.aligned_share_count, e.share_count_source) == (
+            AlignmentQuality.FULLY_ALIGNED, 100.0, ShareCountSource.FIRST_REPORTED)
+        assert e.share_count_accession == e.first_reported_share_count_accession == "0000000001-21-000001"
+        assert e.raw_close == 10.0 and e.share_count_class_member is None
+
+    def test_it_is_never_priced_as_this_securitys_count(self):
+        _synthetic(self.NO_SPLIT, shares=None)
+        e = _issuer_classes(self._pair()).epochs[0]
+        assert e.market_cap is None and e.aligned_fcf_yield is None
+
+    def test_either_link_kind_is_the_same_class_set(self):
+        _synthetic(self.NO_SPLIT, shares=None)
+        linked = _issuer_classes(self._pair(kind=ShareClassLinkKind.NO_LINK)).epochs[0]
+        assert linked == _issuer_classes(self._pair()).epochs[0]
+
+    def test_never_for_an_issuer_with_several_atlas_listings(self):
+        _synthetic(self.NO_SPLIT, shares=None)
+        result = _issuer_classes(self._pair(), shared_issuer=True)
+        assert result.share_count_scope is ShareCountScope.ISSUER
+        assert result.epochs[0].gaps == (AlignmentGap.SHARED_ISSUER,)
+
+    def test_never_beside_an_issuer_level_count(self):
+        _synthetic(self.NO_SPLIT, shares=100.0)
+        result = _issuer_classes(self._pair(a=10.0, b=10.0))
+        assert result.share_count_scope is ShareCountScope.ISSUER and result.epochs[0].aligned_share_count == 100.0
+
+    def test_never_beside_a_count_linked_to_this_security(self):
+        _synthetic(self.NO_SPLIT, shares=None)
+        result = _issuer_classes(self._pair(), security=[_class_count(shares=40.0)])
+        assert result.share_count_scope is ShareCountScope.SECURITY and result.epochs[0].aligned_share_count == 40.0
+
+    def test_never_for_a_foreign_filer(self):
+        _synthetic(self.NO_SPLIT, shares=None, sec_form="20-F")
+        assert _issuer_classes(self._pair()).epochs[0].gaps == (AlignmentGap.FOREIGN_FILER,)
+
+    def test_a_filing_disagreeing_on_a_class_withholds_the_period(self):
+        _synthetic(self.NO_SPLIT, shares=None)
+        e = _issuer_classes([*self._pair(), _unlinked(B_CLASS, None, conflict=True)]).epochs[0]
+        assert (e.quality, e.gaps) == (AlignmentQuality.AMBIGUOUS, (AlignmentGap.CONFLICTING_EVIDENCE,))
+
+    def test_a_class_the_filing_reports_only_in_conflict_is_never_a_zero(self):
+        _synthetic(self.NO_SPLIT, shares=None)
+        e = _issuer_classes([_unlinked(A_CLASS, 40.0), _unlinked(B_CLASS, None, conflict=True)]).epochs[0]
+        assert (e.quality, e.gaps, e.aligned_share_count) == (
+            AlignmentQuality.AMBIGUOUS, (AlignmentGap.CONFLICTING_EVIDENCE,), None)
+
+    def test_a_class_counted_at_zero_is_a_count_of_zero(self):
+        _synthetic(self.NO_SPLIT, shares=None)
+        e = _issuer_classes([*self._pair(), _unlinked("abc:ClassCMember", 0.0)]).epochs[0]
+        assert (e.quality, e.aligned_share_count) == (AlignmentQuality.FULLY_ALIGNED, 100.0)
+
+    def test_a_set_filed_after_the_evaluation_is_not_read(self):
+        _synthetic(self.NO_SPLIT, shares=None)
+        early = _issuer_classes(self._pair(), as_of=date(2021, 2, 9))
+        assert early.share_count_scope is ShareCountScope.ISSUER
+        assert early.epochs[0].gaps == (AlignmentGap.MISSING_PERIOD_SHARES,)
+
+    def test_a_restated_set_keeps_its_first_report(self):
+        _synthetic(self.NO_SPLIT, shares=None)
+        e = _issuer_classes([*self._pair(), *self._pair(a=41.0, filed="2022-02-10")]).epochs[0]
+        assert (e.share_count, e.latest_reported_share_count) == (100.0, 101.0)
+        assert e.latest_reported_share_count_accession == "0000000001-22-000001"
+
+    def test_order_does_not_matter(self):
+        _synthetic(self.NO_SPLIT, shares=None)
+        counts = [*self._pair(), *self._pair(a=41.0, filed="2022-02-10"), *self._pair(period="2019-12-31", filed="2020-02-10")]
+        assert _issuer_classes(counts) == _issuer_classes(counts[::-1])
+
+    def test_without_the_set_nothing_changes(self):
+        _synthetic(self.NO_SPLIT, shares=None)
+        records, evidence = _case("SYN")
+        assert _issuer_classes([]) == reconstruct_historical_market_caps(evidence, records, shared_issuer=False)
+
+
 # -- Alphabet: GOOG and GOOGL on their own class counts (GOOG / GOOGL Held Price Revision Acceptance) ------
 
 
@@ -721,18 +828,18 @@ class TestDecisionFirewall:
         reference = harness.fresh_composition_service().build(case_id)
         seen, sentinel = [], object()
 
-        def spy(evidence, records, *, shared_issuer, security_share_counts, as_of):
-            seen.append((evidence, records, shared_issuer, security_share_counts, as_of))
+        def spy(evidence, records, *, shared_issuer, security_share_counts, as_of, issuer_class_counts):
+            seen.append((evidence, records, shared_issuer, security_share_counts, as_of, issuer_class_counts))
             return sentinel
 
         monkeypatch.setattr(service_module, "reconstruct_historical_market_caps", spy)
         spied = harness.fresh_composition_service().build(case_id)
         assert spied.historical_market_cap is sentinel
         assert spied.canonical_analysis == reference.canonical_analysis
-        ((evidence, records, shared_issuer, security_share_counts, as_of),) = seen
+        ((evidence, records, shared_issuer, security_share_counts, as_of, issuer_class_counts),) = seen
         assert evidence == fiscal_epochs_for_records(records, generated_at=NOW) and shared_issuer is False
         # No security-level repository wired: no class counts, read as of the Case's own clock.
-        assert security_share_counts == () and as_of == NOW.date()
+        assert security_share_counts == () == issuer_class_counts and as_of == NOW.date()
 
 
 class TestApiView:

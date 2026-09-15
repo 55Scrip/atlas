@@ -48,6 +48,13 @@ only through rights evidence:
 With none of these, the class is missing and the whole value is
 `INSUFFICIENT_EVIDENCE` -- never silently omitted.
 
+**No class proven listed.** The Case's own security is a listing of the
+issuer's common stock; it prices every class at its own price only when
+one class holds shares, or one filed parity group spans every class with
+shares -- over the whole class set: a class the count's own filing shows
+holding shares but the set leaves out, an ambiguous class axis, or a
+participating preferred beside the set withholds the value.
+
 **Preferred.** Preferred equity is not common. A preferred series the
 issuer itself counts in its as-converted share basis participates and is
 included, as-converted, at the numeraire's price; any other outstanding
@@ -516,7 +523,19 @@ def compose_issuer_common_equity_market_cap(
         # No class is proven to be a listing. The Case's own security is a
         # listing of this issuer's common stock; it prices every class only
         # when there is one class with shares, or one filed parity group
-        # spans them all.
+        # spans them all -- and only over the whole class set: every class
+        # the count's own filing shows holding shares is in it (when that
+        # filing's class-axis facts are recorded), and no participating
+        # preferred sits beside it (nothing here converts it).
+        axis = class_inventory(visible, instant, accession)
+        unaccounted = sorted(set(axis.participating) - {c.member for c in members} - aggregates)
+        if axis.state is ClassInventoryState.AMBIGUOUS_CLASS_AXIS or unaccounted:
+            gaps.extend([f"class_inventory:{axis.state.value}"] + [f"class_not_counted:{m}" for m in unaccounted])
+            return result(DenominatorQuality.INSUFFICIENT_EVIDENCE, None, None, (), excluded, senior, instant, accession)
+        if any(_latest_instant(visible, RightKind.AS_CONVERTED_SHARES, m, instant, accession)[0] is not None
+               for m in _preferred_members(visible)):
+            gaps.append("participating_preferred_beside_unlisted_classes")
+            return result(DenominatorQuality.INSUFFICIENT_EVIDENCE, None, None, (), excluded, senior, instant, accession)
         group = next((g for g in parity if {c.member for c in nonzero} <= g[0]), None)
         if len(nonzero) == 1 or group is not None:
             gaps.append("listed_class_unproven" + ("_within_parity_group" if len(nonzero) > 1 else "_only_class_with_shares"))
