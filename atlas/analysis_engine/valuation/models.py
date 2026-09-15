@@ -122,6 +122,8 @@ class FcfYieldEpochObservation:
                 _fail("Free cash flow attributable to common equity must be positive at every end of its interval.")
             if abs(self.free_cash_flow - (self.raw_free_cash_flow - (self.senior_claim_low + self.senior_claim_high) / 2)) > 1e-6 * self.raw_free_cash_flow:
                 _fail("Common free cash flow is the raw figure less the middle of the claim interval.")
+            if abs(self.share_price * self.shares_outstanding - self.market_cap) > 1e-9 * self.market_cap:
+                _fail("An issuer-basis epoch's shares are its issuer market cap in this security's price.")
             ids = (self.free_cash_flow_fact_id, self.share_price_fact_id)
             if not all(ids) or len(set(ids)) != 2 or self.shares_outstanding_fact_id is not None:
                 _fail("An issuer-basis epoch names its free cash flow and price facts; no provider share count.")

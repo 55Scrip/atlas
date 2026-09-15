@@ -260,6 +260,10 @@ class TestEpochContract:
         with pytest.raises(AnalysisEngineContractError):
             self._epoch(market_cap_low=1200.0, market_cap_high=1000.0)
 
+    def test_shares_are_the_issuer_cap_in_this_securitys_price(self):
+        with pytest.raises(AnalysisEngineContractError):
+            self._epoch(shares_outstanding=90.0)  # a claim folded into the denominator
+
     def test_provider_share_count_is_not_named_on_an_issuer_epoch(self):
         with pytest.raises(AnalysisEngineContractError):
             self._epoch(shares_outstanding_fact_id="s")
@@ -311,6 +315,9 @@ class TestWithheldCasesNeverFallBack:
         business, market = _facts(prices={2023: 25.0, 2024: 40.0, 2025: 50.0})
         f = _evaluate(business, market, basis_for_epochs(_epochs(business, market)))
         assert f.fcf_yield_evidence.position is P.BELOW_ALL_PRIOR and f.status is ValuationStatus.INSUFFICIENT_INPUT
+        evidence = f.fcf_yield_evidence  # described on the issuer basis, never the proxy
+        assert evidence.share_count_method is ShareCountMethod.ISSUER_COMMON_EQUITY_MARKET_CAP
+        assert all(e.is_issuer_basis for e in (evidence.current, *evidence.prior_epochs))
 
 
 class TestProductionPipeline:
