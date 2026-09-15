@@ -571,6 +571,8 @@ export const en = {
     "Current valuation cannot be supported because Atlas cannot yet establish the company's full common-equity market value.",
   "investmentCase.analysis.valuation.gap.currentIssuerPriceNotSynchronized":
     "Current valuation cannot be supported because Atlas does not have synchronized market data for all relevant share classes.",
+  "investmentCase.analysis.valuation.gap.currentIssuerPriceCurrencyUnproven":
+    "Current valuation cannot be supported because Atlas cannot confirm that all relevant share classes are priced in the same currency.",
   "investmentCase.analysis.valuation.gap.temporalEvidenceGap":
     "Current valuation cannot be supported because Atlas's market and filing evidence are not dated consistently.",
   "investmentCase.analysis.valuation.gap.numeratorEvidenceMissing":

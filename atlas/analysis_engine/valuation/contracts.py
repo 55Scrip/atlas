@@ -150,6 +150,14 @@ class ValuationDataGapKind(str, Enum):
     formed for that date -- and a composition from an earlier date is not
     current evidence."""
 
+    CURRENT_ISSUER_PRICE_CURRENCY_UNPROVEN = "current_issuer_price_currency_unproven"
+    """The issuer's listed share classes are priced on the current date,
+    but their prices are not all stated in one currency (one states none,
+    or they differ), so they cannot be added into one market
+    capitalisation -- nothing converts between currencies here. A separate
+    axis from `CURRENT_ISSUER_PRICE_NOT_SYNCHRONIZED` (the date) and from
+    `CURRENCY_MISMATCH` (statements against the share price)."""
+
     TEMPORAL_EVIDENCE_GAP = "temporal_evidence_gap"
     """The denominator evidence is not dated on the observation it would
     price (or precedes the fiscal year's own publication)."""

@@ -19,7 +19,10 @@ with no shares contributes nothing, whatever its rights.
 own cover (`PROVEN_BY_SHARED_DIMENSION`) -- takes that security's own raw
 price on the economic date: two listed siblings are never normalised to
 one price, and never priced from different dates (the caller supplies one
-date's prices, or none). An unlisted class takes a listed class's price
+date's prices, or none), and never added unless every one of their prices
+states the same currency -- an unstated or differing currency withholds
+the value (`price_currency_unproven:` / `price_currency_mismatch`), since
+nothing here converts. An unlisted class takes a listed class's price
 only through rights evidence:
 
 - a structured conversion rate into the issuer's as-converted numeraire
@@ -120,10 +123,15 @@ class ClassCount:
 
 @dataclass(frozen=True)
 class ListedPrice:
+    """`currency`: the currency the price record itself states (a stored
+    market price is written only with a provider-confirmed currency);
+    `None` when the record states none."""
+
     symbol: str
     on: date
     price: float
     record_id: str
+    currency: str | None = None
 
 
 @dataclass(frozen=True)
@@ -407,6 +415,19 @@ def compose_issuer_common_equity_market_cap(
                                                        group[2] or None if group is not None else None))
             low = sum(c.contribution_low for c in contributions)
             return result(quality, low, low, contributions, excluded, senior, instant, accession)
+
+    # Several listed classes are summed at their own prices: only prices
+    # proven to be in one currency may be added (no FX here). A class
+    # without a price that day is the date's problem (`no_price:`), not
+    # this one's.
+    summed = sorted({c.symbol for c in listed.values()})
+    if len(summed) > 1 and all(s in prices for s in summed):
+        currencies = {prices[s].currency for s in summed}
+        if None in currencies or len(currencies) > 1:
+            gaps.extend(f"price_currency_unproven:{s}" for s in summed if prices[s].currency is None)
+            if len(currencies - {None}) > 1:
+                gaps.append("price_currency_mismatch")
+            return result(DenominatorQuality.INSUFFICIENT_EVIDENCE, None, None, (), excluded, senior, instant, accession)
 
     for c in members:
         if c.shares <= 0:

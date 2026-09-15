@@ -305,6 +305,7 @@ export type ValuationDataGapKind =
   | "missing_scenario_assumptions"
   | "denominator_evidence_missing"
   | "current_issuer_price_not_synchronized"
+  | "current_issuer_price_currency_unproven"
   | "temporal_evidence_gap"
   | "numerator_evidence_missing"
   | "bounded_denominator_disagreement";
@@ -325,6 +326,7 @@ export const VALUATION_DATA_GAP_KEY: Record<ValuationDataGapKind, TranslationKey
   missing_scenario_assumptions: "investmentCase.analysis.valuation.gap.missingScenarioAssumptions",
   denominator_evidence_missing: "investmentCase.analysis.valuation.gap.denominatorEvidenceMissing",
   current_issuer_price_not_synchronized: "investmentCase.analysis.valuation.gap.currentIssuerPriceNotSynchronized",
+  current_issuer_price_currency_unproven: "investmentCase.analysis.valuation.gap.currentIssuerPriceCurrencyUnproven",
   temporal_evidence_gap: "investmentCase.analysis.valuation.gap.temporalEvidenceGap",
   numerator_evidence_missing: "investmentCase.analysis.valuation.gap.numeratorEvidenceMissing",
   bounded_denominator_disagreement: "investmentCase.analysis.valuation.gap.boundedDenominatorDisagreement",

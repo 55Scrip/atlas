@@ -13,9 +13,11 @@ For each fiscal epoch the Case's FCF-yield valuation will compare:
   An epoch neither can price is absent, with its reason.
 - **the current observation** -- the issuer composition on exactly the Case's
   own current market date (`IssuerEquityReader.on_date`). A listed sibling
-  class unpriced that day is `CURRENT_ISSUER_PRICE_NOT_SYNCHRONIZED`; any
-  other insufficiency is `DENOMINATOR_EVIDENCE_MISSING`. A composition from
-  another date is never offered as current.
+  class unpriced that day is `CURRENT_ISSUER_PRICE_NOT_SYNCHRONIZED`; listed
+  classes whose prices do not state one currency are
+  `CURRENT_ISSUER_PRICE_CURRENCY_UNPROVEN`; any other insufficiency is
+  `DENOMINATOR_EVIDENCE_MISSING`. A composition from another date is never
+  offered as current.
 - **senior claims** -- each epoch's fiscal year, from the issuer's rights
   evidence filed by the evaluation date (`claims.compose_senior_claims`).
 
@@ -121,6 +123,8 @@ class IssuerValuationBasisBuilder:
             unpriced = {g.split(":", 1)[1] for g in composition.gaps if g.startswith("no_price:")}
             if unpriced - {ticker}:
                 return None, ValuationDataGapKind.CURRENT_ISSUER_PRICE_NOT_SYNCHRONIZED
+            if any(g.startswith(("price_currency_unproven:", "price_currency_mismatch")) for g in composition.gaps):
+                return None, ValuationDataGapKind.CURRENT_ISSUER_PRICE_CURRENCY_UNPROVEN
             return None, ValuationDataGapKind.DENOMINATOR_EVIDENCE_MISSING
         own = self._reader.price_series(ticker).get(on)
         if own is None:

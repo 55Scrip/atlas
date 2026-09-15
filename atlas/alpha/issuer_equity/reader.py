@@ -11,8 +11,9 @@ Atlas listing (symbol and MIC); every other class, including a linked-but-
 unlisted one, must be priced through rights evidence.
 
 **Prices.** A security's raw price by date: a current quote as traded, a
-monthly bar's recorded raw close -- never an adjusted close. Two records
-disagreeing for one date drop the date.
+monthly bar's recorded raw close -- never an adjusted close -- with the
+currency its record states. Two records disagreeing for one date, on price
+or currency, drop the date.
 
 **The current economic date** is the latest date, on or before the
 evaluation date, on which the Case's own security and every listed sibling
@@ -135,8 +136,11 @@ class IssuerEquityReader:
             if not raw or raw <= 0:
                 continue
             on = date.fromisoformat(str(p.observed_on)[:10])
-            by_day.setdefault(on, set()).add(ListedPrice(symbol, on, float(raw), record.id))
-        return {d: min(v, key=lambda x: x.record_id) for d, v in by_day.items() if len({x.price for x in v}) == 1}
+            currency = record.metadata.get("currency")
+            by_day.setdefault(on, set()).add(ListedPrice(symbol, on, float(raw), record.id,
+                                                         currency if isinstance(currency, str) and currency else None))
+        return {d: min(v, key=lambda x: x.record_id) for d, v in by_day.items()
+                if len({(x.price, x.currency) for x in v}) == 1}
 
     # -- counts --------------------------------------------------------------------------------------------
 

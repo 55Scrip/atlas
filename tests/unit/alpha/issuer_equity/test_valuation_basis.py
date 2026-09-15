@@ -197,6 +197,35 @@ class TestHistoryAndClaims:
         assert basis.current.economic_date == date(2026, 9, 8) and basis.unquantified_claims == ()
 
 
+@dataclass
+class _GappedReader(_Reader):
+    """The current composition insufficient, with the gaps given."""
+
+    gaps: tuple = ()
+
+    def on_date(self, ticker, on, evaluated_on):
+        return IssuerCommonEquityMarketCap("0001692819", on, date(2026, 8, 3), "a", "USD",
+                                           DenominatorQuality.INSUFFICIENT_EVIDENCE, None, None, (), (), (), self.gaps)
+
+
+class TestCurrencyIsItsOwnReason:
+    def _gap(self, *gaps):
+        return IssuerValuationBasisBuilder(_GappedReader(gaps=gaps)).build(
+            ticker="AAA", every_version=(), records=(), epochs=_epochs("2026-09-08"), historical=None,
+            evaluated_at=NOW).current_gap
+
+    def test_listed_prices_in_differing_or_unstated_currencies(self):
+        assert self._gap("price_currency_mismatch") is G.CURRENT_ISSUER_PRICE_CURRENCY_UNPROVEN
+        assert self._gap("price_currency_unproven:AAC") is G.CURRENT_ISSUER_PRICE_CURRENCY_UNPROVEN
+
+    def test_an_unpriced_sibling_is_still_the_date(self):
+        assert self._gap("no_price:AAC", "price_currency_unproven:AAB") is G.CURRENT_ISSUER_PRICE_NOT_SYNCHRONIZED
+
+    def test_the_two_reasons_are_distinct(self):
+        assert G.CURRENT_ISSUER_PRICE_CURRENCY_UNPROVEN is not G.CURRENT_ISSUER_PRICE_NOT_SYNCHRONIZED
+        assert G.CURRENT_ISSUER_PRICE_CURRENCY_UNPROVEN is not G.CURRENCY_MISMATCH
+
+
 class TestNoNetwork:
     def test_composing_a_basis_makes_no_network_attempt(self, reader, monkeypatch):  # noqa: F811
         import socket

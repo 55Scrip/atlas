@@ -52,7 +52,7 @@ def _statement(ticker, cik):
 
 
 def _quote(ticker, on, px, provider_shares=None):
-    meta = {"share_price": px, "price_basis": "raw"}
+    meta = {"share_price": px, "price_basis": "raw", "currency": "USD"}
     if provider_shares:
         meta["shares_outstanding"] = provider_shares  # the provider's value: never the issuer denominator
     return _doc(ticker, "market_data_snapshot", f"q{on}", meta, on,
@@ -61,7 +61,7 @@ def _quote(ticker, on, px, provider_shares=None):
 
 def _bar(ticker, on, raw, adjusted):
     return _doc(ticker, "market_data_snapshot", f"m{on}", {"share_price": adjusted, "raw_close": raw, "dividend_amount": 0.0,
-                "price_basis": "split_and_dividend_adjusted"}, on,
+                "price_basis": "split_and_dividend_adjusted", "currency": "USD"}, on,
                 f"https://www.alphavantage.co/query?function=TIME_SERIES_MONTHLY_ADJUSTED&symbol={ticker}")
 
 
@@ -182,3 +182,8 @@ class TestVistraSeniorEquity:
         assert senior == [("us-gaap:SeriesAPreferredStockMember", 1_000_000.0, 80_000_000),
                           ("us-gaap:SeriesBPreferredStockMember", 1_000_000.0, 70_000_000),
                           ("us-gaap:SeriesCPreferredStockMember", 476_066.0, round(476_066 * 1000 * 0.08875))]  # outstanding, not issued
+
+
+class TestPriceCurrency:
+    def test_a_price_carries_the_currency_its_record_states(self, reader):
+        assert {p.currency for p in reader.price_series("GOOG").values()} == {"USD"}

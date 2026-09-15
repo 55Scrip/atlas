@@ -43,8 +43,9 @@ def count(member, shares, symbol=None, *, as_of=P, accession="0000000001-26-0000
     return ClassCount(member, shares, as_of, accession, date(2026, 2, 5), symbol, "XNAS" if symbol else None)
 
 
-def price(symbol, value, on=ON):
-    return ListedPrice(symbol, on, value, f"r-{symbol}")
+def price(symbol, value, on=ON, currency="USD"):
+    """A stored price always states its currency (a price is written only with a confirmed one)."""
+    return ListedPrice(symbol, on, value, f"r-{symbol}", currency)
 
 
 def compose(counts, prices, rights=(), *, case="AAA", **kw):
@@ -92,6 +93,43 @@ class TestListedSiblings:
     def test_counts_from_two_filings_or_instants_are_never_mixed(self):
         cap = compose([count(A, 100, "AAA"), count(C, 50, "AAC", as_of=date(2025, 9, 30))], [price("AAA", 10), price("AAC", 9)])
         assert cap.quality is INSUFFICIENT and "counts_not_from_one_filing_and_instant" in cap.gaps
+
+
+class TestCurrency:
+    """Listed classes are added at their own prices only when every price
+    states one currency; nothing converts."""
+
+    def test_one_stated_currency_composes(self):
+        cap = compose([count(A, 100, "AAA"), count(C, 50, "AAC")], [price("AAA", 10.0), price("AAC", 9.0)])
+        assert cap.quality is EXACT and not any(g.startswith("price_currency") for g in cap.gaps)
+
+    def test_differing_currencies_withhold(self):
+        cap = compose([count(A, 100, "AAA"), count(C, 50, "AAC")], [price("AAA", 10.0), price("AAC", 9.0, currency="EUR")])
+        assert (cap.quality, cap.market_cap_low) == (INSUFFICIENT, None) and "price_currency_mismatch" in cap.gaps
+
+    def test_an_unstated_currency_is_never_assumed_to_match(self):
+        cap = compose([count(A, 100, "AAA"), count(C, 50, "AAC")], [price("AAA", 10.0), price("AAC", 9.0, currency=None)])
+        assert cap.quality is INSUFFICIENT and "price_currency_unproven:AAC" in cap.gaps
+
+    def test_an_unlisted_class_priced_between_two_listed_prices_needs_them_in_one_currency(self):
+        cap = compose([count(A, 100, "AAA"), count(B, 10), count(C, 50, "AAC")],
+                      [price("AAA", 10.0), price("AAC", 9.0, currency="EUR")],
+                      [right(RightKind.ECONOMIC_PARITY, related=(A, B, C))])
+        assert cap.quality is INSUFFICIENT and "price_currency_mismatch" in cap.gaps
+
+    def test_a_missing_sibling_price_is_the_dates_problem_not_the_currencys(self):
+        cap = compose([count(A, 100, "AAA"), count(C, 50, "AAC")], [price("AAA", 10.0, currency=None)])
+        assert "no_price:AAC" in cap.gaps and not any(g.startswith("price_currency") for g in cap.gaps)
+
+    def test_one_listed_class_is_never_checked_against_itself(self):
+        # One listing pricing an unlisted class through filed conversion: one price, nothing summed across currencies.
+        cap = compose([count(A, 100, "AAA"), count(B, 7)], [price("AAA", 10.0, currency=None)],
+                      [right(RightKind.CONVERTIBLE_INTO, subject=B, target=A, value=1.0)])
+        assert (cap.quality, cap.market_cap_low) == (EQUIVALENT, 1070.0)
+
+    def test_a_single_listing_is_untouched(self):
+        cap = compose([count(None, 823_000_000)], [price("AAA", 205.69, currency=None)], classes_reported=False)
+        assert (cap.quality, cap.market_cap_low) == (EXACT, 823_000_000 * 205.69)
 
 
 class TestUnlisted:

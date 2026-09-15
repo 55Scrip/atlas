@@ -574,6 +574,8 @@ export const sv: Record<TranslationKey, string> = {
     "Aktuell värdering kan inte stödjas eftersom Atlas ännu inte kan fastställa bolagets fullständiga marknadsvärde för stamaktier.",
   "investmentCase.analysis.valuation.gap.currentIssuerPriceNotSynchronized":
     "Aktuell värdering kan inte stödjas eftersom Atlas saknar samtidiga marknadsdata för alla relevanta aktieslag.",
+  "investmentCase.analysis.valuation.gap.currentIssuerPriceCurrencyUnproven":
+    "Aktuell värdering kan inte stödjas eftersom Atlas inte kan bekräfta att alla relevanta aktieslag prissätts i samma valuta.",
   "investmentCase.analysis.valuation.gap.temporalEvidenceGap":
     "Aktuell värdering kan inte stödjas eftersom Atlas marknads- och rapportunderlag inte är konsekvent daterat.",
   "investmentCase.analysis.valuation.gap.numeratorEvidenceMissing":
