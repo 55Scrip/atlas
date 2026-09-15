@@ -30,6 +30,11 @@ decision_memory_snapshot_table = Table(
     Column("content_hash", String, nullable=False),
     Column("snapshot_json", String, nullable=False),
     Column("change_json", String, nullable=True),
+    # The `migration_artifact_corrections` entry that retracted this row
+    # as transient migration state (`atlas.alpha.migration_correction`).
+    # A retracted row stays stored, audited, but is no longer history:
+    # every read skips it. NULL for every genuine row.
+    Column("retracted_by", String, nullable=True),
 )
 
 

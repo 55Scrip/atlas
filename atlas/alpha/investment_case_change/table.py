@@ -48,6 +48,11 @@ investment_case_snapshot_table = Table(
     Column("current_yield", String, nullable=True),
     Column("snapshot_json", String, nullable=False),
     Column("change_intelligence_json", String, nullable=True),
+    # The `migration_artifact_corrections` entry that retracted this row
+    # as transient migration state (`atlas.alpha.migration_correction`).
+    # A retracted row stays stored, audited, but is no longer history:
+    # every read skips it. NULL for every genuine row.
+    Column("retracted_by", String, nullable=True),
 )
 
 

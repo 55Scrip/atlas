@@ -22,9 +22,10 @@ risking a duplicate row for structurally-unchanged state.
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from datetime import datetime
 
-from sqlalchemy import asc, desc, insert, select
+from sqlalchemy import and_, asc, desc, insert, select
 from sqlalchemy.engine import Engine
 
 from atlas.alpha.decision_memory.engine import detect_decision_change
@@ -37,7 +38,26 @@ from atlas.alpha.opportunity_cost.models import AlternativeKind
 from atlas.alpha.recommendation_conviction.models import ConvictionStrength, RecommendationStability
 from atlas.analysis_engine.methodology import comparable_payload, stamp_methodology
 
-__all__ = ["SqlAlchemyDecisionMemoryRepository"]
+__all__ = ["SqlAlchemyDecisionMemoryRepository", "StoredDecisionRow", "serialize_decision_change"]
+
+
+def _live(case_id: str):
+    """A Case's history: every row but those retracted as transient
+    migration state (`atlas.alpha.migration_correction`)."""
+    table = decision_memory_snapshot_table
+    return and_(table.c.case_id == case_id, table.c.retracted_by.is_(None))
+
+
+@dataclass(frozen=True)
+class StoredDecisionRow:
+    """One persisted row exactly as stored, retracted or not -- the audit
+    view a correction plans against, never a history read."""
+
+    id: str
+    snapshot: DecisionSnapshot
+    snapshot_json: str
+    change_json: str | None
+    retracted_by: str | None
 
 
 def _snapshot_payload(snapshot: DecisionSnapshot) -> dict:
@@ -103,16 +123,48 @@ def _to_change(payload: dict, *, case_id: str, detected_at: datetime) -> Decisio
     )
 
 
+def serialize_decision_change(change: DecisionMemoryChange) -> str | None:
+    """The exact `change_json` `add` persists for a transition: `None` for
+    a baseline, which has nothing to persist."""
+    if change.is_baseline:
+        return None
+    return json.dumps(_change_payload(change), sort_keys=True)
+
+
 class SqlAlchemyDecisionMemoryRepository:
     def __init__(self, engine: Engine) -> None:
         self._engine = engine
+
+    def stored_rows(self, case_id: str) -> tuple[StoredDecisionRow, ...]:
+        """Every stored row for `case_id`, retracted ones included, oldest
+        first. Read-only."""
+        with self._engine.connect() as connection:
+            rows = (
+                connection.execute(
+                    select(decision_memory_snapshot_table)
+                    .where(decision_memory_snapshot_table.c.case_id == case_id)
+                    .order_by(asc(decision_memory_snapshot_table.c.recorded_at))
+                )
+                .mappings()
+                .all()
+            )
+        return tuple(
+            StoredDecisionRow(
+                id=row["id"],
+                snapshot=_to_snapshot(row),
+                snapshot_json=row["snapshot_json"],
+                change_json=row["change_json"],
+                retracted_by=row["retracted_by"],
+            )
+            for row in rows
+        )
 
     def get_latest(self, case_id: str) -> DecisionSnapshot | None:
         with self._engine.connect() as connection:
             row = (
                 connection.execute(
                     select(decision_memory_snapshot_table)
-                    .where(decision_memory_snapshot_table.c.case_id == case_id)
+                    .where(_live(case_id))
                     .order_by(desc(decision_memory_snapshot_table.c.recorded_at))
                     .limit(1)
                 )
@@ -130,7 +182,7 @@ class SqlAlchemyDecisionMemoryRepository:
             row = (
                 connection.execute(
                     select(decision_memory_snapshot_table)
-                    .where(decision_memory_snapshot_table.c.case_id == case_id)
+                    .where(_live(case_id))
                     .order_by(desc(decision_memory_snapshot_table.c.recorded_at))
                     .limit(1)
                 )
@@ -144,7 +196,7 @@ class SqlAlchemyDecisionMemoryRepository:
             rows = (
                 connection.execute(
                     select(decision_memory_snapshot_table)
-                    .where(decision_memory_snapshot_table.c.case_id == case_id)
+                    .where(_live(case_id))
                     .order_by(desc(decision_memory_snapshot_table.c.recorded_at))
                     .limit(2)
                 )
@@ -165,7 +217,7 @@ class SqlAlchemyDecisionMemoryRepository:
             rows = (
                 connection.execute(
                     select(decision_memory_snapshot_table)
-                    .where(decision_memory_snapshot_table.c.case_id == case_id)
+                    .where(_live(case_id))
                     .order_by(asc(decision_memory_snapshot_table.c.recorded_at))
                 )
                 .mappings()
@@ -210,7 +262,7 @@ class SqlAlchemyDecisionMemoryRepository:
                     recorded_at=snapshot.recorded_at.isoformat(),
                     content_hash=snapshot.content_hash,
                     snapshot_json=json.dumps(stamp_methodology(_snapshot_payload(snapshot)), sort_keys=True),
-                    change_json=None if change.is_baseline else json.dumps(_change_payload(change), sort_keys=True),
+                    change_json=serialize_decision_change(change),
                 )
             )
         return True

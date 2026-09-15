@@ -21,9 +21,10 @@ for the full rationale.
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from typing import Any, Mapping
 
-from sqlalchemy import asc, desc, insert, select
+from sqlalchemy import and_, asc, desc, insert, select
 from sqlalchemy.engine import Engine
 
 from atlas.analysis_engine.investment_case_change import (
@@ -37,19 +38,60 @@ from atlas.analysis_engine.investment_case_change import (
 )
 from atlas.alpha.investment_case_change.table import investment_case_snapshot_table
 
-__all__ = ["SqlAlchemyInvestmentCaseSnapshotRepository"]
+__all__ = ["SqlAlchemyInvestmentCaseSnapshotRepository", "StoredSnapshotRow", "serialize_change_intelligence"]
+
+
+def _live(case_id: str):
+    """A Case's history: every row but those retracted as transient
+    migration state (`atlas.alpha.migration_correction`)."""
+    table = investment_case_snapshot_table
+    return and_(table.c.case_id == case_id, table.c.retracted_by.is_(None))
+
+
+@dataclass(frozen=True)
+class StoredSnapshotRow:
+    """One persisted row exactly as stored, retracted or not -- the audit
+    view a correction plans against, never a history read."""
+
+    id: str
+    snapshot: AnalyticalSnapshot
+    change_intelligence_json: str | None
+    retracted_by: str | None
 
 
 class SqlAlchemyInvestmentCaseSnapshotRepository:
     def __init__(self, engine: Engine) -> None:
         self._engine = engine
 
+    def stored_rows(self, case_id: str) -> tuple[StoredSnapshotRow, ...]:
+        """Every stored row for `case_id`, retracted ones included, oldest
+        first. Read-only."""
+        with self._engine.connect() as connection:
+            rows = (
+                connection.execute(
+                    select(investment_case_snapshot_table)
+                    .where(investment_case_snapshot_table.c.case_id == case_id)
+                    .order_by(asc(investment_case_snapshot_table.c.captured_at))
+                )
+                .mappings()
+                .all()
+            )
+        return tuple(
+            StoredSnapshotRow(
+                id=row["id"],
+                snapshot=_to_snapshot(row),
+                change_intelligence_json=row["change_intelligence_json"],
+                retracted_by=row["retracted_by"],
+            )
+            for row in rows
+        )
+
     def get_latest(self, case_id: str) -> AnalyticalSnapshot | None:
         with self._engine.connect() as connection:
             row = (
                 connection.execute(
                     select(investment_case_snapshot_table)
-                    .where(investment_case_snapshot_table.c.case_id == case_id)
+                    .where(_live(case_id))
                     .order_by(desc(investment_case_snapshot_table.c.captured_at))
                     .limit(1)
                 )
@@ -70,7 +112,7 @@ class SqlAlchemyInvestmentCaseSnapshotRepository:
             rows = (
                 connection.execute(
                     select(investment_case_snapshot_table)
-                    .where(investment_case_snapshot_table.c.case_id == case_id)
+                    .where(_live(case_id))
                     .order_by(asc(investment_case_snapshot_table.c.captured_at))
                 )
                 .mappings()
@@ -138,10 +180,16 @@ def _to_row(case_id: str, snapshot: AnalyticalSnapshot, change_intelligence: Cha
             },
             sort_keys=True,
         ),
-        "change_intelligence_json": (
-            None if change_intelligence.is_baseline else json.dumps(_change_intelligence_payload(change_intelligence), sort_keys=True)
-        ),
+        "change_intelligence_json": serialize_change_intelligence(change_intelligence),
     }
+
+
+def serialize_change_intelligence(change_intelligence: ChangeIntelligence) -> str | None:
+    """The exact `change_intelligence_json` `add` persists for a transition:
+    `None` for a baseline, which has nothing to persist."""
+    if change_intelligence.is_baseline:
+        return None
+    return json.dumps(_change_intelligence_payload(change_intelligence), sort_keys=True)
 
 
 def _change_intelligence_payload(change_intelligence: ChangeIntelligence) -> dict[str, Any]:

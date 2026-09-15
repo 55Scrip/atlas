@@ -92,6 +92,8 @@ class DailyBriefChangeLogStore:
                             daily_brief_change_log_table.c.reason_code == change.reason_code,
                             daily_brief_change_log_table.c.value == change.value,
                             daily_brief_change_log_table.c.secondary_value == change.secondary_value,
+                            # A retracted row never happened: it holds no key.
+                            daily_brief_change_log_table.c.retracted_by.is_(None),
                         )
                     )
                 ).first()
@@ -150,7 +152,8 @@ class DailyBriefChangeLogStore:
         surfaced), but were never a change the user should see; NULL is
         treated the same as `False` since the column was added to an
         already-existing table (`table.py`'s own nullable-column repair
-        discipline)."""
+        discipline). A row retracted as a migration artifact
+        (`retracted_by`) is excluded the same way."""
         cutoff = (now or datetime.now(timezone.utc)) - archive_after
         with self._engine.begin() as connection:
             rows = connection.execute(
@@ -160,11 +163,22 @@ class DailyBriefChangeLogStore:
                         daily_brief_change_log_table.c.user_id == user_id,
                         daily_brief_change_log_table.c.detected_at >= cutoff.isoformat(),
                         daily_brief_change_log_table.c.is_baseline.isnot(True),
+                        daily_brief_change_log_table.c.retracted_by.is_(None),
                     )
                 )
                 .order_by(daily_brief_change_log_table.c.detected_at.asc())
             ).all()
         return tuple(_row_to_entry(row) for row in rows)
+
+    def stored_row(self, entry_id: str):
+        """One row exactly as stored, retracted or not -- the audit view a
+        correction plans against. `None` when absent. Read-only."""
+        with self._engine.connect() as connection:
+            return (
+                connection.execute(select(daily_brief_change_log_table).where(daily_brief_change_log_table.c.id == entry_id))
+                .mappings()
+                .first()
+            )
 
     def mark_seen(self, user_id: str, entry_ids: tuple[str, ...], *, now: datetime | None = None) -> None:
         """Sets `seen_at` only for entries that don't already have one

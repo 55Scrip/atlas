@@ -61,6 +61,12 @@ daily_brief_change_log_table = Table(
     # and `False` are treated identically everywhere this column is
     # read (`store.py::list_recent`).
     Column("is_baseline", Boolean, nullable=True),
+    # The `migration_artifact_corrections` entry that retracted this row:
+    # a transition produced by the order a methodology migration ran in,
+    # never by the company (`atlas.alpha.migration_correction`). Unlike a
+    # baseline it never happened, so it neither surfaces nor occupies its
+    # natural key. NULL for every genuine row.
+    Column("retracted_by", String, nullable=True),
 )
 
 
