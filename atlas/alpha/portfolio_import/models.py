@@ -84,6 +84,13 @@ class ParsedHoldingRow:
     value_absolute: float | None = None
     weight_percent: float | None = None
     currency: str | None = None
+    #: The strong identity the file carried, kept apart from `currency` and
+    #: from `ticker` because it outranks both. `isin` is present only when it
+    #: passed its ISO 6166 check digit -- a malformed one is absence, not a
+    #: weaker value, since an identifier that is accepted but wrong resolves
+    #: the wrong company. `market` is the broker's own venue text, verbatim.
+    isin: str | None = None
+    market: str | None = None
     status: RowResolutionStatus = RowResolutionStatus.ERROR
     message: str | None = None
     # Populated only when status is UNSUPPORTED -- "fund"/"etp"/"private"/

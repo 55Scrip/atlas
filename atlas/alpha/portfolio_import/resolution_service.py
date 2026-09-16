@@ -31,6 +31,7 @@ from atlas.alpha.portfolio_import.instrument_registry import (
     fuzzy_lookup_instrument,
     lookup_instrument,
 )
+from atlas.alpha.portfolio_import.isin import is_valid_isin, normalize_isin
 from atlas.alpha.portfolio_import.models import (
     ColumnRole,
     ParsedHoldingRow,
@@ -63,10 +64,22 @@ def resolve_row(
     company_name = row.fields.get(ColumnRole.COMPANY_NAME)
     ticker_field = row.fields.get(ColumnRole.TICKER)
 
+    # Strong identity, carried on every outcome below -- including the ones
+    # that resolve no ticker. The file's ISIN and venue are facts about the
+    # holding regardless of whether the *ticker* steps beneath succeeded,
+    # and dropping them here is exactly what left a perfectly identified
+    # Stockholm row with nothing but a ticker string to resolve from.
+    isin = normalize_isin(row.fields.get(ColumnRole.ISIN))
+    if not is_valid_isin(isin):
+        isin = None
+    market = (row.fields.get(ColumnRole.MARKET) or "").strip() or None
+
     if not company_name and not ticker_field:
         return ParsedHoldingRow(
             line_number=row.line_number,
             raw=row.raw,
+            isin=isin,
+            market=market,
             status=RowResolutionStatus.ERROR,
             message="No company name or ticker found on this line.",
         )
@@ -165,6 +178,8 @@ def resolve_row(
         return ParsedHoldingRow(
             line_number=row.line_number,
             raw=row.raw,
+            isin=isin,
+            market=market,
             original_name=company_name,
             status=RowResolutionStatus.ERROR,
             message="One or more numeric fields on this line could not be read.",
@@ -182,6 +197,8 @@ def resolve_row(
         return ParsedHoldingRow(
             line_number=row.line_number,
             raw=row.raw,
+            isin=isin,
+            market=market,
             original_name=company_name,
             quantity=quantity,
             price=price,
@@ -200,6 +217,8 @@ def resolve_row(
         return ParsedHoldingRow(
             line_number=row.line_number,
             raw=row.raw,
+            isin=isin,
+            market=market,
             original_name=company_name,
             ticker=ticker,
             currency=currency,
@@ -215,6 +234,8 @@ def resolve_row(
         return ParsedHoldingRow(
             line_number=row.line_number,
             raw=row.raw,
+            isin=isin,
+            market=market,
             original_name=company_name,
             ticker=ticker,
             quantity=quantity,
@@ -231,6 +252,8 @@ def resolve_row(
         return ParsedHoldingRow(
             line_number=row.line_number,
             raw=row.raw,
+            isin=isin,
+            market=market,
             original_name=company_name,
             quantity=quantity,
             price=price,
@@ -246,6 +269,8 @@ def resolve_row(
         return ParsedHoldingRow(
             line_number=row.line_number,
             raw=row.raw,
+            isin=isin,
+            market=market,
             original_name=company_name,
             quantity=quantity,
             price=price,
@@ -266,5 +291,7 @@ def resolve_row(
         value_absolute=value_absolute,
         weight_percent=weight,
         currency=currency,
+        isin=isin,
+        market=market,
         status=RowResolutionStatus.RESOLVED,
     )
