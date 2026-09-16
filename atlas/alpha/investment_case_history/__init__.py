@@ -49,6 +49,18 @@ so a cursor cannot reach a Case the request could not already see. One
 consequence is honest and deliberate: a multi-page traversal is not a
 transactional snapshot of membership, because scope means "now".
 
+**Coverage is descriptive, never a verdict.** `evidence_coverage` counts the
+surviving record -- how many evidence-bearing snapshots exist, for which
+Cases, over what span, under which methodology -- and says which longitudinal
+questions the record can structurally answer. It carries no readiness score
+and no threshold: deciding that some number of observations settles a
+question is a statistical claim this package is in no position to make.
+Snapshot count, distinct evidence-state count and distinct evidence-day count
+stay three separate numbers, because collapsing them is the easiest way to
+make a thin record sound substantial, and none of them counts *independent*
+observations. Legacy snapshots count toward the total record and toward no
+evidence measure, and methodologies are never pooled.
+
 **Read-only, by construction.** `InvestmentCaseHistoryService
 .build_analytical_history` calls only `SqlAlchemyInvestmentCaseSnapshotRepository
 .get_history_with_evidence` -- never `.add`, never

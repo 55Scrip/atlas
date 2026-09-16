@@ -21,6 +21,7 @@ from datetime import datetime
 
 from atlas.alpha.investment_case.api.schemas import ChangeFindingView
 from atlas.alpha.investment_case.valuation_evidence_snapshot import ValuationEvidenceSnapshot
+from atlas.alpha.investment_case_history.evidence_coverage import HistoricalEvidenceCoverage
 from atlas.alpha.investment_case_history.service import AnalyticalHistoryWithEvidence, snapshot_identity
 from atlas.analysis_engine.investment_case_history import AnalyticalHistory, HistoricalAnalysisEntry
 from atlas.core.infrastructure.api.serialization import CamelModel
@@ -214,6 +215,123 @@ class HistoricalAnalysisEntryView(CamelModel):
             valuation_status=snapshot.valuation_status,
             current_yield=snapshot.current_yield,
             valuation_evidence=HistoricalValuationEvidenceView.from_domain(evidence),
+        )
+
+
+class ReadinessQuestionView(CamelModel):
+    """One question and whether the record structurally supports it.
+
+    `availability` is never a confidence: `available` says the comparison can
+    be assembled from what is stored, not that the number of observations
+    would make its answer convincing.
+    """
+
+    key: str
+    question: str
+    requirement: str
+    availability: str
+    detail: str
+
+
+class MethodologyGroupView(CamelModel):
+    valuation_methodology: str | None
+    evidence_schema_version: str | None
+    snapshot_count: int
+    case_count: int
+    earliest_at: datetime | None
+    latest_at: datetime | None
+    span_days: int
+
+
+class CaseEvidenceCoverageView(CamelModel):
+    case_id: str
+    ticker: str | None
+    total_snapshot_count: int
+    legacy_snapshot_count: int
+    evidence_snapshot_count: int
+    first_snapshot_at: datetime | None
+    latest_snapshot_at: datetime | None
+    first_evidence_at: datetime | None
+    latest_evidence_at: datetime | None
+    evidence_span_days: int
+    distinct_snapshot_day_count: int
+    distinct_evidence_day_count: int
+    distinct_evidence_state_count: int
+    valuation_status_counts: dict[str, int]
+    valuation_status_transition_count: int
+    valuation_support_state_counts: dict[str, int]
+    recommendation_state_counts: dict[str, int]
+    range_edge_observation_count: int
+    single_low_edge_dependency_count: int
+    single_high_edge_dependency_count: int
+    range_edge_dependency_transition_count: int
+    methodologies: list[str | None]
+    evidence_schema_versions: list[str | None]
+
+
+class HistoricalEvidenceCoverageView(CamelModel):
+    """What the historical record contains, counted.
+
+    Deliberately carries no score and no threshold. Snapshot count, distinct
+    evidence-state count and distinct evidence-day count are three separate
+    numbers because collapsing them is the easiest way to overstate a thin
+    record, and none of them is a count of independent observations.
+    """
+
+    generated_at: datetime
+    visible_case_count: int
+    cases_with_any_history: int
+    cases_with_frozen_evidence: int
+    cases_without_frozen_evidence: int
+    total_live_snapshot_count: int
+    legacy_snapshot_count: int
+    evidence_snapshot_count: int
+    distinct_evidence_state_count: int
+    distinct_evidence_day_count: int
+    earliest_evidence_at: datetime | None
+    latest_evidence_at: datetime | None
+    evidence_span_days: int
+    methodology_groups: list[MethodologyGroupView]
+    readiness: list[ReadinessQuestionView]
+    cases: list[CaseEvidenceCoverageView]
+
+    @classmethod
+    def from_domain(cls, coverage: HistoricalEvidenceCoverage) -> "HistoricalEvidenceCoverageView":
+        return cls(
+            **{f: getattr(coverage, f) for f in
+               ("generated_at", "visible_case_count", "cases_with_any_history", "cases_with_frozen_evidence",
+                "cases_without_frozen_evidence", "total_live_snapshot_count", "legacy_snapshot_count",
+                "evidence_snapshot_count", "distinct_evidence_state_count", "distinct_evidence_day_count",
+                "earliest_evidence_at", "latest_evidence_at", "evidence_span_days")},
+            methodology_groups=[
+                MethodologyGroupView(**{f: getattr(group, f) for f in
+                                        ("valuation_methodology", "evidence_schema_version", "snapshot_count",
+                                         "case_count", "earliest_at", "latest_at", "span_days")})
+                for group in coverage.methodology_groups
+            ],
+            readiness=[
+                ReadinessQuestionView(key=q.key, question=q.question, requirement=q.requirement,
+                                      availability=q.availability.value, detail=q.detail)
+                for q in coverage.readiness
+            ],
+            cases=[
+                CaseEvidenceCoverageView(
+                    **{f: getattr(case, f) for f in
+                       ("case_id", "ticker", "total_snapshot_count", "legacy_snapshot_count",
+                        "evidence_snapshot_count", "first_snapshot_at", "latest_snapshot_at",
+                        "first_evidence_at", "latest_evidence_at", "evidence_span_days",
+                        "distinct_snapshot_day_count", "distinct_evidence_day_count",
+                        "distinct_evidence_state_count", "valuation_status_transition_count",
+                        "range_edge_observation_count", "single_low_edge_dependency_count",
+                        "single_high_edge_dependency_count", "range_edge_dependency_transition_count")},
+                    valuation_status_counts=dict(case.valuation_status_counts),
+                    valuation_support_state_counts=dict(case.valuation_support_state_counts),
+                    recommendation_state_counts=dict(case.recommendation_state_counts),
+                    methodologies=list(case.methodologies),
+                    evidence_schema_versions=list(case.evidence_schema_versions),
+                )
+                for case in coverage.cases
+            ],
         )
 
 

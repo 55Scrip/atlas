@@ -10,6 +10,11 @@ from typing import Mapping
 from atlas.alpha.case_membership import known_cases
 from atlas.alpha.investment_case.valuation_evidence_snapshot import ValuationEvidenceSnapshot
 from atlas.alpha.investment_case_history.cursor import HistoryCursor, decode_cursor, encode_cursor
+from atlas.alpha.investment_case_history.evidence_coverage import (
+    HistoricalEvidenceCoverage,
+    SnapshotRecord,
+    build_coverage,
+)
 from atlas.alpha.investment_case_change.repository import SqlAlchemyInvestmentCaseSnapshotRepository
 from atlas.alpha.portfolio.store import AlphaPortfolioStore
 from atlas.alpha.watchlist.store import AlphaWatchlistStore
@@ -150,3 +155,30 @@ class InvestmentCaseHistoryService:
             next_cursor=next_cursor,
             has_more=has_more,
         )
+
+    def build_evidence_coverage(self) -> HistoricalEvidenceCoverage:
+        """How much evidence-bearing history exists, for the Cases this
+        request may see.
+
+        Read-only and aggregate: one snapshot query, no page walking, and
+        nothing from the live Case -- every value is read from the snapshots'
+        own frozen payloads. Scope is the same live membership History uses,
+        so coverage can never reveal a Case the caller could not already
+        open.
+        """
+        membership = tuple(known_cases(self._portfolio_store, self._watchlist_store))
+        ticker_by_case = {case_id: ticker for case_id, ticker in membership}
+        rows = self._snapshot_repository.get_visible_snapshot_records([case_id for case_id, _ in membership])
+        records = tuple(
+            SnapshotRecord(
+                case_id=row["case_id"],
+                ticker=ticker_by_case.get(row["case_id"]),
+                captured_at=datetime.fromisoformat(row["captured_at"]),
+                valuation_status=row["valuation_status"],
+                recommendation_state=row["recommendation_state"],
+                valuation_methodology=row["valuation_methodology"],
+                evidence=row["evidence"],
+            )
+            for row in rows
+        )
+        return build_coverage(records, visible_case_count=len(membership), generated_at=_utc_now())

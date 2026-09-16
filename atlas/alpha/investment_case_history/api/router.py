@@ -19,7 +19,10 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from atlas.alpha.investment_case_history.api.dependencies import get_investment_case_history_service
-from atlas.alpha.investment_case_history.api.schemas import AnalyticalHistoryView
+from atlas.alpha.investment_case_history.api.schemas import (
+    AnalyticalHistoryView,
+    HistoricalEvidenceCoverageView,
+)
 from atlas.alpha.investment_case_history.cursor import InvalidCursorError
 from atlas.alpha.investment_case_history.service import (
     DEFAULT_PAGE_SIZE,
@@ -48,3 +51,17 @@ def get_analytical_history(
     except InvalidCursorError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
     return AnalyticalHistoryView.from_domain(history)
+
+
+@router.get("/evidence-coverage", response_model=HistoricalEvidenceCoverageView)
+def get_evidence_coverage(
+    service: InvestmentCaseHistoryService = Depends(get_investment_case_history_service),
+) -> HistoricalEvidenceCoverageView:
+    """How much evidence-bearing history exists, and which longitudinal
+    questions it can structurally answer.
+
+    Observability, not a verdict: it counts the record and says what the
+    record can be asked. It carries no readiness score and no threshold, and
+    reads only snapshots the caller could already open.
+    """
+    return HistoricalEvidenceCoverageView.from_domain(service.build_evidence_coverage())

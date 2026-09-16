@@ -257,6 +257,57 @@ class SqlAlchemyInvestmentCaseSnapshotRepository:
             page.append((row["case_id"], snapshot, transition, evidence))
         return tuple(page), has_more
 
+    def get_visible_snapshot_records(self, case_ids: Sequence[str]) -> tuple[dict[str, Any], ...]:
+        """Every surviving snapshot for `case_ids`, oldest first, reduced to
+        what an aggregate report needs -- one query, the same scope and
+        retraction rules History itself applies.
+
+        The scalars a report counts are pulled out in SQL, and the full frozen
+        evidence is fetched only for the rows that actually carry one. That
+        matters at scale and not at all today: with no evidence-bearing rows
+        the query moves a few columns instead of every stored payload, and a
+        corpus of 100k snapshots costs a fraction of what parsing all of them
+        in Python would.
+
+        Deliberately not `get_history`: coverage counts the record, it does
+        not reconstruct each transition, so it neither pays for that nor walks
+        the paginated read path.
+        """
+        if not case_ids:
+            return ()
+        table = investment_case_snapshot_table
+        payload = table.c.snapshot_json
+        with self._engine.connect() as connection:
+            rows = (
+                connection.execute(
+                    select(
+                        table.c.case_id,
+                        table.c.captured_at,
+                        func.json_extract(payload, "$.valuation_status").label("valuation_status"),
+                        func.json_extract(payload, "$.atlas_thesis_posture").label("recommendation_state"),
+                        func.json_extract(payload, "$.valuation_methodology").label("valuation_methodology"),
+                        func.json_extract(payload, "$.valuation_evidence").label("evidence_json"),
+                    )
+                    .where(table.c.case_id.in_(list(case_ids)), table.c.retracted_by.is_(None))
+                    .order_by(asc(table.c.captured_at))
+                )
+                .mappings()
+                .all()
+            )
+        return tuple(
+            {
+                "case_id": row["case_id"],
+                "captured_at": row["captured_at"],
+                "valuation_status": row["valuation_status"],
+                "recommendation_state": row["recommendation_state"],
+                "valuation_methodology": row["valuation_methodology"],
+                # Parsed only where there is something to parse: a legacy row
+                # carries no evidence and costs nothing here.
+                "evidence": json.loads(row["evidence_json"]) if row["evidence_json"] else None,
+            }
+            for row in rows
+        )
+
     def get_latest_valuation_evidence(self, case_id: str) -> ValuationEvidenceSnapshot | None:
         """The frozen valuation evidence of the current head, or `None` when
         the head predates this contract (or no head exists). Reads the stored
