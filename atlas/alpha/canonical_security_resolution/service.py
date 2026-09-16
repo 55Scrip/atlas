@@ -222,10 +222,17 @@ def _build_or_extend(
             security = security.add_listing(listing, clock=clock)
         return security
 
+    # The three identity fields `_is_constructible` actually checks.
+    # Currency is deliberately not among them and must not be asserted
+    # here: an identity provider proves which security this is without
+    # ever saying what it quotes in, and requiring a currency at this
+    # exact line is what made `AUTO_ACCEPT` reachable but unbuildable --
+    # `determine_outcome` accepted the candidate and this function then
+    # crashed on it. `None` flows through to `trading_currency` as
+    # absence, which is what the aggregate now means by it.
     assert candidate.company_name is not None
     assert candidate.exchange_mic is not None
     assert candidate.country is not None
-    assert candidate.currency is not None
 
     security = CanonicalSecurity.discover(
         canonical_company_name=candidate.company_name,
@@ -247,7 +254,16 @@ def _build_or_extend(
 
 
 def _listing_from_candidate(candidate: ProviderCandidate) -> ListingRef | None:
-    if candidate.exchange_mic is None or candidate.currency is None:
+    """A venue is what makes a listing; a currency is not.
+
+    Returning `None` when the currency was unknown used to mean a
+    candidate with a proven venue produced no listing at all -- and
+    since `CANONICAL` requires at least one listing, that silently
+    made every currency-less security unreachable even after the
+    aggregate itself stopped requiring a currency. The listing now
+    records the venue it can prove and leaves `currency` absent.
+    """
+    if candidate.exchange_mic is None:
         return None
     return ListingRef(
         ticker=candidate.symbol,

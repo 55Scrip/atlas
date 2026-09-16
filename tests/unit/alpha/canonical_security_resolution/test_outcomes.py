@@ -131,3 +131,42 @@ def test_manual_confirmation_outcome() -> None:
     outcome, selected = determine_outcome((candidate,), ("MEDIUM",), agreement)
     assert outcome == "MANUAL_CONFIRMATION"
     assert selected is candidate
+
+
+def test_an_auto_accepted_candidate_can_actually_be_built() -> None:
+    """The gap the previous sprint left between the two ends of this.
+
+    `_is_constructible` stopped requiring a currency, so a Stockholm
+    candidate reached `AUTO_ACCEPT` -- and `_build_or_extend` then
+    asserted the currency was present and crashed on the very candidate
+    the outcome had just accepted. Both halves were tested and passed;
+    nothing tested them joined together, which is where every Stockholm
+    holding actually died.
+
+    Constructibility is a promise about what the next step can build, so
+    it is only worth anything if the next step is the one asked.
+    """
+    from atlas.alpha.canonical_security_resolution.service import (
+        CanonicalSecurityResolutionService,
+        ResolutionRequest,
+    )
+
+    candidate = ProviderCandidate(
+        provider_name="OPENFIGI", symbol="VOLV-B", company_name="VOLVO AB-B SHS",
+        exchange_mic=MicCode("XSTO"), country="Sweden", security_type="COMMON_STOCK",
+        # currency deliberately omitted -- no identity provider returns one
+    )
+    agreement = evaluate_provider_agreement((candidate,))
+    outcome, _ = determine_outcome((candidate,), ("HIGH",), agreement)
+    assert outcome == "AUTO_ACCEPT"
+
+    result = CanonicalSecurityResolutionService().resolve(
+        ResolutionRequest(investor_ticker="VOLV-B", candidates=(candidate,))
+    )
+    security = result.canonical_security
+    assert security is not None
+    assert security.resolution_status == "CANONICAL"
+    assert security.trading_currency is None
+    # CANONICAL requires a listing, so the listing must survive the missing
+    # currency too -- a venue is what makes a listing, not a currency.
+    assert [(l.exchange_mic.value, l.currency) for l in security.listings] == [("XSTO", None)]
