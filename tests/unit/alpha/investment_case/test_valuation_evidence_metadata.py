@@ -390,9 +390,19 @@ class TestDenominator:
 # -- the firewall --------------------------------------------------------------------------------------------
 
 
-ENGINE_ROOTS = ("atlas/analysis_engine", "atlas/decision_engine")
+#: Every decision-bearing surface. Not only the two engines: portfolio Fit,
+#: Decision Support and the Investment Decision engine each turn evidence into
+#: something the investor acts on, so none of them may read a description.
+ENGINE_ROOTS = ("atlas/analysis_engine", "atlas/decision_engine", "atlas/alpha/portfolio_fit",
+                "atlas/alpha/investment_decision", "atlas/alpha/decision_support.py")
 MODULE = "atlas.alpha.investment_case.valuation_evidence_metadata"
 REPOSITORY = Path(__file__).resolve().parents[4]
+
+
+def _python_files(root: str):
+    """Every module under a package root, or the single module named."""
+    target = REPOSITORY / root
+    return [target] if target.is_file() else sorted(target.rglob("*.py"))
 
 
 def imported_modules(path: Path) -> set[str]:
@@ -414,7 +424,7 @@ class TestFirewall:
         offenders = [
             str(path.relative_to(REPOSITORY))
             for root in ENGINE_ROOTS
-            for path in (REPOSITORY / root).rglob("*.py")
+            for path in _python_files(root)
             if any(name == MODULE or name.startswith(MODULE + ".") for name in imported_modules(path))
         ]
         assert offenders == []
@@ -423,7 +433,7 @@ class TestFirewall:
         mentions = [
             str(path.relative_to(REPOSITORY))
             for root in ENGINE_ROOTS
-            for path in (REPOSITORY / root).rglob("*.py")
+            for path in _python_files(root)
             if "valuation_evidence_metadata" in path.read_text(encoding="utf-8")
         ]
         assert mentions == []

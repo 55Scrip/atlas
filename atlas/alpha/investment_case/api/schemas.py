@@ -104,7 +104,11 @@ from atlas.alpha.investment_case.historical_market_cap import (
     HistoricalMarketCapEpoch,
     HistoricalMarketCapEvidence,
 )
-from atlas.alpha.investment_case.valuation_evidence_metadata import ValuationEvidenceMetadata
+from atlas.alpha.investment_case.valuation_evidence_metadata import (
+    EdgeObservation,
+    RangeEdgeEvidence,
+    ValuationEvidenceMetadata,
+)
 from atlas.alpha.investment_case.historical_valuation import (
     HistoricalValuationKnowledge,
     ValuationDeviation,
@@ -999,6 +1003,64 @@ class DenominatorEvidenceView(CamelModel):
     all_exact: bool
 
 
+class EdgeObservationView(CamelModel):
+    fiscal_period: str
+    fiscal_year: int
+    fcf_yield: float
+    denominator_quality: str | None
+    age_years: int
+    uniquely_owned: bool
+
+
+class RangeEdgeEvidenceView(CamelModel):
+    """(Range Edge Disclosure) Which fiscal years own the ends of the
+    observed historical range, and how much of the rest of the history
+    corroborates today's position inside it. Descriptive: the classification
+    is unchanged, and an edge year remains valid evidence -- this only says
+    how alone it is."""
+
+    low_edge: EdgeObservationView | None
+    high_edge: EdgeObservationView | None
+    second_lowest: EdgeObservationView | None
+    second_highest: EdgeObservationView | None
+    distance_to_low_edge: float | None
+    distance_to_high_edge: float | None
+    distance_to_second_lowest: float | None
+    distance_to_second_highest: float | None
+    priors_at_or_below_current: int
+    priors_at_or_above_current: int
+    single_low_edge_dependency: bool
+    single_high_edge_dependency: bool
+    low_edge_gap: float | None
+    high_edge_gap: float | None
+    median_history_gap: float | None
+
+    @classmethod
+    def from_domain(cls, evidence: RangeEdgeEvidence | None) -> "RangeEdgeEvidenceView | None":
+        if evidence is None:
+            return None
+
+        def observation(edge: EdgeObservation | None) -> EdgeObservationView | None:
+            if edge is None:
+                return None
+            return EdgeObservationView(
+                **{f: getattr(edge, f) for f in
+                   ("fiscal_period", "fiscal_year", "fcf_yield", "denominator_quality",
+                    "age_years", "uniquely_owned")})
+
+        return cls(
+            low_edge=observation(evidence.low_edge),
+            high_edge=observation(evidence.high_edge),
+            second_lowest=observation(evidence.second_lowest),
+            second_highest=observation(evidence.second_highest),
+            **{f: getattr(evidence, f) for f in
+               ("distance_to_low_edge", "distance_to_high_edge", "distance_to_second_lowest",
+                "distance_to_second_highest", "priors_at_or_below_current", "priors_at_or_above_current",
+                "single_low_edge_dependency", "single_high_edge_dependency",
+                "low_edge_gap", "high_edge_gap", "median_history_gap")},
+        )
+
+
 class ValuationEvidenceMetadataView(CamelModel):
     """(Valuation Evidence Communication) What the FCF-yield comparison
     rests on: how deep and wide its history is, how near today's yield is
@@ -1013,6 +1075,7 @@ class ValuationEvidenceMetadataView(CamelModel):
     current_cash_flow: CurrentCashFlowEvidenceView
     capital_intensity: CapitalIntensityEvidenceView
     denominator: DenominatorEvidenceView
+    range_edge: RangeEdgeEvidenceView | None = None
 
     @classmethod
     def from_domain(cls, metadata: ValuationEvidenceMetadata | None) -> "ValuationEvidenceMetadataView | None":
@@ -1054,6 +1117,7 @@ class ValuationEvidenceMetadataView(CamelModel):
                 prior_treatments=list(metadata.denominator.prior_treatments),
                 all_exact=metadata.denominator.all_exact,
             ),
+            range_edge=RangeEdgeEvidenceView.from_domain(metadata.range_edge),
         )
 
 
