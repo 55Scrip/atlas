@@ -30,6 +30,7 @@ from atlas.alpha.investment_case.financial_statement_intelligence import extract
 from atlas.alpha.investment_case.historical_market_cap import reconstruct_historical_market_caps
 from atlas.alpha.investment_case.historical_valuation import extract_historical_valuation
 from atlas.alpha.investment_case.valuation_evidence_metadata import describe_valuation_evidence
+from atlas.alpha.investment_case.valuation_evidence_snapshot import freeze_valuation_evidence
 from atlas.alpha.investment_case.management_credibility_intelligence import extract_management_credibility
 from atlas.alpha.investment_case.management_guidance_intelligence import extract_management_guidance
 from atlas.alpha.investment_case.regulatory_filings import extract_regulatory_filings
@@ -362,7 +363,21 @@ class InvestmentCaseCompositionService:
             snapshot = capture_snapshot(canonical_analysis)
             previous_snapshot = self._snapshot_repository.get_latest(case_id_str)
             change_intelligence = compare_snapshots(previous_snapshot, snapshot)
-            self._snapshot_repository.add(case_id_str, snapshot, change_intelligence)
+            # (Snapshot Evidence Persistence) The evidence the snapshot's own
+            # conclusion was made from, frozen from THIS composition -- the
+            # same `fcf_yield_finding`, support and metadata the Case below
+            # carries, so a stored decision and the evidence beside it can
+            # never come from two different moments.
+            self._snapshot_repository.add(
+                case_id_str, snapshot, change_intelligence,
+                valuation_evidence=freeze_valuation_evidence(
+                    fcf_yield_finding, canonical_analysis.valuation_support,
+                    valuation_evidence_metadata,
+                    # The identity `capture_snapshot` already stamped on this
+                    # snapshot -- read from it, never re-imported, so the two
+                    # can never disagree about which method produced them.
+                    valuation_methodology=snapshot.valuation_methodology),
+            )
 
         return InvestmentCaseComposition(
             case_id=case_id_str,

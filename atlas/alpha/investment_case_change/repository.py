@@ -17,6 +17,29 @@ call it unconditionally after every `build()`/`build_many()` assembly
 own instruction names) without ever risking a duplicate row for
 analytically-unchanged state -- see this package's own `__init__.py`
 for the full rationale.
+
+**Snapshot Evidence Persistence.** A row also freezes the valuation
+evidence its conclusion was made from (`valuation_evidence_snapshot`),
+written from the same composition in the same insert, so a stored
+decision and the evidence beside it can never come from two moments.
+Three consequences follow, and each is deliberate:
+
+* *Frozen as of creation.* A later filing, a price refresh or a new
+  methodology never edits a written row -- they produce a new one, and
+  the old row keeps saying what Atlas actually had. Reading history
+  never consults the live database.
+* *Legacy rows have none.* A row written before this contract reads back
+  as `None`, which is the honest "never recorded" -- distinct from a
+  recorded evidence set whose prior list is genuinely empty. Nothing is
+  backfilled.
+* *Idempotency now spans evidence too.* `add` still absorbs a repeat of
+  analytically-unchanged state, but no longer when the evidence beneath
+  it has moved: a restated prior year, a newly available fiscal epoch or
+  a changed Valuation Support writes a row even though the conclusion
+  stands still, because absorbing it would leave the record asserting
+  the evidence never changed. A price tick still writes nothing -- the
+  evidence fingerprint excludes the current yield for exactly the reason
+  `content_hash` already does.
 """
 from __future__ import annotations
 
@@ -27,6 +50,11 @@ from typing import Any, Mapping
 from sqlalchemy import and_, asc, desc, insert, select
 from sqlalchemy.engine import Engine
 
+from atlas.alpha.investment_case.valuation_evidence_snapshot import (
+    ValuationEvidenceSnapshot,
+    deserialize_valuation_evidence,
+    serialize_valuation_evidence,
+)
 from atlas.analysis_engine.investment_case_change import (
     AnalyticalSnapshot,
     ChangeCategory,
@@ -132,7 +160,51 @@ class SqlAlchemyInvestmentCaseSnapshotRepository:
             previous_captured_at = snapshot.captured_at
         return tuple(results)
 
-    def add(self, case_id: str, snapshot: AnalyticalSnapshot, change_intelligence: ChangeIntelligence) -> bool:
+    def get_latest_valuation_evidence(self, case_id: str) -> ValuationEvidenceSnapshot | None:
+        """The frozen valuation evidence of the current head, or `None` when
+        the head predates this contract (or no head exists). Reads the stored
+        row only -- never the live composition."""
+        with self._engine.connect() as connection:
+            row = (
+                connection.execute(
+                    select(investment_case_snapshot_table)
+                    .where(_live(case_id))
+                    .order_by(desc(investment_case_snapshot_table.c.captured_at))
+                    .limit(1)
+                )
+                .mappings()
+                .first()
+            )
+        if row is None:
+            return None
+        return deserialize_valuation_evidence(json.loads(row["snapshot_json"]).get("valuation_evidence"))
+
+    def get_valuation_evidence_history(self, case_id: str) -> tuple[tuple[str, ValuationEvidenceSnapshot | None], ...]:
+        """Every live row's frozen valuation evidence, oldest first, paired
+        with the row's own `captured_at`. `None` for a row written before the
+        contract existed -- never today's evidence standing in for it.
+
+        Read-only and purely frozen: the stored JSON is the whole source, so
+        the answer to "what did Atlas have then" cannot drift as the live
+        database moves on.
+        """
+        with self._engine.connect() as connection:
+            rows = (
+                connection.execute(
+                    select(investment_case_snapshot_table)
+                    .where(_live(case_id))
+                    .order_by(asc(investment_case_snapshot_table.c.captured_at))
+                )
+                .mappings()
+                .all()
+            )
+        return tuple(
+            (row["captured_at"], deserialize_valuation_evidence(json.loads(row["snapshot_json"]).get("valuation_evidence")))
+            for row in rows
+        )
+
+    def add(self, case_id: str, snapshot: AnalyticalSnapshot, change_intelligence: ChangeIntelligence,
+            *, valuation_evidence: ValuationEvidenceSnapshot | None = None) -> bool:
         """Returns `True` when a new row was actually written, `False`
         when the current head already carries an identical
         `content_hash` (analytically unchanged -- "recomputed, not
@@ -148,15 +220,30 @@ class SqlAlchemyInvestmentCaseSnapshotRepository:
         it structurally, from "this is the oldest row for this Case")."""
         current_head = self.get_latest(case_id)
         if current_head is not None and current_head.content_hash == snapshot.content_hash:
-            return False
+            # (Snapshot Evidence Persistence) Analytically unchanged is no
+            # longer the whole question. The conclusion can stand still while
+            # the evidence under it moves -- a restated prior year, a newly
+            # available fiscal epoch, a denominator that became exact, a
+            # Valuation Support that resolved. Absorbing those would leave the
+            # record saying the evidence never changed, which is false. The
+            # fingerprint deliberately ignores the current yield, exactly as
+            # `content_hash` does, so a price tick still writes nothing.
+            head_evidence = self.get_latest_valuation_evidence(case_id)
+            unchanged = (head_evidence.fingerprint if head_evidence is not None else None)
+            incoming = (valuation_evidence.fingerprint if valuation_evidence is not None else None)
+            if unchanged == incoming:
+                return False
         with self._engine.begin() as connection:
             connection.execute(
-                insert(investment_case_snapshot_table).values(**_to_row(case_id, snapshot, change_intelligence))
+                insert(investment_case_snapshot_table).values(
+                    **_to_row(case_id, snapshot, change_intelligence, valuation_evidence)
+                )
             )
         return True
 
 
-def _to_row(case_id: str, snapshot: AnalyticalSnapshot, change_intelligence: ChangeIntelligence) -> dict[str, Any]:
+def _to_row(case_id: str, snapshot: AnalyticalSnapshot, change_intelligence: ChangeIntelligence,
+            valuation_evidence: "ValuationEvidenceSnapshot | None" = None) -> dict[str, Any]:
     captured_at = snapshot.captured_at.isoformat()
     return {
         "id": f"{case_id}:{captured_at}",
@@ -177,6 +264,10 @@ def _to_row(case_id: str, snapshot: AnalyticalSnapshot, change_intelligence: Cha
                 "atlas_thesis_posture": snapshot.atlas_thesis_posture,
                 "financial_risk_methodology": snapshot.financial_risk_methodology,
                 "valuation_methodology": snapshot.valuation_methodology,
+                # Absent, not null, on a row written before this contract --
+                # `_to_snapshot`'s `.get` keeps that distinction honest.
+                **({} if valuation_evidence is None
+                   else {"valuation_evidence": serialize_valuation_evidence(valuation_evidence)}),
             },
             sort_keys=True,
         ),
