@@ -80,6 +80,15 @@ canonical_security_identifiers_table = Table(
     Column("identifier_type", String, nullable=False),
     Column("value", String, nullable=False),
     Column("recorded_at", String, nullable=False),
+    # Provenance. An identifier with no answer to "who said so, and what
+    # were they asked?" cannot be re-argued later, and an identity claim
+    # that cannot be re-argued is one that has to be trusted blindly.
+    # Nullable because rows written before this existed genuinely have no
+    # provenance, and inventing one would be worse than admitting it.
+    Column("provider", String, nullable=True),
+    Column("query_type", String, nullable=True),
+    Column("query_value", String, nullable=True),
+    Column("observed_at", String, nullable=True),
 )
 
 

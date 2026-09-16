@@ -210,8 +210,18 @@ def validate_resolution_status(value: str) -> ResolutionStatus:
 #: `CANONICAL` status (see `models.py`'s aggregate invariants). CIK is
 #: included here too, scoped explicitly to SEC-registered filers only
 #: (Sprint J Phase 5: never treated as sufficient for a non-US company).
-IdentifierType = Literal["ISIN", "FIGI", "CUSIP", "SEDOL", "CIK"]
-_IDENTIFIER_TYPES: frozenset[str] = frozenset({"ISIN", "FIGI", "CUSIP", "SEDOL", "CIK"})
+#: `FIGI` is one listing on one venue; `COMPOSITE_FIGI` groups the listings
+#: that trade as one composite, roughly per country; `SHARE_CLASS_FIGI` is
+#: the share class itself and is identical worldwide. They are separate
+#: types rather than one "FIGI" because conflating them silently changes
+#: what a match means: measured live, Volvo B's ISIN returns 209 distinct
+#: venue FIGIs and 80 distinct composites, but exactly one share class.
+IdentifierType = Literal[
+    "ISIN", "FIGI", "COMPOSITE_FIGI", "SHARE_CLASS_FIGI", "CUSIP", "SEDOL", "CIK"
+]
+_IDENTIFIER_TYPES: frozenset[str] = frozenset(
+    {"ISIN", "FIGI", "COMPOSITE_FIGI", "SHARE_CLASS_FIGI", "CUSIP", "SEDOL", "CIK"}
+)
 
 
 def validate_identifier_type(value: str) -> IdentifierType:

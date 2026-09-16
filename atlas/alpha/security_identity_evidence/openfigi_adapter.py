@@ -64,12 +64,35 @@ class OpenFigiProviderUnavailable(Exception):
 
 @dataclass(frozen=True)
 class OpenFigiMatch:
+    """One venue-level listing as OpenFIGI describes it.
+
+    Three FIGIs, three different things, and conflating them is the error
+    this dataclass exists to make impossible (all values below observed
+    live, 2026-09-16):
+
+    * `figi` -- this exact listing. Volvo B on Stockholm is BBG000BCH2F1;
+      the same share on Frankfurt is a different FIGI.
+    * `composite_figi` -- the listings that trade as one composite, which
+      is roughly per country.
+    * `share_class_figi` -- the share class itself, identical across every
+      venue in the world. Volvo B is BBG001S69SV8 whether you look at it
+      from Stockholm, Frankfurt or anywhere else.
+
+    That last one is why an ISIN is usable at all here. An ISIN maps to
+    *hundreds* of listings -- 209 for Volvo B -- so picking "the" FIGI from
+    an ISIN is not possible. But every one of those 209 carries the same
+    `share_class_figi`, so the share class resolves unambiguously even when
+    the venue does not.
+    """
+
     figi: str
     ticker: str | None
     name: str | None
     exch_code: str | None
     security_type: str | None
     market_sector: str | None
+    composite_figi: str | None = None
+    share_class_figi: str | None = None
 
 
 @dataclass(frozen=True)
@@ -131,7 +154,11 @@ def map_ticker(
     if not isinstance(raw_matches, list):
         raise OpenFigiProviderUnavailable("OpenFIGI returned an unexpected response shape")
 
-    matches = tuple(
+    return OpenFigiMappingResult(matches=_matches_from(raw_matches))
+
+
+def _matches_from(raw_matches: list[Any]) -> tuple[OpenFigiMatch, ...]:
+    return tuple(
         OpenFigiMatch(
             figi=row["figi"],
             ticker=row.get("ticker"),
@@ -139,8 +166,44 @@ def map_ticker(
             exch_code=row.get("exchCode"),
             security_type=row.get("securityType"),
             market_sector=row.get("marketSector"),
+            composite_figi=row.get("compositeFIGI"),
+            share_class_figi=row.get("shareClassFIGI"),
         )
         for row in raw_matches
         if isinstance(row, dict) and isinstance(row.get("figi"), str)
     )
-    return OpenFigiMappingResult(matches=matches)
+
+
+def _map(job: dict[str, Any], post_json_fn: JsonPoster | None) -> OpenFigiMappingResult:
+    post_json = post_json_fn or _post_json
+    headers = {"Content-Type": "application/json"}
+    key = _api_key()
+    if key:
+        headers["X-OPENFIGI-APIKEY"] = key
+
+    payload = post_json(_MAPPING_URL, [job], headers)
+    if not isinstance(payload, list) or not payload:
+        raise OpenFigiProviderUnavailable("OpenFIGI returned an unexpected response shape")
+    entry = payload[0]
+    if not isinstance(entry, dict):
+        raise OpenFigiProviderUnavailable("OpenFIGI returned an unexpected response shape")
+    if "warning" in entry:
+        return OpenFigiMappingResult(matches=())
+    raw_matches = entry.get("data")
+    if not isinstance(raw_matches, list):
+        raise OpenFigiProviderUnavailable("OpenFIGI returned an unexpected response shape")
+    return OpenFigiMappingResult(matches=_matches_from(raw_matches))
+
+
+def map_isin(isin: str, *, post_json_fn: JsonPoster | None = None) -> OpenFigiMappingResult:
+    """Every listing of the security an ISIN names.
+
+    Expect many: an ISIN is a share class, and a share class trades in a
+    lot of places. The caller is not meant to choose one -- it is meant to
+    read `share_class_figi`, which is the same across all of them. Treating
+    a multi-match response here as ambiguity would reject every real ISIN.
+
+    An unknown ISIN comes back as an ordinary empty result, exactly like an
+    unknown ticker: the provider says so with a `warning`, not an error.
+    """
+    return _map({"idType": "ID_ISIN", "idValue": isin}, post_json_fn)

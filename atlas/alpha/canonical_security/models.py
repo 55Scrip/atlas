@@ -113,6 +113,13 @@ class SecurityIdentifier:
     identifier_type: IdentifierType
     value: str
     recorded_at: datetime
+    #: Who said so, and what were they asked. Optional so every row written
+    #: before provenance existed stays valid and honest about not having it
+    #: -- backfilling a plausible-looking source would defeat the point.
+    provider: str | None = None
+    query_type: str | None = None
+    query_value: str | None = None
+    observed_at: datetime | None = None
 
 
 @dataclass(frozen=True)

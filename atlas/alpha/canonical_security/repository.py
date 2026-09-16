@@ -395,6 +395,10 @@ def _identifier_to_row(security_id: str, identifier: SecurityIdentifier) -> dict
         "identifier_type": identifier.identifier_type,
         "value": identifier.value,
         "recorded_at": identifier.recorded_at.isoformat(),
+        "provider": identifier.provider,
+        "query_type": identifier.query_type,
+        "query_value": identifier.query_value,
+        "observed_at": identifier.observed_at.isoformat() if identifier.observed_at else None,
     }
 
 
@@ -449,6 +453,12 @@ def _row_to_security(
                 identifier_type=row["identifier_type"],
                 value=row["value"],
                 recorded_at=datetime.fromisoformat(row["recorded_at"]),
+                provider=row["provider"],
+                query_type=row["query_type"],
+                query_value=row["query_value"],
+                observed_at=(
+                    datetime.fromisoformat(row["observed_at"]) if row["observed_at"] else None
+                ),
             )
             for row in identifier_rows
         ),
