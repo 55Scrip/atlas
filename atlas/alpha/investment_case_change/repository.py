@@ -146,19 +146,31 @@ class SqlAlchemyInvestmentCaseSnapshotRepository:
                 .mappings()
                 .all()
             )
-        results: list[tuple[AnalyticalSnapshot, ChangeIntelligence]] = []
-        previous_captured_at = None
-        for row in rows:
-            snapshot = _to_snapshot(row)
-            if previous_captured_at is None:
-                change_intelligence = compare_snapshots(None, snapshot)
-            else:
-                change_intelligence = _to_change_intelligence(
-                    row, previous_captured_at=previous_captured_at, current_captured_at=snapshot.captured_at
+        return tuple((snapshot, transition) for snapshot, transition, _ in _replay(rows))
+
+    def get_history_with_evidence(
+        self, case_id: str
+    ) -> tuple[tuple[AnalyticalSnapshot, ChangeIntelligence, ValuationEvidenceSnapshot | None], ...]:
+        """`get_history`, with each row's own frozen valuation evidence beside
+        it -- read from the very same row, in the same single query, so the
+        evidence can neither cost an extra round trip per snapshot nor come
+        from a different row than the snapshot it is shown with.
+
+        `None` for a row written before the evidence contract existed. That
+        is the honest "never recorded"; it is never today's evidence standing
+        in for a snapshot that has none.
+        """
+        with self._engine.connect() as connection:
+            rows = (
+                connection.execute(
+                    select(investment_case_snapshot_table)
+                    .where(_live(case_id))
+                    .order_by(asc(investment_case_snapshot_table.c.captured_at))
                 )
-            results.append((snapshot, change_intelligence))
-            previous_captured_at = snapshot.captured_at
-        return tuple(results)
+                .mappings()
+                .all()
+            )
+        return _replay(rows)
 
     def get_latest_valuation_evidence(self, case_id: str) -> ValuationEvidenceSnapshot | None:
         """The frozen valuation evidence of the current head, or `None` when
@@ -240,6 +252,28 @@ class SqlAlchemyInvestmentCaseSnapshotRepository:
                 )
             )
         return True
+
+
+def _replay(rows) -> tuple[tuple[AnalyticalSnapshot, ChangeIntelligence, ValuationEvidenceSnapshot | None], ...]:
+    """One Case's stored rows, oldest first, each turned into the snapshot it
+    holds, the transition it recorded, and the evidence it froze. Purely a
+    projection of the rows handed in: no query, no recomputation against live
+    state (the first row's baseline is the constant baseline constructor, not
+    a comparison), and no row is added, dropped or reordered."""
+    results = []
+    previous_captured_at = None
+    for row in rows:
+        snapshot = _to_snapshot(row)
+        if previous_captured_at is None:
+            transition = compare_snapshots(None, snapshot)
+        else:
+            transition = _to_change_intelligence(
+                row, previous_captured_at=previous_captured_at, current_captured_at=snapshot.captured_at
+            )
+        evidence = deserialize_valuation_evidence(json.loads(row["snapshot_json"]).get("valuation_evidence"))
+        results.append((snapshot, transition, evidence))
+        previous_captured_at = snapshot.captured_at
+    return tuple(results)
 
 
 def _to_row(case_id: str, snapshot: AnalyticalSnapshot, change_intelligence: ChangeIntelligence,

@@ -14,9 +14,26 @@ categorical `ThesisImpact`). This package's own name
 naming) is chosen specifically to avoid the collision the word "history"
 alone would invite.
 
+**Frozen, not refreshed.** A history entry shows the evidence persisted
+with that snapshot (`valuation_evidence_snapshot`), read from the same row
+as the snapshot itself. Current prices, current filings and the current
+Case are never consulted for its content: a later filing or a new method
+changes what Atlas says now, never what a stored entry reports it had
+then. Snapshots taken before evidence persistence existed carry none, and
+that absence is reported as an absence -- never reconstructed from today's
+data, which would be a fabricated history.
+
+**The Core/Alpha boundary is kept at the join.** `AnalyticalHistory` and
+`HistoricalAnalysisEntry` are Core contracts that know nothing about how
+Atlas persists evidence; hanging an Alpha persistence type on them would
+invert the dependency the architecture tests police. So Core computes and
+orders the history, `AnalyticalHistoryWithEvidence` carries the frozen
+evidence beside it, and the API schema joins the two by snapshot identity
+-- the same `snapshotId` a client sees, never by ticker.
+
 **Read-only, by construction.** `InvestmentCaseHistoryService
 .build_analytical_history` calls only `SqlAlchemyInvestmentCaseSnapshotRepository
-.get_history` -- never `.add`, never
+.get_history_with_evidence` -- never `.add`, never
 `InvestmentCaseCompositionService.build`/`build_many` (which *would*
 have the side effect of persisting a new snapshot). Opening History can
 never create analytical state; it can only read what already exists.
