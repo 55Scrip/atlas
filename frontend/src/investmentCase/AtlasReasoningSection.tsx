@@ -153,6 +153,15 @@ export interface AtlasReasoningInput {
   valuationStatus: AnalysisValuationStatus;
   valuationFacts: ReasoningFacts;
   valuationEvidence?: ReasoningValuationEvidence | null;
+  /** (Valuation Evidence Communication) Already-phrased context about the
+   * evidence the valuation rests on -- minimum history depth, a cash-flow
+   * year outside its own recent range, a boundary nearer than this
+   * company's typical move, a share basis that is not exactly reported.
+   * Derived in `valuationEvidenceMetadata.ts` and empty for a Case with
+   * nothing worth saying, which is the ordinary case. It explains the
+   * status beside it and never changes it: the badge, the tone and the
+   * interpretation above are computed exactly as before. */
+  valuationCaveats?: string[] | undefined;
   financialHealthStatus: AnalysisRiskStatus;
   financialHealthFacts: ReasoningFacts;
   businessQualityStatus: AnalysisBusinessStatus;
@@ -164,6 +173,7 @@ function ReasoningCard({
   statusLabel,
   tone,
   interpretation,
+  caveats,
   facts,
   t,
 }: {
@@ -171,6 +181,7 @@ function ReasoningCard({
   statusLabel: string;
   tone: "positive" | "caution" | "critical" | "neutral";
   interpretation: string;
+  caveats?: string[] | undefined;
   facts: ReasoningFacts;
   t: Translate;
 }) {
@@ -198,6 +209,21 @@ function ReasoningCard({
           <StatusBadge label={statusLabel} tone={tone} />
         </Inline>
         <Text as="p">{interpretation}</Text>
+        {/* (Valuation Evidence Communication) What the conclusion above
+            rests on, when -- and only when -- the evidence makes it worth
+            saying. Rendered secondary and beneath the interpretation, so
+            the 30-second read is still the status and its one sentence;
+            a Case with deep history, an ordinary cash-flow year and an
+            exact share basis renders nothing here at all. */}
+        {caveats !== undefined && caveats.length > 0 && (
+          <Stack gap="metadata">
+            {caveats.map((caveat) => (
+              <Text color="secondary" as="p" key={caveat}>
+                {caveat}
+              </Text>
+            ))}
+          </Stack>
+        )}
         {/* Calibration Phase 2 (Investment Case Coherence
             Implementation), Phase 11: raw datapoint sentences ("Free
             cash flow was 66,987,000,000 USD for the period ending
@@ -270,6 +296,7 @@ export function AtlasReasoningSection({ input, t }: { input: AtlasReasoningInput
           }
           tone={VALUATION_STATUS_TONE[input.valuationStatus]}
           interpretation={valuationInterpretation(input.valuationStatus, input.valuationEvidence, t)}
+          caveats={input.valuationCaveats}
           facts={input.valuationFacts}
           t={t}
         />

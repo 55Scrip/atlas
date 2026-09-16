@@ -24,6 +24,7 @@ from atlas.alpha.investment_case.growth_intelligence import GrowthKnowledge, ext
 from atlas.alpha.investment_case.financial_statement_intelligence import FinancialStatementHistory, SegmentInformation
 from atlas.alpha.investment_case.historical_market_cap import HistoricalMarketCapEvidence
 from atlas.alpha.investment_case.historical_valuation import HistoricalValuationKnowledge
+from atlas.alpha.investment_case.valuation_evidence_metadata import ValuationEvidenceMetadata
 from atlas.alpha.investment_case.incentive_intelligence import IncentiveKnowledge, extract_incentive_intelligence
 from atlas.alpha.investment_case.insider_alignment_intelligence import (
     InsiderAlignmentKnowledge,
@@ -154,6 +155,13 @@ class InvestmentCaseComposition:
     """(Automatic Knowledge Ingestion Framework, Foundation Provider)
     Every ingested `COMPANY_FILING` record, newest first. Empty, never
     fabricated, when no such record has been ingested yet."""
+    valuation_evidence_metadata: ValuationEvidenceMetadata | None = None
+    """(Valuation Evidence Communication) What the FCF-yield comparison
+    rests on, described -- depth, span, boundary distance, today's cash
+    flow beside the prior years', capital intensity, denominator
+    treatment. Descriptive only: no decision, finding or gate reads it
+    (see `valuation_evidence_metadata.py`). `None` when the valuation
+    formed no evidence at all."""
     historical_valuation: HistoricalValuationKnowledge = field(default_factory=lambda: HistoricalValuationKnowledge(metrics=()))
     """(Capability Expansion Sprint 1: Historical Valuation Intelligence)
     Structured knowledge, never an opinion -- see `historical_valuation

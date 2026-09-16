@@ -966,10 +966,10 @@ describe("thin valuation history says so, and never reads as a conclusion", () =
 });
 
 describe("deep history stays quiet and says what it rests on", () => {
-  it("GOOGL: expensive against ten fiscal years, with the share-count proxy named once", () => {
+  it("GOOGL: expensive against ten fiscal years, with the share basis named once", () => {
     const rendered = lines(decision("GOOGL", "hold"));
     expect(rendered).toContain(
-      "Högt värderad: dagens FCF-avkastning (3,6 %) är lägre än under alla 10 tidigare räkenskapsår i bolagets egen historik (median 8,0 %) — ingen jämförelse med konkurrenter. Tidigare marknadsvärden bygger på dagens antal aktier.",
+      "Högt värderad: dagens FCF-avkastning (3,6 %) är lägre än under alla 10 tidigare räkenskapsår i bolagets egen historik (median 8,0 %) — ingen jämförelse med konkurrenter. Tidigare marknadsvärden bygger på varje periods egen aktiebas, inte dagens.",
     );
     expect(rendered.join("\n")).not.toMatch(/Begränsat värderingsunderlag|Värderingshistorik saknas/);
   });
@@ -1000,7 +1000,7 @@ describe("wording, in English, through the real dictionary", () => {
 
   it("counts fiscal years, not observations, when the row says it may", () => {
     expect(valuationBasisLabel(fixture("GOOGL").signalSummary, T, "en-US")).toBe(
-      "Expensive: today's FCF yield (3.6%) is lower than in all 10 earlier fiscal years of the company's own history (median 8.0%) — not a comparison with peers. Earlier market values use today's share count.",
+      "Expensive: today's FCF yield (3.6%) is lower than in all 10 earlier fiscal years of the company's own history (median 8.0%) — not a comparison with peers. Earlier market values use each period's own share basis, not today's.",
     );
   });
 });
@@ -1010,7 +1010,7 @@ describe("rows stored before eligibility existed keep their own meaning", () => 
     const legacy = withoutEligibility("GOOGL");
     const basis = valuationBasisLabel(legacy.signalSummary, T, "en-US") ?? "";
     expect(basis).toMatch(/earlier observations/);
-    expect(basis).not.toMatch(/share count/);
+    expect(basis).not.toMatch(/share basis/);
     expect(valuationEvidenceLabel(withoutEligibility("SHOP").signalSummary, T, "en-US")).toBeNull();
   });
 });

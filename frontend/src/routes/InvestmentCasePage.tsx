@@ -155,6 +155,13 @@ import {
   type AtlasReasoningInput,
   type ReasoningFacts,
 } from "../investmentCase/AtlasReasoningSection";
+import {
+  MAX_CARD_CAVEATS,
+  shareBasisKey,
+  valuationEvidenceCaveats,
+  valuationEvidenceDetails,
+  type ValuationEvidenceMetadataView,
+} from "../investmentCase/valuationEvidenceMetadata";
 import { CompanyHealthAssessmentSection, type CompanyHealthCardInput } from "../investmentCase/CompanyHealthAssessmentSection";
 import { InterpretedFinancialEvidenceSection } from "../investmentCase/InterpretedFinancialEvidenceSection";
 import { WhatChangedSection } from "../investmentCase/WhatChangedSection";
@@ -959,6 +966,15 @@ interface InvestmentCaseAnalysisView {
    * renders it only through the safe presentation labels in
    * `status/statusTone.ts`, never verbatim. */
   valuationSupport: { status: string; gap: string | null };
+  /** (Valuation Evidence Communication) Descriptive evidence about the
+   * FCF-yield comparison -- history depth and span, distance to a
+   * different classification, this period's free cash flow and capital
+   * intensity against the prior years', and the share basis each epoch
+   * was priced on. `null` for a Case with no fiscal-year comparison.
+   * Explanation only: no status, recommendation, risk, fit or conviction
+   * on this page is derived from it (see the backend module's docstring).
+   */
+  valuationEvidenceMetadata: ValuationEvidenceMetadataView | null;
   risk: { state: string; findings: RiskFindingView[] };
   riskProjection: RiskProjectionView;
   evidenceQuality: EvidenceQualityView | null;
@@ -3942,7 +3958,7 @@ export function InvestmentCasePage() {
                       <Divider tone="hairline" />
                       <RiskSection analysis={investmentCaseAnalysis.report} t={t} />
                       <Divider tone="hairline" />
-                      <ValuationDetailSection analysis={investmentCaseAnalysis.report} t={t} />
+                      <ValuationDetailSection analysis={investmentCaseAnalysis.report} t={t} locale={locale} />
                       {linkedHolding && (
                         <>
                           <Divider tone="hairline" />
@@ -5800,6 +5816,7 @@ function InvestmentCaseCanonicalSections({
           hasCurrentYield: fcfYield.currentYield != null,
         }
       : null,
+    valuationCaveats: valuationEvidenceCaveats(analysis.valuationEvidenceMetadata, t).slice(0, MAX_CARD_CAVEATS),
     financialHealthStatus: financialRisk?.status ?? "not_evaluated",
     financialHealthFacts: {
       supporting: financialRisk?.supportingFacts ?? [],
@@ -6384,9 +6401,29 @@ function PortfolioContextDetail({
  * structure. FCF Yield named explicitly; the three scenario methods
  * shown honestly as not yet available, never fabricated bear/base/bull
  * assumptions. */
-function ValuationDetailSection({ analysis, t }: { analysis: InvestmentCaseAnalysisView; t: Translate }) {
+function ValuationDetailSection({
+  analysis,
+  t,
+  locale,
+}: {
+  analysis: InvestmentCaseAnalysisView;
+  t: Translate;
+  locale: string;
+}) {
   const fcfYield = analysis.valuation.findings.find((f) => f.kind === "fcf_yield_relative");
   const scenarioFindings = analysis.valuation.findings.filter((f) => f.kind !== "fcf_yield_relative");
+  /* (Valuation Evidence Communication) The share basis is named from the
+   * treatments the engine recorded per epoch, never asserted: `null` when
+   * no epoch carries one, so the sentence is simply absent rather than
+   * wrong. `evidenceDetails` is this disclosure's fuller read of the same
+   * metadata -- every caveat (the compact card above shows only the first
+   * few), then the figures behind them. */
+  const metadata = analysis.valuationEvidenceMetadata;
+  const basisKey = metadata === null ? null : shareBasisKey(metadata.denominator);
+  const evidenceDetails = [
+    ...valuationEvidenceCaveats(metadata, t),
+    ...valuationEvidenceDetails(metadata, t, locale),
+  ];
 
   return (
     <Stack gap="metadata">
@@ -6403,8 +6440,12 @@ function ValuationDetailSection({ analysis, t }: { analysis: InvestmentCaseAnaly
             </Text>
           )}
           {/* Valuation Observation Integrity: how deep the fiscal-year
-              history is, and the one methodological limit of comparing
-              with the past. Detail-level, so the headline stays quiet. */}
+              history is, and the share basis that comparison rests on.
+              Detail-level, so the headline stays quiet. The basis
+              sentence is no longer a fixed claim: under `fiscal_epoch_v3`
+              every epoch is priced on its own share basis, and which
+              treatment that was -- exactly reported, filed-equivalent or
+              a bounded interval -- comes from the evidence itself. */}
           {fcfYield.evidence && fcfYield.currentYield != null && fcfYield.evidence.priorEpochCount > 0 && (
             <Text color="secondary" as="p">
               {fcfYield.evidence.eligibility === "eligible"
@@ -6416,10 +6457,23 @@ function ValuationDetailSection({ analysis, t }: { analysis: InvestmentCaseAnaly
                 : t("investmentCase.analysis.valuation.historyLimited", {
                     count: fcfYield.evidence.priorEpochCount,
                     minimum: fcfYield.evidence.minimumPriorEpochs,
-                  })}{" "}
-              {t("investmentCase.analysis.valuation.shareCountProxy")}
+                  })}
+              {basisKey !== null && ` ${t(basisKey)}`}
             </Text>
           )}
+          {/* Everything the evidence supports, for a reader who wants it:
+              every caveat (the compact reasoning card above shows only
+              the first few) followed by the figures behind them -- the
+              prior-year yield range, how far today's yield is from
+              classifying differently, and how this period's cash flow
+              and capital intensity compare with the years it was
+              compared against. Each line appears only where the
+              statements carry the figures; nothing is imputed. */}
+          {evidenceDetails.map((line) => (
+            <Text color="secondary" as="p" key={line}>
+              {line}
+            </Text>
+          ))}
           {/* Product Sprint 13 (Company Intelligence Excellence):
               see `isReadableFact`'s own doc comment -- this field
               sometimes holds raw, unresolved evidence-reference ids.

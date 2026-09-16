@@ -104,6 +104,7 @@ from atlas.alpha.investment_case.historical_market_cap import (
     HistoricalMarketCapEpoch,
     HistoricalMarketCapEvidence,
 )
+from atlas.alpha.investment_case.valuation_evidence_metadata import ValuationEvidenceMetadata
 from atlas.alpha.investment_case.historical_valuation import (
     HistoricalValuationKnowledge,
     ValuationDeviation,
@@ -937,6 +938,122 @@ class ValuationMetricHistoryView(CamelModel):
             coverage_period_end=metric.coverage_period_end,
             missing_periods=list(metric.missing_periods),
             data_quality=metric.data_quality.value,
+        )
+
+
+class ValuationHistoryEvidenceView(CamelModel):
+    valid_prior_count: int
+    minimum_prior_count: int
+    at_minimum_depth: bool
+    span_years: float | None
+    first_prior_fiscal_period: str | None
+    latest_prior_fiscal_period: str | None
+    missing_fiscal_years: list[int]
+    yield_minimum: float | None
+    yield_median: float | None
+    yield_maximum: float | None
+    yield_dispersion: float | None
+    typical_year_over_year_move: float | None
+
+
+class ValuationBoundaryEvidenceView(CamelModel):
+    current_yield: float | None
+    nearest_classification: str | None
+    boundary_yield: float | None
+    distance: float | None
+    distance_percent: float | None
+    closer_than_typical_move: bool | None
+
+
+class CurrentCashFlowEvidenceView(CamelModel):
+    current_free_cash_flow: float | None
+    prior_year_free_cash_flow: float | None
+    recent_median_free_cash_flow: float | None
+    historical_median_free_cash_flow: float | None
+    recent_years_compared: int
+    versus_prior_year: float | None
+    versus_recent_median: float | None
+    versus_historical_median: float | None
+    recent_range: list[float] | None
+    position_versus_recent: str | None
+
+
+class CapitalIntensityEvidenceView(CamelModel):
+    current_capital_expenditure: float | None
+    current_revenue: float | None
+    current_intensity: float | None
+    prior_intensity_minimum: float | None
+    prior_intensity_median: float | None
+    prior_intensity_maximum: float | None
+    prior_years_compared: int
+    versus_prior_median: float | None
+    position_versus_prior_range: str | None
+    current_operating_cash_flow: float | None
+    operating_cash_flow_versus_prior_year: float | None
+    capital_expenditure_versus_prior_year: float | None
+
+
+class DenominatorEvidenceView(CamelModel):
+    current_treatment: str | None
+    prior_treatments: list[str]
+    all_exact: bool
+
+
+class ValuationEvidenceMetadataView(CamelModel):
+    """(Valuation Evidence Communication) What the FCF-yield comparison
+    rests on: how deep and wide its history is, how near today's yield is
+    to classifying differently, how today's free cash flow and capital
+    intensity compare with the prior years', and which denominator each
+    epoch was priced on. Descriptive: every field here is evidence about
+    the conclusion, never part of it -- no decision, finding, risk or gate
+    reads this model (`valuation_evidence_metadata.py`)."""
+
+    history: ValuationHistoryEvidenceView
+    boundary: ValuationBoundaryEvidenceView
+    current_cash_flow: CurrentCashFlowEvidenceView
+    capital_intensity: CapitalIntensityEvidenceView
+    denominator: DenominatorEvidenceView
+
+    @classmethod
+    def from_domain(cls, metadata: ValuationEvidenceMetadata | None) -> "ValuationEvidenceMetadataView | None":
+        if metadata is None:
+            return None
+        history, boundary = metadata.history, metadata.boundary
+        cash_flow, capital = metadata.current_cash_flow, metadata.capital_intensity
+        return cls(
+            history=ValuationHistoryEvidenceView(
+                **{f: getattr(history, f) for f in
+                   ("valid_prior_count", "minimum_prior_count", "at_minimum_depth", "span_years",
+                    "first_prior_fiscal_period", "latest_prior_fiscal_period", "yield_minimum", "yield_median",
+                    "yield_maximum", "yield_dispersion", "typical_year_over_year_move")},
+                missing_fiscal_years=list(history.missing_fiscal_years),
+            ),
+            boundary=ValuationBoundaryEvidenceView(
+                **{f: getattr(boundary, f) for f in
+                   ("current_yield", "nearest_classification", "boundary_yield", "distance", "distance_percent",
+                    "closer_than_typical_move")}),
+            current_cash_flow=CurrentCashFlowEvidenceView(
+                **{f: getattr(cash_flow, f) for f in
+                   ("current_free_cash_flow", "prior_year_free_cash_flow", "recent_median_free_cash_flow",
+                    "historical_median_free_cash_flow", "recent_years_compared", "versus_prior_year",
+                    "versus_recent_median", "versus_historical_median")},
+                recent_range=list(cash_flow.recent_range) if cash_flow.recent_range is not None else None,
+                position_versus_recent=cash_flow.position_versus_recent.value if cash_flow.position_versus_recent else None,
+            ),
+            capital_intensity=CapitalIntensityEvidenceView(
+                **{f: getattr(capital, f) for f in
+                   ("current_capital_expenditure", "current_revenue", "current_intensity", "prior_intensity_minimum",
+                    "prior_intensity_median", "prior_intensity_maximum", "prior_years_compared", "versus_prior_median",
+                    "current_operating_cash_flow", "operating_cash_flow_versus_prior_year",
+                    "capital_expenditure_versus_prior_year")},
+                position_versus_prior_range=(capital.position_versus_prior_range.value
+                                             if capital.position_versus_prior_range else None),
+            ),
+            denominator=DenominatorEvidenceView(
+                current_treatment=metadata.denominator.current_treatment,
+                prior_treatments=list(metadata.denominator.prior_treatments),
+                all_exact=metadata.denominator.all_exact,
+            ),
         )
 
 
@@ -3735,6 +3852,7 @@ class InvestmentCaseAnalysisView(CamelModel):
     market_snapshot: MarketSnapshotView | None
     regulatory_filings: list[RegulatoryFilingView]
     historical_valuation: HistoricalValuationView
+    valuation_evidence_metadata: ValuationEvidenceMetadataView | None = None
     historical_market_cap: HistoricalMarketCapView | None = None
     earnings_call: EarningsCallView
     financial_statement_intelligence: FinancialStatementIntelligenceView
@@ -3976,6 +4094,7 @@ class InvestmentCaseAnalysisView(CamelModel):
             ),
             regulatory_filings=[RegulatoryFilingView.from_domain(f) for f in composition.regulatory_filings],
             historical_valuation=HistoricalValuationView.from_domain(composition.historical_valuation),
+            valuation_evidence_metadata=ValuationEvidenceMetadataView.from_domain(composition.valuation_evidence_metadata),
             historical_market_cap=(
                 HistoricalMarketCapView.from_domain(composition.historical_market_cap)
                 if composition.historical_market_cap is not None else None

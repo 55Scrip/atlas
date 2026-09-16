@@ -346,9 +346,13 @@ function formatYield(value: number, locale: string): string {
  * absent.
  *
  * A row carrying `evidenceEligibility` counts fiscal years and says so,
- * with the one methodological limit that matters for a comparison with
- * the past: earlier market values use today's share count. A row stored
- * before that counted market observations and keeps its original wording.
+ * with the share basis that comparison rests on: under `fiscal_epoch_v3`
+ * each earlier market value is priced on that period's own share basis,
+ * never on today's count. How exact that basis is varies by period and is
+ * not knowable from the signal summary, so this line stays at the level
+ * the row can prove; the Investment Case names the treatment from
+ * `valuationEvidenceMetadata.denominator`. A row stored before fiscal-year
+ * evidence counted market observations and keeps its original wording.
  */
 export function valuationBasisLabel(
   signalSummary: SignalContributionView[] | undefined,
@@ -376,7 +380,7 @@ export function valuationBasisLabel(
         : null;
   if (body === null) return null;
   const line = `${t(REASON_KIND_KEY.valuation_expensive)}: ${body}`;
-  return byFiscalYear ? `${line} ${t("investmentReasoning.valuationBasis.shareCountProxy")}` : line;
+  return byFiscalYear ? `${line} ${t("investmentReasoning.valuationBasis.shareBasis")}` : line;
 }
 
 /**

@@ -29,6 +29,7 @@ from atlas.alpha.investment_case.growth_intelligence import extract_growth_knowl
 from atlas.alpha.investment_case.financial_statement_intelligence import extract_financial_statement_history
 from atlas.alpha.investment_case.historical_market_cap import reconstruct_historical_market_caps
 from atlas.alpha.investment_case.historical_valuation import extract_historical_valuation
+from atlas.alpha.investment_case.valuation_evidence_metadata import describe_valuation_evidence
 from atlas.alpha.investment_case.management_credibility_intelligence import extract_management_credibility
 from atlas.alpha.investment_case.management_guidance_intelligence import extract_management_guidance
 from atlas.alpha.investment_case.regulatory_filings import extract_regulatory_filings
@@ -286,6 +287,10 @@ class InvestmentCaseCompositionService:
         historical_valuation = extract_historical_valuation(fcf_yield_finding, market_facts)
         earnings_call = extract_earnings_call_knowledge(business_records)
         financial_statement_intelligence = extract_financial_statement_history(business_records)
+        # Descriptive only (see `valuation_evidence_metadata.py`): how deep the
+        # history is, how near the classification boundary, how today's cash
+        # flow and capital intensity compare. No decision reads it.
+        valuation_evidence_metadata = describe_valuation_evidence(fcf_yield_finding, financial_statement_intelligence)
         financial_quality_intelligence = extract_financial_quality(financial_statement_intelligence)
         growth_intelligence = extract_growth_knowledge(financial_statement_intelligence)
         capital_allocation_intelligence = extract_capital_allocation_history(business_records)
@@ -378,6 +383,7 @@ class InvestmentCaseCompositionService:
             market_facts=market_facts,
             regulatory_filings=regulatory_filings,
             historical_valuation=historical_valuation,
+            valuation_evidence_metadata=valuation_evidence_metadata,
             historical_market_cap=historical_market_cap,
             earnings_call=earnings_call,
             financial_statement_intelligence=financial_statement_intelligence,
