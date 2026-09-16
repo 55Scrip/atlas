@@ -61,10 +61,17 @@ def test_an_unknown_venue_is_not_evidence_of_an_uncovered_one() -> None:
 def test_identity_is_still_asked_about_first() -> None:
     """A holding Atlas cannot name stays unresolved however uncovered its
     venue might be -- naming the venue of a security you cannot identify
-    is the guess this module exists to refuse."""
+    is the guess this module exists to refuse.
+
+    Both cases below are ones where identity is genuinely absent: no
+    ticker at all, or a failed resolution with nothing since to replace
+    it. A failed resolution that *has* been replaced -- by a profile or by
+    a security master entry -- is a different case, covered below.
+    """
     assert coverage(ticker=None) is CoverageStatus.IDENTITY_UNRESOLVED
     assert coverage(resolution_was_no_match=True, has_company_profile=False,
-                    has_market_snapshot=False) is CoverageStatus.IDENTITY_UNRESOLVED
+                    has_market_snapshot=False,
+                    listing_mics=None) is CoverageStatus.IDENTITY_UNRESOLVED
 
 
 def test_real_statements_outrank_the_venue_table() -> None:
@@ -81,3 +88,27 @@ def test_the_existing_states_are_unchanged_without_the_new_input() -> None:
         ticker="MSFT", resolution_was_no_match=False, has_company_profile=True,
         has_market_snapshot=True, financial_statement_count=0, analysis_is_withheld=True)
     assert before is CoverageStatus.EVIDENCE_PENDING
+
+
+# --- A stale NO_MATCH must not outlive the evidence that beat it -------
+
+
+def test_a_security_master_entry_overrides_a_stale_no_match() -> None:
+    """Those NO_MATCH records were written by ticker-based attempts that
+    failed for want of an identifier the import did not keep. Once a
+    holding has been resolved to a security with a known venue, "no source
+    recognised this symbol" is the answer to an older, weaker question --
+    and leaving it in charge would mean a correctly identified Volvo B
+    still reported as unidentified.
+    """
+    assert coverage(resolution_was_no_match=True, has_company_profile=False,
+                    has_market_snapshot=False) is CoverageStatus.SOURCE_NOT_COVERED
+
+
+def test_a_stale_no_match_still_wins_when_nothing_has_replaced_it() -> None:
+    """The holdings nobody has re-imported. No venue is known for them, so
+    the honest answer is still that Atlas does not know what they are."""
+    for mics in (None, frozenset()):
+        assert coverage(resolution_was_no_match=True, has_company_profile=False,
+                        has_market_snapshot=False,
+                        listing_mics=mics) is CoverageStatus.IDENTITY_UNRESOLVED

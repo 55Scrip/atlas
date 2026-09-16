@@ -23,7 +23,12 @@ from atlas.alpha.canonical_security_resolution.repository import SqlAlchemyResol
 from atlas.alpha.canonical_security_resolution.service import CanonicalSecurityResolutionService
 from atlas.alpha.canonical_security_resolution.table import create_resolution_tables
 
-__all__ = ["build_identity_gate", "build_listing_mic_reader"]
+__all__ = [
+    "build_identity_gate",
+    "build_import_identity_resolver",
+    "build_listing_mic_reader",
+    "build_provider_symbol_resolver",
+]
 
 
 def build_identity_gate(engine: Engine) -> CanonicalSecurityIdentityGate:
@@ -117,6 +122,7 @@ def build_import_identity_resolver(engine: Engine):
     from atlas.alpha.canonical_security.repository import SqlAlchemyCanonicalSecurityRepository
     from atlas.alpha.canonical_security_gate.import_resolution import (
         ImportedIdentity,
+        ImportIdentityStatus,
         resolve_imported_identity,
     )
     from atlas.alpha.security_identity_evidence.openfigi_adapter import map_isin
@@ -125,7 +131,7 @@ def build_import_identity_resolver(engine: Engine):
     master = SqlAlchemyCanonicalSecurityRepository(engine)
 
     def resolve(*, ticker, company_name, isin, market, account_currency):
-        return resolve_imported_identity(
+        result = resolve_imported_identity(
             ImportedIdentity(
                 ticker=ticker, company_name=company_name, isin=isin,
                 market=market, account_currency=account_currency,
@@ -133,5 +139,18 @@ def build_import_identity_resolver(engine: Engine):
             master=master,
             map_isin_fn=map_isin,
         )
+        # A newly constructed security is written down here, and only here.
+        # Which security an ISIN names is a fact about the world, not about
+        # this investor's portfolio, so recording it does not commit anyone
+        # to holding anything -- and leaving it in memory would mean every
+        # look at the same file paid the same provider call and reached the
+        # same conclusion again, while the master never learned anything.
+        #
+        # Idempotent by the identifiers the construction already recorded:
+        # the next resolution of this ISIN matches it in the master and
+        # never reaches this branch, so a re-import creates nothing.
+        if result.status is ImportIdentityStatus.CONSTRUCTED and result.security is not None:
+            master.save(result.security)
+        return result
 
     return resolve

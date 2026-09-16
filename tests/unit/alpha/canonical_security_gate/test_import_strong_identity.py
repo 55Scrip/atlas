@@ -601,3 +601,49 @@ def test_the_resolver_cannot_reach_a_fundamentals_source() -> None:
     )
     reachable = sorted(m for m in imported if m.startswith(forbidden))
     assert not reachable, f"import resolver can reach a data source: {reachable}"
+
+
+# --- Persistence -------------------------------------------------------
+
+
+def test_a_constructed_security_is_written_down_and_found_next_time() -> None:
+    """Identity is a fact about the world rather than about this
+    investor's portfolio, so recording it commits no one to holding
+    anything -- and not recording it would mean every look at the same
+    file paid the same provider call and reached the same conclusion
+    again, while the master never learned anything.
+    """
+    from sqlalchemy import create_engine
+
+    from atlas.alpha.canonical_security.table import canonical_securities_table
+    from atlas.alpha.canonical_security_gate import factory
+
+    engine = create_engine("sqlite:///:memory:", future=True,
+                           poolclass=__import__("sqlalchemy.pool", fromlist=["x"]).StaticPool,
+                           connect_args={"check_same_thread": False})
+    provider = CountingProvider()
+    original = factory.__dict__.get("_test_map_isin")
+    assert original is None  # no leftover patch
+
+    import atlas.alpha.security_identity_evidence.openfigi_adapter as adapter
+    saved = adapter.map_isin
+    adapter.map_isin = lambda isin, **kwargs: provider(isin)
+    try:
+        resolve = factory.build_import_identity_resolver(engine)
+        first = resolve(ticker="VOLV-B", company_name="Volvo AB ser. B", isin=fx.VOLVO_B_ISIN,
+                        market="Nasdaq Stockholm", account_currency="SEK")
+        second = resolve(ticker="VOLV-B", company_name="Volvo AB ser. B", isin=fx.VOLVO_B_ISIN,
+                         market="Nasdaq Stockholm", account_currency="SEK")
+    finally:
+        adapter.map_isin = saved
+
+    assert first.status is ImportIdentityStatus.CONSTRUCTED
+    assert second.status is ImportIdentityStatus.RESOLVED_EXISTING
+    assert second.strong_identifier_used == "ISIN"
+    assert provider.call_count == 1  # the second import asked nobody
+
+    with engine.connect() as connection:
+        stored = connection.execute(canonical_securities_table.select()).mappings().all()
+    assert len(stored) == 1, "a re-import must not create a second security"
+    assert stored[0]["canonical_company_name"] == "VOLVO AB-B SHS"
+    assert stored[0]["trading_currency"] is None

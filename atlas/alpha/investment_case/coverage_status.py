@@ -93,7 +93,19 @@ def describe_coverage(
     """
     if ticker is None:
         return CoverageStatus.IDENTITY_UNRESOLVED
-    if resolution_was_no_match and not has_company_profile and not has_market_snapshot:
+    # A security master entry overrides a stale `NO_MATCH`, for the same
+    # reason a company profile already does, only more strongly: those
+    # records were written by ticker-based attempts that failed for want of
+    # an identifier the import did not keep. Once a holding has been
+    # resolved to a security with a known venue, "no source recognised this
+    # symbol" is a fact about an older, weaker question.
+    identified_in_the_security_master = bool(listing_mics)
+    if (
+        resolution_was_no_match
+        and not has_company_profile
+        and not has_market_snapshot
+        and not identified_in_the_security_master
+    ):
         return CoverageStatus.IDENTITY_UNRESOLVED
     if financial_statement_count == 0:
         # Identity is established -- something recognised this security. The
