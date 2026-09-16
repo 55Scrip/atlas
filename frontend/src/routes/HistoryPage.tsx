@@ -176,6 +176,9 @@ interface HistoricalAnalysisEntryView {
 interface AnalyticalHistoryView {
   generatedAt: string;
   entries: HistoricalAnalysisEntryView[];
+  /** Opaque: stored and sent back verbatim, never parsed here. */
+  nextCursor?: string | null;
+  hasMore?: boolean;
 }
 
 /** Product Intelligence Sprint 4 (History & Decision Memory
@@ -345,6 +348,10 @@ export function HistoryPage() {
     return () => controller.abort();
   }, []);
 
+  /* (History Pagination) The first page only. History is a supporting
+     surface: it should open quickly however long the record grows, and a
+     reader who wants older analyses asks for them. Nothing here walks the
+     remaining pages on its own. */
   useEffect(() => {
     const controller = new AbortController();
     fetch("/api/history/analysis", { signal: controller.signal })
@@ -362,6 +369,49 @@ export function HistoryPage() {
       });
     return () => controller.abort();
   }, []);
+
+  /* Older analyses, on request. A failure here must never cost the reader the
+     page they already have, so the loaded entries stay put and only this
+     control reports the problem. The cursor is the server's own opaque value,
+     stored and returned unchanged. */
+  const [olderStatus, setOlderStatus] = useState<{ kind: "idle" | "loading" } | { kind: "error"; message: string }>({
+    kind: "idle",
+  });
+
+  function loadOlderAnalyses() {
+    if (analyticalStatus.kind !== "loaded") return;
+    const cursor = analyticalStatus.data.nextCursor;
+    if (!cursor || olderStatus.kind === "loading") return;
+    setOlderStatus({ kind: "loading" });
+    fetch(`/api/history/analysis?cursor=${encodeURIComponent(cursor)}`)
+      .then((response) => {
+        if (!response.ok) throw new Error(`Backend responded with ${response.status}`);
+        return response.json() as Promise<AnalyticalHistoryView>;
+      })
+      .then((older) => {
+        setOlderStatus({ kind: "idle" });
+        setAnalyticalStatus((previous) =>
+          previous.kind === "loaded"
+            ? {
+                kind: "loaded",
+                data: {
+                  // The server's ordering is authoritative: pages are appended
+                  // in the order they arrive and never re-sorted here.
+                  ...older,
+                  generatedAt: previous.data.generatedAt,
+                  entries: [...previous.data.entries, ...older.entries],
+                },
+              }
+            : previous,
+        );
+      })
+      .catch((error: unknown) => {
+        setOlderStatus({
+          kind: "error",
+          message: error instanceof Error ? error.message : t("common.unknownError"),
+        });
+      });
+  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -709,6 +759,32 @@ export function HistoryPage() {
                     >
                       {t("history.timeline.viewFull")} →
                     </Link>
+                  )}
+
+                  {/* (History Pagination) Older analyses, only when asked for.
+                      A real button, so it is reachable and activatable by
+                      keyboard, and honest about its state: it says it is
+                      working while it is, and disappears once the record has
+                      no more to give rather than spinning forever. A failure
+                      reports itself here and leaves every already-loaded
+                      entry on screen. */}
+                  {analyticalStatus.kind === "loaded" && analyticalStatus.data.hasMore === true && (
+                    <Stack gap="metadata">
+                      <Button
+                        variant="tertiary"
+                        onClick={loadOlderAnalyses}
+                        disabled={olderStatus.kind === "loading"}
+                      >
+                        {olderStatus.kind === "loading"
+                          ? t("history.analytical.loadingOlder")
+                          : t("history.analytical.loadOlder")}
+                      </Button>
+                      {olderStatus.kind === "error" && (
+                        <Text color="secondary">
+                          {t("history.analytical.loadOlderFailed", { message: olderStatus.message })}
+                        </Text>
+                      )}
+                    </Stack>
                   )}
 
                   {decisionMemoryStatus.kind === "loaded" && decisionMemoryStatus.neverRecordedCount > 0 && (
