@@ -819,8 +819,24 @@ export const en = {
   "investmentCase.hero.withheld.closing":
     "There's nothing to act on today — this isn't a gap Atlas overlooked, it's an honest reflection of what's currently knowable.",
   "investmentCase.hero.recommendationLabel": "Recommendation",
+  // Coverage truth. The old wording here told the investor to check their
+  // ticker, or suggested the holding might be a cryptocurrency — on a
+  // Swedish portfolio that appeared on ABB, Volvo, Sandvik, Atlas Copco and
+  // Novo Nordisk, all correct tickers and all real listed equities. Atlas
+  // never knew any of that; it only knew that no connected source answered.
+  // So it now says that, and nothing more.
   "investmentCase.hero.noProviderData":
-    "Atlas can't find any data at all for {{ticker}} — check that the ticker is correct, or this may be an asset type (such as a cryptocurrency or commodity) Atlas doesn't yet support.",
+    "None of Atlas's connected data sources returned company information for {{ticker}}. Atlas's company data comes from SEC filings and Alpha Vantage, which cover securities listed in the US — a holding listed only on another exchange will not be found here. Atlas cannot tell from this alone which applies, so it is not drawing a conclusion about this holding.",
+  "investmentCase.coverage.identityUnresolved":
+    "Atlas has not identified this security, so it is not analysing it.",
+  "investmentCase.coverage.evidencePending":
+    "Atlas has identified this security but has not gathered its financial history yet.",
+  "investmentCase.coverage.partialEvidence":
+    "Atlas has some evidence for this company, but not enough to reach a conclusion.",
+  "coverage.badge.identityUnresolved": "Not identified",
+  "coverage.badge.evidencePending": "Awaiting data",
+  "coverage.badge.partialEvidence": "Partial evidence",
+  "coverage.notAnalysed.hint": "No Atlas view — data coverage, not a negative opinion.",
   "investmentCase.hero.asOf": "Reflects Atlas's analysis as of {{when}}.",
   "investmentCase.hero.riskLabel": "{{category}} risk: {{status}}",
   "investmentCase.hero.supportingDetailsLabel": "Supporting details",

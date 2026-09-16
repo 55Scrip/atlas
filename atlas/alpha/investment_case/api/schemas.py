@@ -4047,6 +4047,14 @@ class InvestmentCaseAnalysisView(CamelModel):
     fields above, never replace them -- see `atlas.alpha.industry
     _intelligence`'s own module docstring for the "attach, never
     override" rule."""
+    coverage_status: str | None = None
+    """Why this Case can or cannot conclude -- `CoverageStatus`, as a fact
+    about Atlas's own reach rather than about the holding.
+
+    Structured on purpose. The renderer must not re-derive this from the
+    absence of other fields: that inference is exactly what produced a
+    message telling investors their correct tickers might be wrong.
+    """
     no_provider_data_found: bool = False
     """Import Robustness (Internal Alpha Stabilization 1). `True` only
     when `CanonicalSecurityIdentityGate.latest_resolution_was_no_match`

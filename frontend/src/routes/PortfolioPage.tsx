@@ -1704,6 +1704,11 @@ function HoldingsTable({
     stanceByTicker,
   );
   const visibleHoldings = showAllHoldings ? orderedHoldings : orderedHoldings.slice(0, HOLDINGS_PAGE_SIZE);
+  /* Holdings Atlas has no analysis for, straight from the backend's own
+     coverage level. Nothing here decides *why* -- the Case does that. */
+  const uncoveredHoldingCount = view.holdings.filter(
+    (holding) => coverageByTicker.get(holding.ticker) === "no_coverage",
+  ).length;
 
   return (
     <Stack gap="metadata">
@@ -1829,6 +1834,15 @@ function HoldingsTable({
                       ? t(CONCENTRATION_LEVEL_KEY[view.concentrationLevel]!)
                       : view.concentrationLevel,
                   })
+                : null,
+              /* Holding Coverage Truth v1: a row of em dashes and a row
+                 saying "reduce" look equally like a verdict. They are not.
+                 This says, once, that the blank rows are Atlas's reach and
+                 not Atlas's opinion; the Case itself says which kind of gap
+                 it is. Counted from the backend's own coverage level -- no
+                 reason is inferred here. */
+              uncoveredHoldingCount > 0
+                ? t("coverage.notAnalysed.hint")
                 : null,
             ]
               .filter(Boolean)

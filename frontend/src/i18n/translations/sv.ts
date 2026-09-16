@@ -819,7 +819,17 @@ export const sv: Record<TranslationKey, string> = {
     "Det finns inget att agera på idag — det här är inte en lucka Atlas har förbisett, utan en ärlig återspegling av vad som går att veta just nu.",
   "investmentCase.hero.recommendationLabel": "Rekommendation",
   "investmentCase.hero.noProviderData":
-    "Atlas hittar inget underlag alls för {{ticker}} — kontrollera att tickern stämmer, eller så är det en tillgångstyp (till exempel en kryptovaluta eller råvara) som Atlas ännu inte stödjer.",
+    "Ingen av Atlas anslutna datakällor lämnade bolagsinformation för {{ticker}}. Atlas bolagsdata kommer från SEC-rapporter och Alpha Vantage, som täcker värdepapper noterade i USA — ett innehav som bara är noterat på en annan börs hittas inte här. Atlas kan inte avgöra vilket som gäller, och drar därför ingen slutsats om innehavet.",
+  "investmentCase.coverage.identityUnresolved":
+    "Atlas har inte identifierat värdepappret och analyserar det därför inte.",
+  "investmentCase.coverage.evidencePending":
+    "Atlas har identifierat värdepappret men har ännu inte hämtat dess finansiella historik.",
+  "investmentCase.coverage.partialEvidence":
+    "Atlas har visst underlag för bolaget, men inte tillräckligt för en slutsats.",
+  "coverage.badge.identityUnresolved": "Ej identifierad",
+  "coverage.badge.evidencePending": "Väntar på data",
+  "coverage.badge.partialEvidence": "Delvis underlag",
+  "coverage.notAnalysed.hint": "Ingen bedömning från Atlas — datatäckning, inte en negativ åsikt.",
   "investmentCase.hero.asOf": "Speglar Atlas analys per {{when}}.",
   "investmentCase.hero.riskLabel": "{{category}}risk: {{status}}",
   "investmentCase.hero.supportingDetailsLabel": "Kompletterande detaljer",

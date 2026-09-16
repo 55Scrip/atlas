@@ -107,6 +107,7 @@ from atlas.alpha.business_data_refresh.quota import AlphaVantageQuotaTracker
 from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecordRepository
 from atlas.alpha.canonical_security_gate.gate import CanonicalSecurityIdentityGate
 from atlas.alpha.coverage import assess_coverage
+from atlas.alpha.investment_case.coverage_status import describe_coverage
 from atlas.alpha.decision_explanation.api.dependencies import get_decision_explanation_service
 from atlas.alpha.decision_explanation.api.schemas import DecisionExplanationView
 from atlas.alpha.decision_explanation.service import DecisionExplanationService
@@ -507,6 +508,19 @@ def get_investment_case_analysis(
         and identity_gate.latest_resolution_was_no_match(ticker)
     ):
         view.no_provider_data_found = True
+
+    # Coverage truth: the same facts, classified once here rather than
+    # re-inferred by each surface from what happens to be missing.
+    view.coverage_status = describe_coverage(
+        ticker=ticker,
+        resolution_was_no_match=(
+            ticker is not None and identity_gate.latest_resolution_was_no_match(ticker)
+        ),
+        has_company_profile=view.company_profile is not None,
+        has_market_snapshot=view.market_snapshot is not None,
+        financial_statement_count=len(view.financial_history),
+        analysis_is_withheld=view.recommendation.level == "insufficient_evidence",
+    ).value
 
     return view
 

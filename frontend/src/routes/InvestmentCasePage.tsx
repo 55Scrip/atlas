@@ -1029,6 +1029,11 @@ interface InvestmentCaseAnalysisView {
    * docstring for the exact, narrow honesty rule. Optional to default
    * safely to `false` ("nothing unusual to report") if ever absent. */
   noProviderDataFound?: boolean;
+  /* Coverage truth (Holding Coverage Truth v1): why this Case can or cannot
+     conclude, classified once by the backend. Read it; never re-derive it
+     from which fields happen to be missing -- that inference is what told
+     investors their correct tickers might be wrong. */
+  coverageStatus?: string | undefined;
 }
 
 /** Atlas Intelligence Sprint 7 (Monitoring & Change Detection,
@@ -2751,6 +2756,7 @@ export function InvestmentCasePage() {
               priceFreshness: report.marketSnapshot ? report.marketSnapshot.priceFreshness : "unavailable",
               stance: report.stance,
               noProviderDataFound: report.noProviderDataFound ?? false,
+              coverageStatus: report.coverageStatus,
               convictionReasonCodes: report.conviction.reasons as ConvictionReasonCode[],
               strengthKinds: report.strengths.map((s) => s.kind) as RecommendationDriverKind[],
               challengeKinds: report.risks.map((r) => r.kind) as RecommendationDriverKind[],

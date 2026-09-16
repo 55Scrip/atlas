@@ -225,6 +225,13 @@ export interface HeroAnalysisInput {
    * `CompanyWorkspacePage.tsx`'s older call site (which does not fetch
    * this field) keeps its unchanged generic withheld message. */
   noProviderDataFound?: boolean;
+  /** `InvestmentCaseAnalysisView.coverageStatus`, verbatim. Why this Case
+   * is silent, decided by the backend. A withheld Case is not one opinion:
+   * an unidentified security, a security whose financial history has not
+   * been gathered yet, and a company with real but insufficient evidence
+   * are three different situations, and the investor can act on the
+   * difference. */
+  coverageStatus?: string | undefined;
   /** Calibration Phase 2 (Investment Case Coherence Implementation),
    * Phase 5 -- `strengths[]`/`risks[]` mapped to their `kind`, fed
    * straight into `deriveRecommendationDrivers`. Real, already-fetched,
@@ -426,10 +433,25 @@ export function HeroCard({
               {t("investmentCase.hero.noProviderData", { ticker })}
             </Text>
           ) : (
-            <Text as="p" style={HERO_SENTENCE_STYLE}>
-              {t("investmentCase.hero.withheld.opening", { ticker })} {t("investmentCase.hero.withheld.reason")}{" "}
-              {t("investmentCase.hero.withheld.closing")}
-            </Text>
+            <>
+              <Text as="p" style={HERO_SENTENCE_STYLE}>
+                {t("investmentCase.hero.withheld.opening", { ticker })} {t("investmentCase.hero.withheld.reason")}{" "}
+                {t("investmentCase.hero.withheld.closing")}
+              </Text>
+              {/* "Not gathered yet" and "gathered, still not enough" read
+                  identically above, and they are not the same news: one
+                  resolves by waiting, the other may never resolve. */}
+              {analysis.coverageStatus === "evidence_pending" && (
+                <Text as="p" color="secondary">
+                  {t("investmentCase.coverage.evidencePending")}
+                </Text>
+              )}
+              {analysis.coverageStatus === "partial_evidence" && (
+                <Text as="p" color="secondary">
+                  {t("investmentCase.coverage.partialEvidence")}
+                </Text>
+              )}
+            </>
           )}
           {/* Recommendation Reasoning Convergence, Phase H (Stance
               semantics). Stance already announces itself ("Atlas
