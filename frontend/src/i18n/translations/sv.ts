@@ -91,6 +91,7 @@ export const sv: Record<TranslationKey, string> = {
   "onboarding.review.suggestedYes": "Ja, det stämmer",
   "onboarding.review.suggestedNo": "Nej, jag anger det själv",
   "onboarding.review.ambiguousPrompt": "Vilket bolag menade du?",
+  "onboarding.review.identifiedSecurity": "Atlas har identifierat detta som {{name}} på {{venue}}.",
   "onboarding.review.unresolvedPrompt": "Atlas kunde inte identifiera det här bolaget — ange dess ticker.",
   "onboarding.review.tickerPlaceholder": "Ticker",
   "onboarding.review.alreadyHeldNote": "Redan i din portfölj — det här uppdaterar positionen.",

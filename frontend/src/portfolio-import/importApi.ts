@@ -51,6 +51,19 @@ export interface ParsedHoldingRow {
   instrumentType: string | null;
   candidates: ResolutionCandidate[];
   alreadyHeld: boolean;
+  /** Which security this row names, as opposed to whether the row could be
+   * read. `status` has always meant "a ticker was found"; these say whether
+   * Atlas knows *which security* that ticker refers to, which is a separate
+   * question a Stockholm holding can fail while `status` reads RESOLVED.
+   * Null when no identity resolver ran or the row carried no ISIN. */
+  isin: string | null;
+  market: string | null;
+  identityStatus: string | null;
+  identityReason: string | null;
+  canonicalSecurityId: string | null;
+  securityName: string | null;
+  exchangeMic: string | null;
+  strongIdentifierUsed: string | null;
 }
 
 export interface ImportPreview {

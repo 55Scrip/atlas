@@ -651,6 +651,19 @@ function ReviewScreen({
               <Surface key={row.lineNumber} tier="elevated">
                 <Stack gap="metadata">
                   <Text as="p">{row.originalName ?? row.raw}</Text>
+                  {/* A row can fail to yield a ticker and still name a
+                      security exactly, because the file carried an ISIN.
+                      Saying so is the difference between asking the
+                      investor to identify a holding Atlas has in fact
+                      already identified, and telling them what it found. */}
+                  {row.securityName && (
+                    <Text color="secondary" as="p">
+                      {t("onboarding.review.identifiedSecurity", {
+                        name: row.securityName,
+                        venue: row.exchangeMic ?? row.market ?? "",
+                      })}
+                    </Text>
+                  )}
                   {row.status === "AMBIGUOUS" ? (
                     <Stack gap="metadata">
                       <Text color="secondary" as="p">

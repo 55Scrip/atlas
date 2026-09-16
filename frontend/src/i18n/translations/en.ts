@@ -92,6 +92,7 @@ export const en = {
   "onboarding.review.suggestedYes": "Yes, that's right",
   "onboarding.review.suggestedNo": "No, let me enter it",
   "onboarding.review.ambiguousPrompt": "Which company did you mean?",
+  "onboarding.review.identifiedSecurity": "Atlas identified this as {{name}} on {{venue}}.",
   "onboarding.review.unresolvedPrompt": "Atlas couldn't identify this company — enter its ticker.",
   "onboarding.review.tickerPlaceholder": "Ticker",
   "onboarding.review.alreadyHeldNote": "Already in your portfolio — this will update the position.",
