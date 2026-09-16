@@ -83,13 +83,35 @@ def test_a_case_with_no_ticker_is_unresolved() -> None:
     assert _describe(ticker=None) is CoverageStatus.IDENTITY_UNRESOLVED
 
 
-def test_coverage_never_claims_a_venue_or_an_instrument_type() -> None:
-    """Distinguishing 'listed somewhere Atlas does not cover' from 'not a
-    company' would mean guessing which venue a symbol belongs to -- and a
-    guess is what produced the message this module exists to remove."""
+def test_coverage_never_claims_an_instrument_type() -> None:
+    """Atlas still never says what *kind* of thing a holding is. Calling
+    something a cryptocurrency or a commodity because no source answered is
+    the original error, and no amount of identity evidence licenses it.
+
+    `source_not_covered` used to be forbidden here for the same reason, and
+    it is now allowed for a reason that genuinely changed rather than a
+    reason that was argued away: telling "Atlas does not cover this venue"
+    apart from "this is not a company" required *knowing the venue*, and the
+    only way to know it was to guess from a ticker. A holding imported with
+    an ISIN now resolves to a specific security whose venue is proven, so
+    the claim is demonstrable. `test_source_not_covered_requires_a_known_
+    venue` below holds the line that it stays demonstrable: with no venue,
+    the state is unreachable.
+    """
     values = {status.value for status in CoverageStatus}
-    for forbidden in ("source_not_covered", "unsupported_instrument", "crypto", "commodity"):
+    for forbidden in ("unsupported_instrument", "crypto", "commodity", "fund", "etp"):
         assert forbidden not in values
+
+
+def test_source_not_covered_requires_a_known_venue() -> None:
+    """The guess that is still forbidden. Without listing venues, Atlas
+    cannot claim a venue is uncovered, so the older, weaker answer stands."""
+    assert _describe(financial_statement_count=0) is CoverageStatus.EVIDENCE_PENDING
+    assert CoverageStatus.SOURCE_NOT_COVERED is describe_coverage(
+        ticker="VOLV-B", resolution_was_no_match=False, has_company_profile=True,
+        has_market_snapshot=True, financial_statement_count=0, analysis_is_withheld=True,
+        listing_mics=frozenset({"XSTO"}),
+    )
 
 
 # --- The copy ----------------------------------------------------------

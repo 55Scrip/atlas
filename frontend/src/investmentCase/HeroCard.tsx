@@ -451,6 +451,14 @@ export function HeroCard({
                   {t("investmentCase.coverage.partialEvidence")}
                 </Text>
               )}
+              {/* Atlas knows the security and cannot reach its financials.
+                  Distinct from "pending", which promises a wait that would
+                  never end here. */}
+              {analysis.coverageStatus === "source_not_covered" && (
+                <Text as="p" color="secondary">
+                  {t("investmentCase.coverage.sourceNotCovered")}
+                </Text>
+              )}
             </>
           )}
           {/* Recommendation Reasoning Convergence, Phase H (Stance

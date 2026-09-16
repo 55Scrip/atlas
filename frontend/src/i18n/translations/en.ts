@@ -833,7 +833,13 @@ export const en = {
     "Atlas has identified this security but has not gathered its financial history yet.",
   "investmentCase.coverage.partialEvidence":
     "Atlas has some evidence for this company, but not enough to reach a conclusion.",
+  // Said only once Atlas can name the security and its venue. The point is
+  // that waiting will not help: this is Atlas's reach, not the holding's
+  // fault, and not a doubt about the ticker.
+  "investmentCase.coverage.sourceNotCovered":
+    "Atlas knows exactly which security this is, but none of its connected sources — SEC filings and Alpha Vantage — publishes company financials for the exchange it trades on. This is a gap in Atlas's coverage, not a doubt about the holding, and it will not resolve by waiting.",
   "coverage.badge.identityUnresolved": "Not identified",
+  "coverage.badge.sourceNotCovered": "No data source",
   "coverage.badge.evidencePending": "Awaiting data",
   "coverage.badge.partialEvidence": "Partial evidence",
   "coverage.notAnalysed.hint": "No Atlas view — data coverage, not a negative opinion.",

@@ -826,7 +826,10 @@ export const sv: Record<TranslationKey, string> = {
     "Atlas har identifierat värdepappret men har ännu inte hämtat dess finansiella historik.",
   "investmentCase.coverage.partialEvidence":
     "Atlas har visst underlag för bolaget, men inte tillräckligt för en slutsats.",
+  "investmentCase.coverage.sourceNotCovered":
+    "Atlas vet exakt vilket värdepapper det här är, men ingen av de anslutna källorna — SEC-rapporter och Alpha Vantage — publicerar bolagssiffror för börsen där det handlas. Det är en lucka i Atlas täckning, inte ett tvivel om innehavet, och den löser sig inte genom att vänta.",
   "coverage.badge.identityUnresolved": "Ej identifierad",
+  "coverage.badge.sourceNotCovered": "Ingen datakälla",
   "coverage.badge.evidencePending": "Väntar på data",
   "coverage.badge.partialEvidence": "Delvis underlag",
   "coverage.notAnalysed.hint": "Ingen bedömning från Atlas — datatäckning, inte en negativ åsikt.",

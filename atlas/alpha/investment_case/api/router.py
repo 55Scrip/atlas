@@ -95,6 +95,7 @@ from atlas.alpha.business_data_refresh.api.dependencies import (
     get_alpha_vantage_quota_tracker,
     get_business_record_repository,
     get_canonical_security_identity_gate,
+    get_listing_mic_reader,
     get_price_refresh_coordinator,
 )
 from atlas.alpha.business_data_refresh.price_refresh import (
@@ -368,6 +369,7 @@ def get_investment_case_analysis(
     price_quota: AlphaVantageQuotaTracker = Depends(get_alpha_vantage_quota_tracker),
     price_refresh_coordinator: PriceRefreshCoordinator = Depends(get_price_refresh_coordinator),
     identity_gate: CanonicalSecurityIdentityGate = Depends(get_canonical_security_identity_gate),
+    listing_mics=Depends(get_listing_mic_reader),
     resolve_listed_siblings: ListedSiblingResolver = Depends(get_listed_sibling_resolver),
 ) -> InvestmentCaseAnalysisView:
     composition = service.build(case_id)
@@ -501,10 +503,21 @@ def get_investment_case_analysis(
     # its own docstring for why every other blocked outcome
     # (`MANUAL_CONFIRMATION`/`AMBIGUOUS`/`LOW_CONFIDENCE`/`REJECT`) is
     # deliberately never conflated with this one, narrower fact.
+    #
+    # Import Strong Identity Resolution v1: a security Atlas can now name
+    # and place is excluded, however old its NO_MATCH record. Those records
+    # were written by ticker-based attempts that failed for want of an
+    # identifier the import never kept; once a real broker export resolves
+    # the holding by ISIN, "no provider recognizes this symbol" has been
+    # superseded by evidence, and showing the crypto/commodity framing over
+    # a correctly identified Volvo B would be the exact error the coverage
+    # states were written to remove.
+    known_listing_mics = listing_mics((ticker,)).get(ticker) if ticker is not None else None
     if (
         ticker is not None
         and view.company_profile is None
         and view.market_snapshot is None
+        and not known_listing_mics
         and identity_gate.latest_resolution_was_no_match(ticker)
     ):
         view.no_provider_data_found = True
@@ -520,6 +533,11 @@ def get_investment_case_analysis(
         has_market_snapshot=view.market_snapshot is not None,
         financial_statement_count=len(view.financial_history),
         analysis_is_withheld=view.recommendation.level == "insufficient_evidence",
+        # Which venues Atlas lists this security on. Empty when Atlas has no
+        # security master entry for it, which is absence rather than
+        # evidence of an uncovered venue -- `describe_coverage` treats it
+        # that way rather than inferring.
+        listing_mics=known_listing_mics,
     ).value
 
     return view
