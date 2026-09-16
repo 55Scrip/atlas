@@ -91,3 +91,75 @@ def test_identity_survives_a_row_whose_ticker_could_not_be_resolved() -> None:
     assert row.status is not RowResolutionStatus.RESOLVED
     assert row.isin == "SE0000115446"
     assert row.market == "Nasdaq Stockholm"
+
+
+# --- The wiring itself -------------------------------------------------
+
+
+def _resolver(calls):
+    """A real resolver over a fake provider and an empty master."""
+    from atlas.alpha.canonical_security_gate.import_resolution import (
+        ImportedIdentity,
+        resolve_imported_identity,
+    )
+    from tests.unit.alpha.canonical_security_gate import figi_fixtures as fx
+
+    class EmptyMaster:
+        def find_by_identifier(self, identifier_type, value):
+            return None
+
+        def find_by_ticker_and_exchange(self, ticker, exchange_mic):
+            return None
+
+    def provider(isin):
+        calls.append(isin)
+        return fx.BY_ISIN.get(isin, fx.NO_MATCH)
+
+    def resolve(*, ticker, company_name, isin, market, account_currency):
+        return resolve_imported_identity(
+            ImportedIdentity(ticker=ticker, company_name=company_name, isin=isin,
+                             market=market, account_currency=account_currency),
+            master=EmptyMaster(), map_isin_fn=provider)
+
+    return resolve
+
+
+def test_the_pipeline_actually_calls_the_resolver() -> None:
+    """The step this sprint exists to add. Without it every piece below is
+    correct and unreachable, which is exactly the state the previous sprint
+    left things in."""
+    calls: list[str] = []
+    preview = PortfolioImportPreviewService().preview(
+        SWEDISH_EXPORT, resolve_identity=_resolver(calls))
+
+    volvo, schneider = preview.rows
+    assert volvo.identity_status == "CONSTRUCTED"
+    assert volvo.security_name == "VOLVO AB-B SHS"
+    assert volvo.exchange_mic == "XSTO"
+    assert volvo.strong_identifier_used == "SHARE_CLASS_FIGI"
+    assert volvo.canonical_security_id is not None
+
+    assert schneider.security_name == "SCHNEIDER ELECTRIC SE"
+    assert schneider.exchange_mic == "XPAR"
+    assert "SUNCOR" not in (schneider.security_name or "").upper()
+    assert calls == ["SE0000115446", "FR0000121972"]
+
+
+def test_a_row_without_an_identifier_never_reaches_the_provider() -> None:
+    calls: list[str] = []
+    preview = PortfolioImportPreviewService().preview(
+        "Namn,Ticker,Antal,Kurs\nMicrosoft,MSFT,10,400.00\n",
+        resolve_identity=_resolver(calls))
+    assert calls == []
+    assert preview.rows[0].identity_status is None
+    assert preview.rows[0].ticker == "MSFT"
+
+
+def test_without_a_resolver_the_pipeline_is_exactly_as_it_was() -> None:
+    """The default. Identity resolution is the only step here that can
+    reach a network, so it is opt-in and its absence changes nothing."""
+    preview = PortfolioImportPreviewService().preview(SWEDISH_EXPORT)
+    for row in preview.rows:
+        assert row.identity_status is None
+        assert row.canonical_security_id is None
+    assert preview.rows[0].isin == "SE0000115446"

@@ -91,6 +91,18 @@ class ParsedHoldingRow:
     #: the wrong company. `market` is the broker's own venue text, verbatim.
     isin: str | None = None
     market: str | None = None
+    #: What the strong identity resolved to, when a resolver was supplied.
+    #: Deliberately separate from `status`: `status` is about the *row*
+    #: (could Atlas read it, is it a duplicate), while these are about the
+    #: *security* (does Atlas know which one this is). A row can be a
+    #: perfectly readable RESOLVED row and still name no security at all --
+    #: which is precisely the state eleven live holdings are in.
+    identity_status: str | None = None
+    identity_reason: str | None = None
+    canonical_security_id: str | None = None
+    security_name: str | None = None
+    exchange_mic: str | None = None
+    strong_identifier_used: str | None = None
     status: RowResolutionStatus = RowResolutionStatus.ERROR
     message: str | None = None
     # Populated only when status is UNSUPPORTED -- "fund"/"etp"/"private"/

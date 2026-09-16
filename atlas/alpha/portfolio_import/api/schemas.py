@@ -46,6 +46,18 @@ class ParsedHoldingRowView(CamelModel):
     instrument_type: str | None = None
     candidates: list[ResolutionCandidateView] = []
     already_held: bool = False
+    # Which security this row names, as distinct from whether the row could
+    # be read. Absent when no identity resolver ran or the row carried no
+    # identifier able to answer. Provider payloads are never exposed -- only
+    # what Atlas concluded and the identifier it concluded it from.
+    isin: str | None = None
+    market: str | None = None
+    identity_status: str | None = None
+    identity_reason: str | None = None
+    canonical_security_id: str | None = None
+    security_name: str | None = None
+    exchange_mic: str | None = None
+    strong_identifier_used: str | None = None
 
     @classmethod
     def from_domain(cls, row: ParsedHoldingRow) -> "ParsedHoldingRowView":
@@ -64,6 +76,14 @@ class ParsedHoldingRowView(CamelModel):
             instrument_type=row.instrument_type,
             candidates=[ResolutionCandidateView.from_domain(c) for c in row.candidates],
             already_held=row.already_held,
+            isin=row.isin,
+            market=row.market,
+            identity_status=row.identity_status,
+            identity_reason=row.identity_reason,
+            canonical_security_id=row.canonical_security_id,
+            security_name=row.security_name,
+            exchange_mic=row.exchange_mic,
+            strong_identifier_used=row.strong_identifier_used,
         )
 
 

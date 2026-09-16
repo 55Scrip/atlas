@@ -22,6 +22,7 @@ from fastapi import APIRouter, Depends
 from atlas.alpha.portfolio_import.alias_store import ResolvedAliasStore
 from atlas.alpha.portfolio_import.api.dependencies import (
     get_existing_tickers,
+    get_import_identity_resolver,
     get_portfolio_import_preview_service,
     get_resolved_alias_lookup_fn,
     get_resolved_alias_store,
@@ -45,8 +46,12 @@ def preview_import(
     discover: DiscoverFn = Depends(get_security_discovery_fn),
     lookup_alias: LookupAliasFn = Depends(get_resolved_alias_lookup_fn),
     service: PortfolioImportPreviewService = Depends(get_portfolio_import_preview_service),
+    resolve_identity=Depends(get_import_identity_resolver),
 ) -> ImportPreviewView:
-    preview = service.preview(payload.raw_text, existing_tickers, discover=discover, lookup_alias=lookup_alias)
+    preview = service.preview(
+        payload.raw_text, existing_tickers, discover=discover, lookup_alias=lookup_alias,
+        resolve_identity=resolve_identity,
+    )
     return ImportPreviewView.from_domain(preview)
 
 
