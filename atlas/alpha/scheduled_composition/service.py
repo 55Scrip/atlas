@@ -173,9 +173,12 @@ class ScheduledCompositionService:
         a backlog of ticks that all want to do the work the running one is
         already doing.
 
-        Nothing calls this yet: no recurring trigger is wired anywhere in
-        Atlas. It exists so that when one is, it has a correct entry point
-        to call rather than inventing its own.
+        This is the in-process guard only, and it is **not** the recurring
+        entry point. A recurring trigger must call
+        `activation.run_scheduled_composition`, which additionally decides
+        whether a batch is due and holds a lock that is visible to *other
+        processes* -- this lock is not, so it cannot serialize a batch
+        launched from a command against the API serving a page.
         """
         if not _RUN_LOCK.acquire(blocking=False):
             return None

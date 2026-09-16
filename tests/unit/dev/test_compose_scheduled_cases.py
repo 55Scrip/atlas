@@ -47,9 +47,14 @@ def _result(**kwargs):
 
 
 @pytest.fixture
-def wired(monkeypatch):
+def wired(monkeypatch, tmp_path):
     """Replace the wiring factory so the command's own behaviour is under
-    test rather than the whole composition object graph."""
+    test rather than the whole composition object graph.
+
+    Scheduler state and lock are redirected into the test's own directory:
+    without this the suite would write real operational state into the
+    working checkout's `runtime/`.
+    """
     holder: dict[str, _FakeService] = {}
 
     def install(service):
@@ -57,6 +62,14 @@ def wired(monkeypatch):
         monkeypatch.setattr(
             "atlas.dev.compose_scheduled_cases.build_scheduled_composition_service",
             lambda engine: service,
+        )
+        monkeypatch.setattr(
+            "atlas.dev.compose_scheduled_cases.resolve_state_path",
+            lambda explicit=None: tmp_path / (explicit or "state.json"),
+        )
+        monkeypatch.setattr(
+            "atlas.dev.compose_scheduled_cases.resolve_lock_path",
+            lambda explicit=None: tmp_path / (explicit or "run.lock"),
         )
         return service
 
@@ -127,13 +140,51 @@ class TestReport:
         main(["--database", str(tmp_path / "a.db")])
         assert service.runs == [scope]
 
-    def test_states_that_no_recurring_trigger_is_wired(self, monkeypatch, tmp_path, wired, capsys):
-        """The command is the only way a batch runs; saying so stops a
-        reader assuming Atlas is already composing on its own."""
+    def test_states_which_mode_it_is_running_in(self, monkeypatch, tmp_path, wired, capsys):
+        """An operator must be able to tell a forced batch from a due-aware
+        one at a glance: they differ in whether the cadence can stop them."""
         monkeypatch.setenv("ATLAS_ENV", "development")
         wired(_FakeService())
         main(["--database", str(tmp_path / "a.db"), "--dry-run"])
-        assert "no recurring trigger is wired" in capsys.readouterr().out
+        assert "manual run, cadence ignored" in capsys.readouterr().out
+
+    def test_scheduled_mode_actually_respects_the_cadence(self, monkeypatch, tmp_path, wired, capsys):
+        """The whole point of the recurring mode: an hourly trigger must
+        compose once a day, not once an hour."""
+        monkeypatch.setenv("ATLAS_ENV", "development")
+        service = wired(_FakeService(result=_result()))
+        first = main(["--database", str(tmp_path / "a.db"), "--scheduled"])
+        second = main(["--database", str(tmp_path / "a.db"), "--scheduled"])
+        assert (first, second) == (0, 0)
+        assert len(service.runs) == 1, "the second scheduled run composed despite not being due"
+        out = capsys.readouterr().out
+        assert "not due" in out
+        # One line, not a full report: an hourly trigger is mostly not due,
+        # and the log must not grow without bound for non-events.
+        assert len(out.strip().splitlines()[-1:]) == 1
+        assert "attempted" not in out.split("scheduled composition:")[-1]
+
+    def test_manual_mode_ignores_the_cadence(self, monkeypatch, tmp_path, wired, capsys):
+        monkeypatch.setenv("ATLAS_ENV", "development")
+        service = wired(_FakeService(result=_result()))
+        main(["--database", str(tmp_path / "a.db")])
+        main(["--database", str(tmp_path / "a.db")])
+        assert len(service.runs) == 2
+
+    def test_scheduled_mode_says_it_is_due_aware(self, monkeypatch, tmp_path, wired, capsys):
+        monkeypatch.setenv("ATLAS_ENV", "development")
+        wired(_FakeService())
+        main(["--database", str(tmp_path / "a.db"), "--dry-run", "--scheduled"])
+        assert "due-aware run" in capsys.readouterr().out
+
+    def test_reports_last_success_and_next_due(self, monkeypatch, tmp_path, wired, capsys):
+        monkeypatch.setenv("ATLAS_ENV", "development")
+        wired(_FakeService())
+        main(["--database", str(tmp_path / "a.db"), "--dry-run",
+              "--state", str(tmp_path / "s.json"), "--lock", str(tmp_path / "l.lock")])
+        out = capsys.readouterr().out
+        assert "last success    : never" in out
+        assert "next due        : now" in out
 
     def test_reports_the_configured_cadence(self, monkeypatch, tmp_path, wired, capsys):
         monkeypatch.setenv("ATLAS_ENV", "development")

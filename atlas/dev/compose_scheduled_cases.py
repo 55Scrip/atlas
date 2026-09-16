@@ -19,23 +19,41 @@ conclusion, or changed evidence beneath an unchanged conclusion -- so a second
 run over unchanged data writes zero rows. One Case failing costs that Case
 and no other.
 
-**In-process locking only.** If the API is serving the same database, that
-process's own composition is not serialized against this one by anything but
-SQLite's file lock. Prefer running this when the app is idle.
+**Two modes.** By default this composes immediately: the operator asked for a
+batch, so a batch happens regardless of when the last one ran. With
+`--scheduled` it is due-aware -- the mode the recurring trigger uses -- and
+composes only if the configured interval has elapsed since the last
+*successful* batch, reporting `not_due` otherwise. Either way it takes a
+cross-process lock and reports `already_running` rather than queueing if
+another batch is in flight, so two overlapping invocations can never both
+compose the same Case.
 
-    python -m atlas.dev.compose_scheduled_cases [--database PATH] [--list-scope] [--dry-run]
+    python -m atlas.dev.compose_scheduled_cases [--database PATH]
+        [--scheduled] [--list-scope] [--dry-run] [--state PATH] [--lock PATH]
 """
 from __future__ import annotations
 
 import argparse
 import sys
+from datetime import datetime, timezone
 
 from sqlalchemy import create_engine
 
+from atlas.alpha.scheduled_composition.activation import (
+    ScheduledRunOutcome,
+    read_state,
+    resolve_lock_path,
+    resolve_state_path,
+    run_scheduled_composition,
+)
 from atlas.alpha.scheduled_composition.cadence import INTERVAL_ENV_VAR, configured_interval
 from atlas.alpha.scheduled_composition.factory import build_scheduled_composition_service
 from atlas.core.infrastructure.config.database import resolve_database_path
 from atlas.dev.guard import ensure_development_environment
+
+
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -51,6 +69,12 @@ def main(argv: list[str] | None = None) -> int:
                         help="Print the Cases a batch would compose, then stop. Composes nothing.")
     parser.add_argument("--dry-run", action="store_true",
                         help="Report the scope and cadence without composing. Writes nothing.")
+    parser.add_argument("--scheduled", action="store_true",
+                        help="Due-aware mode, for the recurring trigger: compose only if the configured "
+                             "interval has elapsed since the last successful batch, and skip if another "
+                             "batch is already running. Without it this command composes immediately.")
+    parser.add_argument("--state", default=None, help="Scheduler state file (default: <ATLAS_HOME>/runtime).")
+    parser.add_argument("--lock", default=None, help="Scheduler lock file (default: <ATLAS_HOME>/runtime).")
     arguments = parser.parse_args(argv)
 
     path = arguments.database or resolve_database_path()
@@ -58,19 +82,55 @@ def main(argv: list[str] | None = None) -> int:
     service = build_scheduled_composition_service(engine)
     scope = service.scope()
 
-    print(f"database        : {path}")
-    print(f"scope           : {len(scope)} Cases (Portfolio holdings + Watchlist entries)")
-    print(f"cadence         : {int(configured_interval().total_seconds())}s (${INTERVAL_ENV_VAR}); "
-          f"no recurring trigger is wired -- this command is the only way a batch runs")
-    print("providers       : none reachable from composition (0 requests)")
+    state_path = resolve_state_path(arguments.state)
+    lock_path = resolve_lock_path(arguments.lock)
+    state = read_state(state_path)
+    interval = configured_interval()
+
+    header = [
+        f"database        : {path}",
+        f"scope           : {len(scope)} Cases (Portfolio holdings + Watchlist entries)",
+        f"cadence         : {int(interval.total_seconds())}s (${INTERVAL_ENV_VAR}); "
+        f"{'due-aware run' if arguments.scheduled else 'manual run, cadence ignored'}",
+        f"last success    : {state.last_success_at.isoformat() if state.last_success_at else 'never'}",
+        f"next due        : "
+        f"{(state.last_success_at + interval).isoformat() if state.last_success_at else 'now'}",
+        "providers       : none reachable from composition (0 requests)",
+    ]
 
     if arguments.list_scope or arguments.dry_run:
+        for line in header:
+            print(line)
         for case_id, ticker in scope:
             print(f"    {ticker or '-':<8} {case_id}")
         print("\n[dry run] nothing composed, nothing written.")
         return 0
 
-    result = service.run(scope=scope)
+    report = run_scheduled_composition(
+        service, scope=scope, state_path=state_path, lock_path=lock_path,
+        interval=interval, force=not arguments.scheduled)
+
+    # A recurring trigger fires far more often than the cadence, so the
+    # ordinary answer is "not yet". Printing the whole report every time would
+    # turn an hourly job into an unbounded log of non-events; one line keeps
+    # the record useful without a rotation mechanism nobody asked for.
+    if arguments.scheduled and report.outcome in (
+            ScheduledRunOutcome.NOT_DUE, ScheduledRunOutcome.ALREADY_RUNNING):
+        print(f"{_utc_now().isoformat()} scheduled composition: {report.summary}")
+        return 0
+
+    for line in header:
+        print(line)
+    print(f"\noutcome         : {report.outcome.value}")
+    if report.outcome is not ScheduledRunOutcome.RAN:
+        print(f"                  {report.summary}")
+        if report.next_due_at is not None:
+            print(f"next due        : {report.next_due_at.isoformat()}")
+        # Nothing was composed, and that is a correct, expected answer for a
+        # recurring trigger -- not a failure to report to the OS scheduler.
+        return 0 if report.outcome is not ScheduledRunOutcome.FAILED else 1
+
+    result = report.result
 
     print(f"\nstarted         : {result.started_at.isoformat()}")
     for outcome in result.outcomes:
@@ -85,6 +145,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"unchanged (deduplicated): {result.snapshots_deduplicated}")
     print(f"duration        : {result.duration_seconds:.1f}s")
     print("provider calls  : 0")
+    print(f"next due        : {report.next_due_at.isoformat() if report.next_due_at else '-'}")
     if result.failed:
         print(f"  {result.failed} Case(s) did not compose -- the rest did", file=sys.stderr)
         return 3

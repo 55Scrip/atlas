@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Recurring scheduled Case composition (Internal Alpha, single machine).
+
+  Install:
+      cp infrastructure/launchd/com.atlas.scheduled-composition.plist ~/Library/LaunchAgents/
+      launchctl load ~/Library/LaunchAgents/com.atlas.scheduled-composition.plist
+
+  Remove:
+      launchctl unload ~/Library/LaunchAgents/com.atlas.scheduled-composition.plist
+
+  Why hourly for a daily job: StartInterval fires every hour, and the command
+  itself decides whether a batch is due (24h by default). A single daily
+  calendar moment would simply be missed if the machine were asleep or off at
+  that minute; an hourly tick that is almost always "not due" picks the batch
+  up on the next wake instead. The cadence lives in the command, not here.
+
+  RunAtLoad is deliberately false: loading this agent must not compose
+  anything. Installing the trigger is not a decision about any company, and
+  the first run happens when the batch is genuinely due.
+
+  Paths are absolute and point at the canonical checkout. They must never
+  point at a temporary git worktree -- one that is later deleted would leave a
+  scheduled job silently failing every hour, or worse, running against a stale
+  copy of the code.
+
+  No API key or secret belongs here: composition reads persisted evidence and
+  cannot reach the network at all.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.atlas.scheduled-composition</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/axelgreitz/Documents/atlas_v0_1_0/.venv/bin/python</string>
+        <string>-m</string>
+        <string>atlas.dev.compose_scheduled_cases</string>
+        <string>--scheduled</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/axelgreitz/Documents/atlas_v0_1_0</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>ATLAS_HOME</key>
+        <string>/Users/axelgreitz/Documents/atlas_v0_1_0</string>
+    </dict>
+
+    <key>StartInterval</key>
+    <integer>3600</integer>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/axelgreitz/Documents/atlas_v0_1_0/runtime/scheduled_composition.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/axelgreitz/Documents/atlas_v0_1_0/runtime/scheduled_composition.log</string>
+</dict>
+</plist>
