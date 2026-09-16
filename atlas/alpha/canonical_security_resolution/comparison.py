@@ -109,7 +109,7 @@ def compare_candidate_to_existing(
         _compare(
             "currency",
             candidate.currency.value if candidate.currency else None,
-            existing.trading_currency.value,
+            existing.trading_currency.value if existing.trading_currency else None,
         ),
         _compare(
             "security_type",

@@ -32,7 +32,9 @@ canonical_securities_table = Table(
     Column("native_ticker", String, nullable=False, index=True),
     Column("primary_exchange_mic", String, nullable=False),
     Column("country", String, nullable=False),
-    Column("trading_currency", String, nullable=False),
+    # Nullable: a security can be known before its quoting currency
+    # is proven. Existing rows keep the values they already have.
+    Column("trading_currency", String, nullable=True),
     Column("resolution_status", String, nullable=False, index=True),
     # Issuer Identity Foundation. Nullable by necessity: `sync_table_schema`
     # only auto-adds nullable columns -- a NOT NULL column here would make
@@ -50,7 +52,7 @@ canonical_security_listings_table = Table(
     Column("canonical_security_id", String, nullable=False, index=True),
     Column("ticker", String, nullable=False),
     Column("exchange_mic", String, nullable=False),
-    Column("currency", String, nullable=False),
+    Column("currency", String, nullable=True),
     Column("relationship", String, nullable=False),
     Column("security_type", String, nullable=False),
     Column("provider_symbol", String, nullable=True),

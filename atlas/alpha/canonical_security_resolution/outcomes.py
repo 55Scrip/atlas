@@ -94,8 +94,8 @@ def determine_outcome(
         # Confidence reached HIGH (possibly via the provider-agreement
         # boost, Confidence Engine rule 4) but the candidate itself
         # lacks a field CanonicalSecurity.discover() requires (company
-        # name, exchange MIC, country, or currency -- see
-        # `_is_constructible`). Auto-accepting here would either crash
+        # name, exchange MIC, or country -- see `_is_constructible`,
+        # which no longer counts currency among them). Auto-accepting here would either crash
         # constructing the aggregate or silently invent a value for a
         # required field -- neither is acceptable, so this is downgraded
         # to a human decision rather than either of those.
@@ -110,10 +110,22 @@ def _is_constructible(candidate: ProviderCandidate) -> bool:
     `CanonicalSecurity.discover()` and `ListingRef` require. Checked
     only for `AUTO_ACCEPT` eligibility -- every other outcome leaves
     aggregate construction to a later, explicit step that can gather
-    the missing information first."""
+    the missing information first.
+
+    Currency is deliberately absent from this list. It is not identity:
+    a currency mismatch has never been able to reject a candidate here
+    (only company name, and exchange/country for a native listing, can),
+    and no valuation path reads the security's `trading_currency` --
+    valuation proves currency from the price and statements it actually
+    uses. Requiring it meant a provider that knows precisely which
+    security this is, and says so with a share-class FIGI, still could
+    not create it for want of a fact about quoting. That kept every
+    Stockholm and Paris holding unidentifiable. A security whose currency
+    is unproven is recorded with `trading_currency=None`, which is
+    absence, and valuation continues to withhold exactly as before.
+    """
     return (
         candidate.company_name is not None
         and candidate.exchange_mic is not None
         and candidate.country is not None
-        and candidate.currency is not None
     )

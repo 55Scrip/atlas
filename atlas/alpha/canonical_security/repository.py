@@ -351,7 +351,7 @@ def _root_to_row(security: CanonicalSecurity) -> dict[str, Any]:
         "native_ticker": security.native_ticker,
         "primary_exchange_mic": security.primary_exchange_mic.value,
         "country": security.country,
-        "trading_currency": security.trading_currency.value,
+        "trading_currency": security.trading_currency.value if security.trading_currency else None,
         "resolution_status": security.resolution_status,
         "issuer_id": str(security.issuer_id) if security.issuer_id is not None else None,
         "created_at": security.created_at.isoformat(),
@@ -365,7 +365,7 @@ def _listing_to_row(security_id: str, listing: ListingRef) -> dict[str, Any]:
         "canonical_security_id": security_id,
         "ticker": listing.ticker,
         "exchange_mic": listing.exchange_mic.value,
-        "currency": listing.currency.value,
+        "currency": listing.currency.value if listing.currency else None,
         "relationship": listing.relationship,
         "security_type": listing.security_type,
         "provider_symbol": listing.provider_symbol,
@@ -414,7 +414,7 @@ def _row_to_security(
         native_ticker=root_row["native_ticker"],
         primary_exchange_mic=MicCode(root_row["primary_exchange_mic"]),
         country=root_row["country"],
-        trading_currency=TradingCurrency(root_row["trading_currency"]),
+        trading_currency=TradingCurrency(root_row["trading_currency"]) if root_row["trading_currency"] else None,
         resolution_status=root_row["resolution_status"],
         issuer_id=(
             CanonicalIssuerId(uuid.UUID(root_row["issuer_id"]))
@@ -425,7 +425,7 @@ def _row_to_security(
             ListingRef(
                 ticker=row["ticker"],
                 exchange_mic=MicCode(row["exchange_mic"]),
-                currency=TradingCurrency(row["currency"]),
+                currency=TradingCurrency(row["currency"]) if row["currency"] else None,
                 relationship=row["relationship"],
                 security_type=row["security_type"],
                 provider_symbol=row["provider_symbol"],

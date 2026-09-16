@@ -57,7 +57,11 @@ class ListingRef:
 
     ticker: str
     exchange_mic: MicCode
-    currency: TradingCurrency
+    #: Optional for the same reason the security's own is: a listing
+    #: can be known to exist before anything has proven what it quotes
+    #: in. `None` is unproven, and is never filled from the investor's
+    #: account currency or from the venue's usual one.
+    currency: TradingCurrency | None
     relationship: ListingRelationship
     security_type: SecurityType
     provider_symbol: str | None = None
@@ -148,7 +152,20 @@ class CanonicalSecurity:
     native_ticker: str
     primary_exchange_mic: MicCode
     country: str
-    trading_currency: TradingCurrency
+    #: The currency this listing quotes in, when a source has actually
+    #: proven it. `None` means unproven -- not unknown-but-probably-USD,
+    #: and certainly not the investor's account currency.
+    #:
+    #: Optional because currency turned out never to be identity-defining
+    #: here: a currency mismatch has never rejected a candidate (only
+    #: company name, and exchange/country for a native listing, do that),
+    #: and no valuation path reads this field -- valuation proves currency
+    #: from the price and the statements it is actually using, which is the
+    #: only place it can be proven honestly. Requiring it at construction
+    #: meant Atlas could not record that a Stockholm security exists until
+    #: something told it what Stockholm trades in: a fact about market data
+    #: masquerading as a fact about identity.
+    trading_currency: TradingCurrency | None
     resolution_status: ResolutionStatus
     #: Issuer Identity Foundation, Phase 3. Every security belongs to
     #: exactly one issuer; one issuer may own many securities.
@@ -180,7 +197,7 @@ class CanonicalSecurity:
         native_ticker: str,
         primary_exchange_mic: MicCode,
         country: str,
-        trading_currency: TradingCurrency,
+        trading_currency: TradingCurrency | None,
         clock=_utc_now,
     ) -> CanonicalSecurity:
         """Establish a brand-new CanonicalSecurity in `DISCOVERED`

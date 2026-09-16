@@ -37,17 +37,64 @@ def test_ambiguous_takes_priority_over_conflict_candidates() -> None:
 
 def test_auto_accept_requires_constructible_candidate() -> None:
     """A HIGH-confidence candidate missing a field CanonicalSecurity
-    construction requires (currency, here) is downgraded to
+    construction requires (the exchange, here) is downgraded to
     MANUAL_CONFIRMATION rather than crashing or fabricating a value."""
     incomplete = ProviderCandidate(
         provider_name="TWELVE_DATA", symbol="AAPL", company_name="Apple Inc.",
-        exchange_mic=MicCode("XNGS"), country="United States", security_type="COMMON_STOCK",
-        # currency deliberately omitted
+        country="United States", security_type="COMMON_STOCK",
+        currency=TradingCurrency("USD"),
+        # exchange_mic deliberately omitted -- without a venue there is no
+        # security, only a ticker, and a ticker is what cannot tell
+        # Schneider Electric from Suncor Energy.
     )
     agreement = evaluate_provider_agreement((incomplete,))
     outcome, candidate = determine_outcome((incomplete,), ("HIGH",), agreement)
     assert outcome == "MANUAL_CONFIRMATION"
     assert candidate is incomplete
+
+
+def test_a_missing_currency_no_longer_blocks_construction() -> None:
+    """Currency is not identity. A provider that knows exactly which
+    security this is -- company, venue, country -- can create it even
+    when nothing has yet proven what the listing quotes in; the security
+    is then recorded with an unproven currency, and valuation goes on
+    withholding on its own currency evidence, which is where that
+    question actually belongs.
+
+    This is what kept every Stockholm and Paris holding unidentifiable.
+    """
+    without_currency = ProviderCandidate(
+        provider_name="OPENFIGI", symbol="VOLV-B", company_name="Volvo AB",
+        exchange_mic=MicCode("XSTO"), country="Sweden", security_type="COMMON_STOCK",
+        # currency deliberately omitted
+    )
+    agreement = evaluate_provider_agreement((without_currency,))
+    outcome, candidate = determine_outcome((without_currency,), ("HIGH",), agreement)
+    assert outcome == "AUTO_ACCEPT"
+    assert candidate is without_currency
+
+
+@pytest.mark.parametrize(
+    "missing",
+    [
+        {"company_name": None},
+        {"exchange_mic": None},
+        {"country": None},
+    ],
+)
+def test_identity_fields_are_still_required(missing) -> None:
+    """Company, venue and country remain mandatory -- dropping currency
+    from the rule must not have loosened the rest of it."""
+    fields = dict(
+        provider_name="OPENFIGI", symbol="VOLV-B", company_name="Volvo AB",
+        exchange_mic=MicCode("XSTO"), country="Sweden", security_type="COMMON_STOCK",
+        currency=TradingCurrency("SEK"),
+    )
+    fields.update(missing)
+    candidate = ProviderCandidate(**fields)
+    agreement = evaluate_provider_agreement((candidate,))
+    outcome, _ = determine_outcome((candidate,), ("HIGH",), agreement)
+    assert outcome == "MANUAL_CONFIRMATION"
 
 
 def test_auto_accept_with_fully_constructible_high_confidence_candidate() -> None:
