@@ -50,8 +50,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from atlas.alpha.canonical_security.value_objects import MicCode
-
 __all__ = ["Venue", "mic_for_market", "venue_for_mic"]
 
 
@@ -109,17 +107,21 @@ _MARKET_TEXT_TO_MIC: dict[str, str] = {
 }
 
 
-def mic_for_market(raw: str | None) -> MicCode | None:
+def mic_for_market(raw: str | None) -> str | None:
     """The MIC a broker's venue text names, or `None` if Atlas has never
-    been taught that exact spelling. Never a guess."""
+    been taught that exact spelling. Never a guess.
+
+    A plain string rather than a `MicCode`: this is a lookup table, and the
+    canonical identity package is reachable only through the Gate (its own
+    integration-safety guard enforces that). The Gate turns the string into
+    a value object where one is wanted.
+    """
     if raw is None:
         return None
-    mic = _MARKET_TEXT_TO_MIC.get(" ".join(raw.split()).upper())
-    return MicCode(mic) if mic is not None else None
+    return _MARKET_TEXT_TO_MIC.get(" ".join(raw.split()).upper())
 
 
-def venue_for_mic(mic: MicCode | str | None) -> Venue | None:
+def venue_for_mic(mic: str | None) -> Venue | None:
     if mic is None:
         return None
-    value = mic.value if isinstance(mic, MicCode) else mic
-    return _VENUES.get(value.strip().upper())
+    return _VENUES.get(str(mic).strip().upper())

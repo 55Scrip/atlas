@@ -26,7 +26,7 @@ from atlas.alpha.security_identity_evidence.venues import mic_for_market, venue_
     ],
 )
 def test_known_venue_text_maps_to_its_mic(market, mic) -> None:
-    assert mic_for_market(market).value == mic
+    assert mic_for_market(market) == mic
 
 
 @pytest.mark.parametrize("market", [None, "", "   ", "Some Regional Exchange", "Stockh", "XSTO "])

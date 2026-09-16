@@ -144,7 +144,10 @@ class ImportedIdentity:
 
     @property
     def exchange_mic(self) -> MicCode | None:
-        return mic_for_market(self.market)
+        """The venue table answers in plain strings -- it sits outside the
+        identity packages -- so the value object is built here."""
+        mic = mic_for_market(self.market)
+        return MicCode(mic) if mic is not None else None
 
 
 @dataclass(frozen=True)
@@ -288,7 +291,7 @@ def resolve_imported_identity(
         )
 
     # Creation needs a venue, because a security without one is a ticker.
-    venue = venue_for_mic(mic)
+    venue = venue_for_mic(mic.value if mic is not None else None)
     if venue is None:
         return ImportIdentityResolution(
             status=ImportIdentityStatus.INSUFFICIENT_IDENTITY,

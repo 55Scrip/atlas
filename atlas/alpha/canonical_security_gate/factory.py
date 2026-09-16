@@ -99,3 +99,39 @@ def build_listing_mic_reader(engine):
         return {ticker: frozenset(mics) for ticker, mics in found.items()}
 
     return listing_mics
+
+
+def build_import_identity_resolver(engine: Engine):
+    """The sanctioned seam for "which security is this imported row",
+    built here for the same reason `build_listing_mic_reader` is: the
+    import package may not import `canonical_security` or
+    `canonical_security_resolution` directly (both packages' own
+    integration-safety guards enforce that), so it receives a plain
+    callable instead of a repository and an aggregate.
+
+    Returns `(ticker, company_name, isin, market, account_currency) ->
+    ImportIdentityResolution`. A provider call happens only when the row
+    carries a valid ISIN *and* the security master cannot already answer
+    it, so a ticker-only import and a re-import both cost nothing.
+    """
+    from atlas.alpha.canonical_security.repository import SqlAlchemyCanonicalSecurityRepository
+    from atlas.alpha.canonical_security_gate.import_resolution import (
+        ImportedIdentity,
+        resolve_imported_identity,
+    )
+    from atlas.alpha.security_identity_evidence.openfigi_adapter import map_isin
+
+    create_canonical_security_tables(engine)
+    master = SqlAlchemyCanonicalSecurityRepository(engine)
+
+    def resolve(*, ticker, company_name, isin, market, account_currency):
+        return resolve_imported_identity(
+            ImportedIdentity(
+                ticker=ticker, company_name=company_name, isin=isin,
+                market=market, account_currency=account_currency,
+            ),
+            master=master,
+            map_isin_fn=map_isin,
+        )
+
+    return resolve
