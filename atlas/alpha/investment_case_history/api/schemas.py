@@ -218,8 +218,20 @@ class HistoricalAnalysisEntryView(CamelModel):
 
 
 class AnalyticalHistoryView(CamelModel):
+    """One bounded page of the combined history, newest first.
+
+    `generated_at` is when this page was produced, so successive pages of one
+    traversal legitimately differ -- it is response metadata, never a
+    pagination identity. The boundary is `next_cursor`, which is opaque: a
+    client stores it and sends it back, and must not parse it.
+    """
+
     generated_at: datetime
     entries: list[HistoricalAnalysisEntryView]
+    #: `None` when this is the last page. `has_more` says the same thing, and
+    #: is what a client should branch on.
+    next_cursor: str | None = None
+    has_more: bool = False
 
     @classmethod
     def from_domain(cls, history: AnalyticalHistoryWithEvidence) -> "AnalyticalHistoryView":
@@ -228,6 +240,8 @@ class AnalyticalHistoryView(CamelModel):
         never the latest evidence for the ticker."""
         by_snapshot = history.evidence_by_snapshot_id
         return cls(
+            next_cursor=history.next_cursor,
+            has_more=history.has_more,
             generated_at=history.history.generated_at,
             entries=[
                 HistoricalAnalysisEntryView.from_domain(

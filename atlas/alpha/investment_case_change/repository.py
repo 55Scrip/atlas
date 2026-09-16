@@ -45,9 +45,10 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Any, Mapping
+from datetime import datetime
+from typing import Any, Mapping, Sequence
 
-from sqlalchemy import and_, asc, desc, insert, select
+from sqlalchemy import and_, func, or_, asc, desc, insert, select
 from sqlalchemy.engine import Engine
 
 from atlas.alpha.investment_case.valuation_evidence_snapshot import (
@@ -171,6 +172,90 @@ class SqlAlchemyInvestmentCaseSnapshotRepository:
                 .all()
             )
         return _replay(rows)
+
+    def get_visible_history_page(
+        self,
+        case_ids: Sequence[str],
+        *,
+        limit: int,
+        after: tuple[str, str, str] | None = None,
+    ) -> tuple[tuple[tuple[str, AnalyticalSnapshot, ChangeIntelligence, ValuationEvidenceSnapshot | None], ...], bool]:
+        """One page of the combined, newest-first history across `case_ids`.
+
+        Everything that decides whether a row may be seen happens in the
+        database, before the page is cut: the scope is the `case_ids` the
+        caller derived from live membership, and retracted rows are excluded
+        inside the window. A row a reader may not see therefore cannot
+        consume a page slot, shift a boundary or influence `has_more`.
+
+        Ordering is exactly the order `build_analytical_history` produces --
+        `captured_at` descending, then `case_id`, then `content_hash` -- so a
+        full traversal reproduces the unbounded history it replaces, row for
+        row. Those same three values are the cursor, which is why they are
+        also a total order: `id` is `case_id:captured_at`, so no two rows can
+        tie on all three.
+
+        `after` resumes strictly beyond a position, never at it, so a
+        boundary row is neither repeated nor skipped -- and the position need
+        not still exist, so retracting the very row a client last saw does
+        not strand its traversal.
+
+        One query, `limit + 1` rows: the extra row answers `has_more` without
+        a second count, and the frozen evidence rides along on the same rows,
+        so a page costs nothing per snapshot and nothing per Case.
+        """
+        table = investment_case_snapshot_table
+        if not case_ids:
+            return (), False
+        visible = (
+            select(
+                table,
+                func.lag(table.c.captured_at)
+                .over(partition_by=table.c.case_id, order_by=asc(table.c.captured_at))
+                .label("previous_captured_at"),
+            )
+            .where(table.c.case_id.in_(list(case_ids)), table.c.retracted_by.is_(None))
+            .subquery()
+        )
+        query = select(visible)
+        if after is not None:
+            captured_at, case_id, content_hash = after
+            query = query.where(
+                or_(
+                    visible.c.captured_at < captured_at,
+                    and_(visible.c.captured_at == captured_at, visible.c.case_id > case_id),
+                    and_(
+                        visible.c.captured_at == captured_at,
+                        visible.c.case_id == case_id,
+                        visible.c.content_hash > content_hash,
+                    ),
+                )
+            )
+        query = query.order_by(
+            desc(visible.c.captured_at), asc(visible.c.case_id), asc(visible.c.content_hash)
+        ).limit(limit + 1)
+        with self._engine.connect() as connection:
+            rows = connection.execute(query).mappings().all()
+        has_more = len(rows) > limit
+        page = []
+        for row in rows[:limit]:
+            snapshot = _to_snapshot(row)
+            previous_captured_at = row["previous_captured_at"]
+            if previous_captured_at is None:
+                # The oldest live row this Case has: a baseline, exactly as
+                # the per-Case reader decides it. The window excluded
+                # retracted rows, so "oldest" means oldest *visible*.
+                transition = compare_snapshots(None, snapshot)
+            else:
+                transition = _to_change_intelligence(
+                    row,
+                    previous_captured_at=datetime.fromisoformat(previous_captured_at),
+                    current_captured_at=snapshot.captured_at,
+                )
+            evidence = deserialize_valuation_evidence(
+                json.loads(row["snapshot_json"]).get("valuation_evidence"))
+            page.append((row["case_id"], snapshot, transition, evidence))
+        return tuple(page), has_more
 
     def get_latest_valuation_evidence(self, case_id: str) -> ValuationEvidenceSnapshot | None:
         """The frozen valuation evidence of the current head, or `None` when
