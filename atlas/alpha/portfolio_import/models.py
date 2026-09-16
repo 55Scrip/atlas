@@ -24,6 +24,15 @@ class ColumnRole(str, Enum):
     VALUE = "VALUE"
     WEIGHT = "WEIGHT"
     CURRENCY = "CURRENCY"
+    #: The strongest identity a brokerage export carries. A ticker says
+    #: what a venue calls something; an ISIN says which security it is.
+    #: `SU` on NYSE and `SU.PA` in Paris are different companies that a
+    #: ticker cannot separate and an ISIN never confuses.
+    ISIN = "ISIN"
+    #: Where it trades, as the broker wrote it. Kept verbatim -- the MIC
+    #: is derived later from a closed table, never guessed, and never
+    #: inferred from the account's reporting currency.
+    MARKET = "MARKET"
 
 
 class RowResolutionStatus(str, Enum):

@@ -47,6 +47,20 @@ _HEADER_VOCABULARY: dict[str, ColumnRole] = {
     # currency
     "currency": ColumnRole.CURRENCY,
     "valuta": ColumnRole.CURRENCY,
+    # ISIN -- every European broker export carries one, and it is the only
+    # column here that identifies a security rather than describing it.
+    "isin": ColumnRole.ISIN,
+    "isin-kod": ColumnRole.ISIN,
+    "isin code": ColumnRole.ISIN,
+    # marketplace / venue
+    "market": ColumnRole.MARKET,
+    "marketplace": ColumnRole.MARKET,
+    "marknad": ColumnRole.MARKET,
+    "marknadsplats": ColumnRole.MARKET,
+    "exchange": ColumnRole.MARKET,
+    "börs": ColumnRole.MARKET,
+    "bors": ColumnRole.MARKET,
+    "handelsplats": ColumnRole.MARKET,
 }
 
 
