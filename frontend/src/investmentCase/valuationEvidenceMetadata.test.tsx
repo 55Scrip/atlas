@@ -10,6 +10,7 @@ import {
   shareBasisKey,
   valuationEvidenceCaveats,
   valuationEvidenceDetails,
+  type EdgeObservationView,
   type ValuationEvidenceMetadataView,
 } from "./valuationEvidenceMetadata";
 
@@ -86,6 +87,27 @@ function healthy(): ValuationEvidenceMetadataView {
       capitalExpenditureVersusPriorYear: 1.02,
     },
     denominator: { currentTreatment: "issuer_exact", priorTreatments: ["issuer_exact", "issuer_exact"], allExact: true },
+    rangeEdge: {
+      lowEdge: edge(2011, 0.02), highEdge: edge(2024, 0.09),
+      secondLowest: edge(2012, 0.03), secondHighest: edge(2023, 0.08),
+      distanceToLowEdge: -0.4, distanceToHighEdge: -0.87,
+      distanceToSecondLowest: -0.6, distanceToSecondHighest: -0.85,
+      priorsAtOrBelowCurrent: 0, priorsAtOrAboveCurrent: 14,
+      singleLowEdgeDependency: false, singleHighEdgeDependency: false,
+      lowEdgeGap: 0.01, highEdgeGap: 0.01, medianHistoryGap: 0.005,
+    },
+  };
+}
+
+/** One range-edge observation, at the year and yield given. */
+function edge(fiscalYear: number, fcfYield: number): EdgeObservationView {
+  return {
+    fiscalPeriod: `${fiscalYear}-12-31`,
+    fiscalYear,
+    fcfYield,
+    denominatorQuality: "issuer_exact",
+    ageYears: 2025 - fiscalYear,
+    uniquelyOwned: true,
   };
 }
 
@@ -227,6 +249,8 @@ describe("caveats appear only when the evidence makes them true", () => {
 describe("the detail figures are shown only where the statements carry them", () => {
   it("states dispersion, boundary distance, cash flow and capital intensity", () => {
     expect(valuationEvidenceDetails(healthy(), T, "en-US")).toEqual([
+      "Range ends: FY2011 at 2.00% and FY2024 at 9.00%; next-lowest FY2012 at 3.00%.",
+      "0 of 14 prior years sit at or below today's yield of 1.20%.",
       "Prior-year FCF yields ran 2.0% to 9.0%, median 5.0%.",
       "67% away from classifying as Fairly valued.",
       "This period's free cash flow is 105% of last year's and 111% of the median of the 3 most recent compared years.",
@@ -251,7 +275,7 @@ describe("the detail figures are shown only where the statements carry them", ()
       capitalExpenditureVersusPriorYear: null,
     };
     const lines = valuationEvidenceDetails(metadata, T, "en-US");
-    expect(lines).toHaveLength(3);
+    expect(lines).toHaveLength(5);
     expect(lines.join(" ")).not.toMatch(/Capital expenditure/);
   });
 
@@ -336,5 +360,74 @@ describe("the reasoning card explains the status without changing it", () => {
 
   it("adds nothing to the card when there is nothing to add", () => {
     expect(renderCards(reasoningInput([]))).toBe(renderCards(reasoningInput(undefined)));
+  });
+});
+
+describe("range edge disclosure names the year, never discredits it", () => {
+  /** A FAIRLY_VALUED Case whose current yield is below every prior but the
+   * single year owning the low edge -- the shape the corpus audit found. */
+  function edgeDependent(): ValuationEvidenceMetadataView {
+    const metadata = healthy();
+    metadata.rangeEdge = {
+      ...metadata.rangeEdge!,
+      lowEdge: edge(2025, 0.0181),
+      secondLowest: edge(2024, 0.0238),
+      priorsAtOrBelowCurrent: 1,
+      singleLowEdgeDependency: true,
+    };
+    return metadata;
+  }
+
+  it("leads the caveats with the edge year, in English", () => {
+    const caveats = valuationEvidenceCaveats(edgeDependent(), T);
+    expect(caveats[0]).toBe(
+      "FY2025 alone forms the low end of the historical range; today's FCF yield is below every other prior year.",
+    );
+  });
+
+  it("leads the caveats with the edge year, in Swedish", () => {
+    expect(valuationEvidenceCaveats(edgeDependent(), TSv)[0]).toBe(
+      "FY2025 utgör ensamt intervallets nedre ände; dagens FCF-avkastning ligger under alla övriga tidigare år.",
+    );
+  });
+
+  it("never calls the edge year an outlier, stale or anomalous, in either language", () => {
+    const forbidden = /outlier|anomal|stale|distort|mislead|unreliab|avvikande|föråldrad|missvisande|opålitlig/i;
+    for (const translate of [T, TSv]) {
+      for (const line of [...valuationEvidenceCaveats(edgeDependent(), translate),
+                          ...valuationEvidenceDetails(edgeDependent(), translate, "en-US")]) {
+        expect(line).not.toMatch(forbidden);
+      }
+    }
+  });
+
+  it("stays silent when several years corroborate the classification", () => {
+    expect(valuationEvidenceCaveats(healthy(), T)).toEqual([]);
+  });
+
+  it("surfaces the symmetric high-edge case", () => {
+    const metadata = healthy();
+    metadata.rangeEdge = {
+      ...metadata.rangeEdge!, highEdge: edge(2022, 0.09), secondHighest: edge(2021, 0.07),
+      singleHighEdgeDependency: true,
+    };
+    expect(valuationEvidenceCaveats(metadata, T)[0]).toBe(
+      "FY2022 alone forms the high end of the historical range; today's FCF yield is above every other prior year.",
+    );
+  });
+
+  it("says nothing when the backend sent no range edge at all", () => {
+    const metadata = healthy();
+    metadata.rangeEdge = null;
+    expect(valuationEvidenceCaveats(metadata, T)).toEqual([]);
+    expect(valuationEvidenceDetails(metadata, T, "en-US").join(" ")).not.toMatch(/Range ends/);
+  });
+
+  it("puts the edge fact ahead of the other caveats on the compact card", () => {
+    const metadata = edgeDependent();
+    metadata.history = { ...metadata.history, validPriorCount: 3, atMinimumDepth: true };
+    const caveats = valuationEvidenceCaveats(metadata, T);
+    expect(caveats[0]).toMatch(/FY2025 alone forms the low end/);
+    expect(caveats.slice(0, MAX_CARD_CAVEATS)).toHaveLength(2);
   });
 });

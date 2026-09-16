@@ -79,12 +79,40 @@ export interface DenominatorEvidenceView {
   allExact: boolean;
 }
 
+export interface EdgeObservationView {
+  fiscalPeriod: string;
+  fiscalYear: number;
+  fcfYield: number;
+  denominatorQuality: string | null;
+  ageYears: number;
+  uniquelyOwned: boolean;
+}
+
+export interface RangeEdgeEvidenceView {
+  lowEdge: EdgeObservationView | null;
+  highEdge: EdgeObservationView | null;
+  secondLowest: EdgeObservationView | null;
+  secondHighest: EdgeObservationView | null;
+  distanceToLowEdge: number | null;
+  distanceToHighEdge: number | null;
+  distanceToSecondLowest: number | null;
+  distanceToSecondHighest: number | null;
+  priorsAtOrBelowCurrent: number;
+  priorsAtOrAboveCurrent: number;
+  singleLowEdgeDependency: boolean;
+  singleHighEdgeDependency: boolean;
+  lowEdgeGap: number | null;
+  highEdgeGap: number | null;
+  medianHistoryGap: number | null;
+}
+
 export interface ValuationEvidenceMetadataView {
   history: ValuationHistoryEvidenceView;
   boundary: ValuationBoundaryEvidenceView;
   currentCashFlow: CurrentCashFlowEvidenceView;
   capitalIntensity: CapitalIntensityEvidenceView;
   denominator: DenominatorEvidenceView;
+  rangeEdge: RangeEdgeEvidenceView | null;
 }
 
 const BOUNDED_TREATMENT = "issuer_bounded";
@@ -155,8 +183,23 @@ export function valuationEvidenceCaveats(
 ): string[] {
   if (!metadata) return [];
   const caveats: string[] = [];
-  const { history, boundary, currentCashFlow, capitalIntensity, denominator } = metadata;
+  const { history, boundary, currentCashFlow, capitalIntensity, denominator, rangeEdge } = metadata;
 
+  /* (Range Edge Disclosure) Leads, because it is the fact that most changes
+     how the conclusion should be read: the Case is inside its historical
+     range, but only the single year owning that range's end puts it there.
+     It never contradicts the classification and never calls the edge year an
+     outlier -- that year is valid evidence, and is named, not discounted. */
+  if (rangeEdge?.singleLowEdgeDependency && rangeEdge.lowEdge !== null) {
+    caveats.push(
+      t("investmentCase.reasoning.valuation.caveat.singleLowEdge", { year: rangeEdge.lowEdge.fiscalYear }),
+    );
+  }
+  if (rangeEdge?.singleHighEdgeDependency && rangeEdge.highEdge !== null) {
+    caveats.push(
+      t("investmentCase.reasoning.valuation.caveat.singleHighEdge", { year: rangeEdge.highEdge.fiscalYear }),
+    );
+  }
   if (history.atMinimumDepth) {
     caveats.push(t("investmentCase.reasoning.valuation.caveat.minimumHistory", { count: history.validPriorCount }));
   }
@@ -199,7 +242,31 @@ export function valuationEvidenceDetails(
 ): string[] {
   if (!metadata) return [];
   const lines: string[] = [];
-  const { history, boundary, currentCashFlow, capitalIntensity } = metadata;
+  const { history, boundary, currentCashFlow, capitalIntensity, rangeEdge } = metadata;
+
+  /* Who owns each end of the observed range, and how many years agree with
+     today's position inside it -- the figures behind the qualifier above. */
+  if (rangeEdge?.lowEdge && rangeEdge.highEdge && rangeEdge.secondLowest) {
+    lines.push(
+      t("investmentCase.analysis.valuation.rangeEdges", {
+        lowYear: rangeEdge.lowEdge.fiscalYear,
+        low: percent(rangeEdge.lowEdge.fcfYield, locale, 2),
+        highYear: rangeEdge.highEdge.fiscalYear,
+        high: percent(rangeEdge.highEdge.fcfYield, locale, 2),
+        secondLowYear: rangeEdge.secondLowest.fiscalYear,
+        secondLow: percent(rangeEdge.secondLowest.fcfYield, locale, 2),
+      }),
+    );
+  }
+  if (rangeEdge && boundary.currentYield !== null) {
+    lines.push(
+      t("investmentCase.analysis.valuation.corroboration", {
+        below: rangeEdge.priorsAtOrBelowCurrent,
+        count: history.validPriorCount,
+        current: percent(boundary.currentYield, locale, 2),
+      }),
+    );
+  }
 
   if (history.yieldMinimum !== null && history.yieldMaximum !== null && history.yieldMedian !== null) {
     lines.push(
