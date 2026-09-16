@@ -40,6 +40,11 @@ def test_the_composers_are_reached_only_through_case_composition_wiring_and_the_
         "atlas/alpha/monitoring/api/dependencies.py",
         "atlas/alpha/portfolio_cockpit/api/dependencies.py",
         "atlas/dev/backfill_class_rights_evidence.py",
+        # Case composition wiring for the scheduled batch -- the engine-built
+        # twin of `investment_case/api/dependencies.py`, reached only by the
+        # operator command. Still no recommendation, narrative, snapshot or
+        # Decision Layer module names the evidence.
+        "atlas/alpha/scheduled_composition/factory.py",
     }
 
 

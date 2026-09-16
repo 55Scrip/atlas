@@ -37,6 +37,12 @@ _ALLOWED_IMPORTERS = {
     "atlas/alpha/discovery_context/dependencies.py",
     "atlas/alpha/portfolio_cockpit/api/dependencies.py",
     "atlas/alpha/monitoring/api/dependencies.py",
+    # The same Case-composition wiring as the four entries above, built from
+    # an engine rather than FastAPI `Depends` so a scheduled batch composes
+    # through the production path. It reads nothing the API wiring does not:
+    # drop it here and the batch loses historical share counts for
+    # multi-class issuers, and records a valuation the app never showed.
+    "atlas/alpha/scheduled_composition/factory.py",
 }
 
 
