@@ -1,4 +1,5 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { ExpandableDetail } from "../investmentCase/ExpandableDetail";
 import { useNavigate } from "react-router-dom";
 import { ACCENT_LINK_STYLE, Button, Container, Divider, Heading, Inline, Label, Link, Stack, StatusBadge, Text } from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
@@ -104,6 +105,49 @@ const HEADLINE_KEY: Record<AnalysisThesisImpact, TranslationKey> = {
 // (already deduplicated server-side). Every field below is a direct
 // read of the backend response; this page computes nothing analytical
 // -- see that module's own "History does not reason" doctrine.
+interface HistoricalPriorEpochView {
+  fiscalPeriod: string;
+  fiscalYear: number;
+  fcfYield: number;
+  freeCashFlow: number;
+  issuerMarketCap: number;
+  denominatorQuality: string | null;
+}
+
+interface HistoricalRangeEdgeView {
+  lowEdgeFiscalYear: number | null;
+  lowEdgeFcfYield: number | null;
+  lowEdgeDenominatorQuality: string | null;
+  secondLowestFiscalYear: number | null;
+  secondLowestFcfYield: number | null;
+  highEdgeFiscalYear: number | null;
+  highEdgeFcfYield: number | null;
+  secondHighestFiscalYear: number | null;
+  secondHighestFcfYield: number | null;
+  priorsAtOrBelowCurrent: number;
+  priorsAtOrAboveCurrent: number;
+  singleLowEdgeDependency: boolean;
+  singleHighEdgeDependency: boolean;
+}
+
+interface HistoricalValuationEvidenceView {
+  schemaVersion: string;
+  valuationMethodology: string | null;
+  numeratorMethod: string | null;
+  shareCountMethod: string;
+  valuationStatus: AnalysisValuationStatus;
+  valuationPosition: string | null;
+  fcfYieldAtAnalysis: number | null;
+  eligibility: string;
+  minimumPriorCount: number;
+  withheldReasons: string[];
+  valuationSupportStatus: string;
+  valuationSupportGap: string | null;
+  priorEpochCount: number;
+  priorEpochs: HistoricalPriorEpochView[];
+  rangeEdge: HistoricalRangeEdgeView | null;
+}
+
 interface HistoricalAnalysisEntryView {
   caseId: string;
   ticker: string | null;
@@ -123,6 +167,10 @@ interface HistoricalAnalysisEntryView {
   riskCategoryStates: { category: string; status: string; findingId: string }[];
   valuationStatus: AnalysisValuationStatus;
   currentYield: number | null;
+  /** (Frozen Evidence History) The evidence frozen with THIS snapshot.
+   * `null` means the snapshot predates evidence persistence -- never that
+   * Atlas had no evidence. Optional so an older server stays readable. */
+  valuationEvidence?: HistoricalValuationEvidenceView | null;
 }
 
 interface AnalyticalHistoryView {
@@ -780,6 +828,125 @@ function ActivityTimelineRow({
   );
 }
 
+/** (Frozen Evidence History) What Atlas had when it reached the conclusion
+ * this row records.
+ *
+ * Every value is read from the evidence frozen with this snapshot. Nothing
+ * is recomputed and nothing is refreshed from the live Case: a later filing
+ * or a price move changes what Atlas says today, never what this row reports
+ * it had then. The copy says so -- every figure is labelled "at the
+ * analysis", so a reader can never mistake it for a current valuation.
+ *
+ * Three states, kept distinct because they mean different things:
+ * `null` is a snapshot taken before Atlas began freezing evidence ("never
+ * recorded", not "no evidence existed"); a stored record with no accepted
+ * priors is a valuation that was genuinely withheld at the time; anything
+ * else is a real comparison, shown compactly with the prior years behind a
+ * further disclosure. */
+function HistoricalValuationEvidence({
+  evidence,
+  t,
+  locale,
+}: {
+  evidence: HistoricalValuationEvidenceView | null;
+  t: Translate;
+  locale: string;
+}) {
+  if (evidence === null) {
+    return (
+      <Text color="tertiary" as="p">
+        {t("history.analytical.evidence.notStored")}
+      </Text>
+    );
+  }
+  const percent = (value: number) =>
+    new Intl.NumberFormat(locale, { style: "percent", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
+  const edge = evidence.rangeEdge;
+  const withheld = evidence.priorEpochCount === 0;
+
+  return (
+    <Stack gap="metadata">
+      {evidence.fcfYieldAtAnalysis !== null && (
+        <Text color="secondary" as="p">
+          {t("history.analytical.evidence.yieldAtAnalysis", { yield: percent(evidence.fcfYieldAtAnalysis) })}
+        </Text>
+      )}
+      {withheld ? (
+        <Text color="secondary" as="p">
+          {t("history.analytical.evidence.withheld", { support: evidence.valuationSupportStatus })}
+        </Text>
+      ) : (
+        <Text color="secondary" as="p">
+          {t("history.analytical.evidence.comparedWith", { count: evidence.priorEpochCount })}
+        </Text>
+      )}
+      {edge?.singleLowEdgeDependency && edge.lowEdgeFiscalYear !== null && (
+        <Text color="secondary" as="p">
+          {t("history.analytical.evidence.singleLowEdge", { year: edge.lowEdgeFiscalYear })}
+        </Text>
+      )}
+      {edge?.singleHighEdgeDependency && edge.highEdgeFiscalYear !== null && (
+        <Text color="secondary" as="p">
+          {t("history.analytical.evidence.singleHighEdge", { year: edge.highEdgeFiscalYear })}
+        </Text>
+      )}
+      {!withheld && (
+        <ExpandableDetail summaryLabel={t("history.analytical.evidence.showDetail")}>
+          <Stack gap="metadata">
+            {edge && edge.lowEdgeFiscalYear !== null && edge.highEdgeFiscalYear !== null && (
+              <Text color="tertiary" as="p">
+                {t("history.analytical.evidence.range", {
+                  lowYear: edge.lowEdgeFiscalYear,
+                  low: edge.lowEdgeFcfYield === null ? "-" : percent(edge.lowEdgeFcfYield),
+                  highYear: edge.highEdgeFiscalYear,
+                  high: edge.highEdgeFcfYield === null ? "-" : percent(edge.highEdgeFcfYield),
+                })}
+              </Text>
+            )}
+            {edge && (
+              <Text color="tertiary" as="p">
+                {t("history.analytical.evidence.corroboration", {
+                  below: edge.priorsAtOrBelowCurrent,
+                  count: evidence.priorEpochCount,
+                })}
+              </Text>
+            )}
+            <Text color="tertiary" as="p">
+              {t("history.analytical.evidence.support", { support: evidence.valuationSupportStatus })}
+            </Text>
+            <Text color="tertiary" as="p">
+              {t("history.analytical.evidence.methodology", {
+                methodology: evidence.valuationMethodology ?? t("history.analytical.detail.empty"),
+              })}
+            </Text>
+            <table style={{ borderCollapse: "collapse", textAlign: "left" }}>
+              <caption style={{ textAlign: "left", font: "inherit", color: "var(--color-text-tertiary)" }}>
+                {t("history.analytical.evidence.tableCaption")}
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">{t("history.analytical.evidence.columnYear")}</th>
+                  <th scope="col">{t("history.analytical.evidence.columnYield")}</th>
+                  <th scope="col">{t("history.analytical.evidence.columnBasis")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {evidence.priorEpochs.map((epoch) => (
+                  <tr key={epoch.fiscalPeriod}>
+                    <td>{epoch.fiscalYear}</td>
+                    <td>{percent(epoch.fcfYield)}</td>
+                    <td>{epoch.denominatorQuality ?? "-"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Stack>
+        </ExpandableDetail>
+      )}
+    </Stack>
+  );
+}
+
 /** One analytical timeline entry -- either a Case's baseline (its
  * first-ever recorded snapshot, never itself reported as a change) or
  * a real transition between two consecutive snapshots. Every fact
@@ -883,6 +1050,12 @@ function AnalyticalTimelineRow({
           <Text color="secondary" as="p">
             {t(VALUATION_STATUS_KEY[entry.valuationStatus])}
           </Text>
+          {/* (Frozen Evidence History) What Atlas actually had when it reached
+              that conclusion -- read from the evidence frozen with this very
+              snapshot, never recomputed and never refreshed from today. A
+              snapshot taken before Atlas began freezing evidence says so
+              quietly, in one line, and shows no fabricated table. */}
+          <HistoricalValuationEvidence evidence={entry.valuationEvidence ?? null} t={t} locale={locale} />
 
           <Label>{t("history.analytical.detail.openQuestionsHeading")}</Label>
           <Text color="secondary" as="p">
