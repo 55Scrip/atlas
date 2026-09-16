@@ -48,7 +48,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Mapping, Sequence
 
-from sqlalchemy import and_, func, or_, asc, desc, insert, select
+from sqlalchemy import and_, false, func, or_, asc, desc, insert, select
 from sqlalchemy.engine import Engine
 
 from atlas.alpha.investment_case.valuation_evidence_snapshot import (
@@ -365,23 +365,72 @@ class SqlAlchemyInvestmentCaseSnapshotRepository:
         `InvestmentCaseCompositionService._assemble`'s own comment) --
         never recomputed here, and never persisted when `is_baseline` is
         `True` (a baseline has nothing to persist; `get_history` derives
-        it structurally, from "this is the oldest row for this Case")."""
-        current_head = self.get_latest(case_id)
-        if current_head is not None and current_head.content_hash == snapshot.content_hash:
-            # (Snapshot Evidence Persistence) Analytically unchanged is no
-            # longer the whole question. The conclusion can stand still while
-            # the evidence under it moves -- a restated prior year, a newly
-            # available fiscal epoch, a denominator that became exact, a
-            # Valuation Support that resolved. Absorbing those would leave the
-            # record saying the evidence never changed, which is false. The
-            # fingerprint deliberately ignores the current yield, exactly as
-            # `content_hash` does, so a price tick still writes nothing.
-            head_evidence = self.get_latest_valuation_evidence(case_id)
-            unchanged = (head_evidence.fingerprint if head_evidence is not None else None)
-            incoming = (valuation_evidence.fingerprint if valuation_evidence is not None else None)
-            if unchanged == incoming:
-                return False
+        it structurally, from "this is the oldest row for this Case").
+
+        **Atomic across processes.** Deciding whether the record moved means
+        reading the current head and then inserting, and for as long as those
+        were two separate statements they were also two separate SQLite
+        transactions -- reads take no lock here (pysqlite opens no
+        transaction for a SELECT), so two composers of the same Case both saw
+        the same head, both concluded it had moved, and both wrote. The rows
+        were identical in every semantic field, differing only by microseconds
+        in `captured_at`: not a wrong conclusion, but the same observation
+        counted twice, which is exactly what a longitudinal record must not
+        do. Reachable from two browser tabs long before anything composed on a
+        schedule.
+
+        So the head read and the insert now happen inside one transaction
+        that takes SQLite's write lock *before* the read. A second composer
+        waits on it (the driver's busy timeout), then reads the head the
+        winner just wrote and deduplicates normally -- converging on one row
+        instead of racing to add a second.
+
+        Deliberately not a uniqueness constraint on (case, hash, evidence): a
+        retracted row must not block a legitimate future return to the same
+        state, and the head read already ignores retracted rows, which a
+        constraint could not. Only persistence is inside the lock -- the Case
+        analysis itself has already finished by the time this is called, so
+        nothing expensive is serialized, and Cases never block each other for
+        longer than SQLite already serializes any two writes.
+        """
         with self._engine.begin() as connection:
+            # SQLite opens a deferred transaction, which takes no lock until
+            # the first write -- leaving exactly the window this closes. This
+            # matches no rows and changes nothing; its only job is to acquire
+            # the write lock now, so the head read below cannot be stale by
+            # the time the insert happens.
+            connection.execute(
+                investment_case_snapshot_table.update()
+                .where(false())
+                .values(retracted_by=investment_case_snapshot_table.c.retracted_by)
+            )
+            head = (
+                connection.execute(
+                    select(investment_case_snapshot_table)
+                    .where(_live(case_id))
+                    .order_by(desc(investment_case_snapshot_table.c.captured_at))
+                    .limit(1)
+                )
+                .mappings()
+                .first()
+            )
+            if head is not None and head["content_hash"] == snapshot.content_hash:
+                # (Snapshot Evidence Persistence) Analytically unchanged is no
+                # longer the whole question. The conclusion can stand still
+                # while the evidence under it moves -- a restated prior year, a
+                # newly available fiscal epoch, a denominator that became
+                # exact, a Valuation Support that resolved. Absorbing those
+                # would leave the record saying the evidence never changed,
+                # which is false. The fingerprint deliberately ignores the
+                # current yield, exactly as `content_hash` does, so a price
+                # tick still writes nothing.
+                head_evidence = deserialize_valuation_evidence(
+                    json.loads(head["snapshot_json"]).get("valuation_evidence")
+                )
+                unchanged = (head_evidence.fingerprint if head_evidence is not None else None)
+                incoming = (valuation_evidence.fingerprint if valuation_evidence is not None else None)
+                if unchanged == incoming:
+                    return False
             connection.execute(
                 insert(investment_case_snapshot_table).values(
                     **_to_row(case_id, snapshot, change_intelligence, valuation_evidence)
