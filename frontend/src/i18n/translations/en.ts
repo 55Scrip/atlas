@@ -409,6 +409,8 @@ export const en = {
   "portfolio.weakestHoldings.subheading": "Where capital currently looks least compelling — worth a look, not a sell list.",
   "portfolio.weakestHoldings.empty": "No holdings currently show a weak Portfolio Fit or a reduction-supported view.",
   "portfolio.weakestHoldings.compareAlternatives": "Compare alternatives",
+  "portfolio.signalCards.ratingScope":
+    "The rating shown is Atlas's overall view of the case and the position's size. Atlas does not yet assess overlap with your other holdings.",
 
   // ---------- watchlist relationship (Product Sprint 8) ----------
   "portfolio.watchlistRelationship.heading": "Explore Further",

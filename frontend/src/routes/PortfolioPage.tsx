@@ -1783,6 +1783,17 @@ function PortfolioOpportunitiesSection({
   return (
     <Stack gap="metadata">
       <Heading level={2}>{t("portfolio.opportunities.heading")}</Heading>
+      {/* Position Editor v1 / semantic cleanup. These cards rank and
+          badge by `assessment.overall`, which votes across business,
+          valuation and risk as well as position size -- so the badge is
+          a case-and-size rating, not a statement about how this holding
+          sits against the rest of the portfolio. The selection logic is
+          left exactly as Sprint 6D built it; only the claim is
+          corrected, because a reader seeing "Bra passform" here would
+          otherwise reasonably believe Atlas had checked overlap. */}
+      <Text color="tertiary" as="p">
+        {t("portfolio.signalCards.ratingScope")}
+      </Text>
       <Stack gap="row">
         {candidates.map((assessment) => (
           <PortfolioSignalCard
@@ -3241,6 +3252,10 @@ function PortfolioWeaknessesSection({
       <Heading level={2}>{t("portfolio.weakestHoldings.heading")}</Heading>
       <Text color="tertiary" as="p">
         {t("portfolio.weakestHoldings.subheading")}
+      </Text>
+      {/* Same correction as Portfolio Opportunities above. */}
+      <Text color="tertiary" as="p">
+        {t("portfolio.signalCards.ratingScope")}
       </Text>
       {candidates.length === 0 && <Text color="secondary">{t("portfolio.weakestHoldings.empty")}</Text>}
       <Stack gap="row">

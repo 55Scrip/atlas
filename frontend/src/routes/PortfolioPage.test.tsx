@@ -475,6 +475,25 @@ describe("PortfolioPage (Product Sprint 8 -- Portfolio Excellence)", () => {
     expect(section.getByText("Svag passform")).toBeInTheDocument();
   });
 
+  it("says what the Opportunities and Weaknesses badges actually rate", async () => {
+    // These cards rank and badge by the overall fit vote, which folds in
+    // business, valuation and risk. The cards were left as Sprint 6D
+    // built them, but a badge reading "Svag passform" under a heading
+    // reading "Portföljsvagheter" claims an overlap analysis Atlas has
+    // not performed, so the scope is stated where the badge is read.
+    mockFetch();
+    renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
+    const heading = await screen.findByText("Portföljsvagheter");
+    const section = within(heading.closest("div")!);
+    expect(
+      section.getByText(/bedömer ännu inte överlappning med dina övriga innehav/),
+    ).toBeInTheDocument();
+    const opportunities = within(screen.getByText("Portföljmöjligheter").closest("div")!);
+    expect(
+      opportunities.getByText(/bedömer ännu inte överlappning med dina övriga innehav/),
+    ).toBeInTheDocument();
+  });
+
   it("reads the allocation dimension in the Fit cell, not the overall vote", async () => {
     // The distinguishing case: a holding whose overall fit is Weak --
     // because the case is expensive and risky -- but whose *size* in

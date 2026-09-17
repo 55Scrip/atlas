@@ -389,6 +389,8 @@ export const sv: Record<TranslationKey, string> = {
   "portfolio.weakestHoldings.subheading": "Var kapitalet just nu ser minst attraktivt ut — värt en titt, inte en säljlista.",
   "portfolio.weakestHoldings.empty": "Inga innehav visar just nu svag portföljpassform eller en reduktionsstödd syn.",
   "portfolio.weakestHoldings.compareAlternatives": "Jämför alternativ",
+  "portfolio.signalCards.ratingScope":
+    "Betyget som visas är Atlas samlade syn på caset och positionens storlek. Atlas bedömer ännu inte överlappning med dina övriga innehav.",
 
   // ---------- watchlist relationship (Product Sprint 8) ----------
   "portfolio.watchlistRelationship.heading": "Utforska vidare",
