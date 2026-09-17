@@ -250,6 +250,42 @@ class TestApplicability:
         assert finding.status is RiskStatus.INSUFFICIENT_INPUT
         assert finding.missing_evidence == (Gap.INDUSTRY_UNKNOWN,)
 
+    @pytest.mark.parametrize("foreign_label", [
+        # GICS sub-industries (S&P/MSCI)
+        "Diversified Banks", "Regional Banks", "Life & Health Insurance",
+        "Property & Casualty Insurance", "Investment Banking & Brokerage",
+        "Commercial & Residential Mortgage Finance",
+        # ICB subsectors (FTSE Russell)
+        "Life Insurance", "Non-life Insurance",
+        "Investment Banking and Brokerage Services",
+    ])
+    def test_a_foreign_taxonomys_label_must_never_be_passed_here_raw(self, foreign_label):
+        """Every label above names a bank, an insurer or a dealer, and this
+        rule calls all of them ordinary operating businesses.
+
+        That is not a defect in the rule. The excluded names are Atlas's
+        own vocabulary -- the labels its company-profile source actually
+        writes -- and the rule matches them exactly, by prefix and by
+        membership, because matching loosely across vocabularies is how you
+        exclude the wrong company. GICS writes "Diversified Banks" where
+        Atlas holds "BANKS - DIVERSIFIED", so the prefix misses; ICB writes
+        "Life Insurance" where Atlas holds "INSURANCE - LIFE", so the dash
+        that carries the meaning is absent.
+
+        The consequence is the point: a future integration that resolves a
+        European issuer's classification from a licensed taxonomy and hands
+        the label straight to this function would publish a debt-burden
+        verdict for a bank. The classification has to be mapped to Atlas's
+        vocabulary by an explicit, reviewed table, with anything unmapped
+        becoming `industry_unknown` -- never passed through, and never
+        defaulted.
+
+        This test exists so that walking into it fails here, loudly, rather
+        than in a Case that quietly reports a leverage ratio for JPMorgan's
+        Swedish equivalent.
+        """
+        assert debt_burden_measure_applies(foreign_label) is True
+
 
 class TestEligibility:
     def test_a_future_period_is_excluded_aapl(self):
