@@ -25,8 +25,8 @@ from fastapi import Depends
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 
-from atlas.config import DATABASE_PATH
 from atlas.core.application.decision.capture_decision import CaptureDecisionService
+from atlas.core.infrastructure.config.database import resolve_database_path
 from atlas.core.domain.decision.repository import DecisionRepository
 from atlas.core.domain.observation.repository import ObservationRepository
 from atlas.core.infrastructure.persistence.decision.sqlalchemy_repository import (
@@ -63,10 +63,27 @@ def get_decision_engine() -> Engine:
     headroom above what a single real page load already needs, without
     guessing at a number pulled from nowhere. Nothing else about this
     Engine, its callers, or any Decision Layer logic changes.
+
+    **Which database this opens.** Through `resolve_database_path`, the
+    one resolver the CLIs and every `atlas/dev` command already use:
+    explicit argument, then `ATLAS_CORE_DB_PATH`, then the configured
+    project default. This engine is the only one the backend builds --
+    every repository above, and every `BackgroundTasks` job they hand
+    work to, ultimately asks for it -- so where it points is where the
+    whole application reads and writes.
+
+    It used to read `atlas.config.DATABASE_PATH` directly, which meant
+    `ATLAS_CORE_DB_PATH` was honoured by every command *except* the
+    running application. A product audit relied on that variable to
+    browse an isolated copy, the variable was visibly set in the process,
+    and the backend opened the live database anyway: one Alpha Vantage
+    call, one new record and twenty-two snapshot rows landed in live data
+    that was supposed to be untouched. The override was not a little bit
+    wrong; it was silently inert exactly where it mattered most.
     """
-    DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    path = resolve_database_path()
     engine = create_engine(
-        f"sqlite:///{DATABASE_PATH}",
+        f"sqlite:///{path}",
         future=True,
         pool_size=10,
         max_overflow=20,
