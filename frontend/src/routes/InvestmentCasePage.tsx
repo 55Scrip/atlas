@@ -2755,6 +2755,7 @@ export function InvestmentCasePage() {
               tradingDay: report.marketSnapshot ? report.marketSnapshot.tradingDay : null,
               priceFreshness: report.marketSnapshot ? report.marketSnapshot.priceFreshness : "unavailable",
               stance: report.stance,
+              missingEvidence: report.explanation?.missingEvidence ?? [],
               noProviderDataFound: report.noProviderDataFound ?? false,
               coverageStatus: report.coverageStatus,
               convictionReasonCodes: report.conviction.reasons as ConvictionReasonCode[],

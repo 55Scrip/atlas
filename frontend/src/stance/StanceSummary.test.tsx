@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { LanguageProvider, useTranslation } from "../i18n";
 import { StanceSummary } from "./StanceSummary";
 import type { StanceView } from "./stanceApi";
+import type { DimensionGap } from "./describeMissingInformation";
 
 function stance(overrides: Partial<StanceView> = {}): StanceView {
   return {
@@ -16,15 +17,15 @@ function stance(overrides: Partial<StanceView> = {}): StanceView {
   } as StanceView;
 }
 
-function Harness({ view }: { view: StanceView }) {
+function Harness({ view, gaps }: { view: StanceView; gaps?: DimensionGap[] | undefined }) {
   const { t } = useTranslation();
-  return <StanceSummary stance={view} t={t} />;
+  return <StanceSummary stance={view} t={t} {...(gaps ? { gaps } : {})} />;
 }
 
-function renderStance(view: StanceView) {
+function renderStance(view: StanceView, gaps?: DimensionGap[]) {
   render(
     <LanguageProvider>
-      <Harness view={view} />
+      <Harness view={view} gaps={gaps} />
     </LanguageProvider>,
   );
 }
@@ -61,5 +62,43 @@ describe("StanceSummary -- decision honesty", () => {
     expect(screen.getByText(/Atlas har utvärderat mycket, men inte allt, i den här analysen\./)).toBeInTheDocument();
     expect(screen.queryByText(/Atlas egen tillförsikt/)).not.toBeInTheDocument();
     expect(screen.queryByText(/confidence in this analysis/)).not.toBeInTheDocument();
+  });
+});
+
+
+/**
+ * Gap Reason Surface. ASSA-B's hero said "Atlas is still missing: ...
+ * Financial", which reads as though Atlas lacks its financial statements;
+ * it holds four years of them. The reason -- no verified industry
+ * classification -- was in the payload all along.
+ */
+describe("StanceSummary -- why, not only where", () => {
+  const ASSA_B: DimensionGap[] = [
+    { dimension: "financial_risk", reasoning: ["industry_unknown"] },
+  ];
+
+  it("gives the reason when the Case carries one", () => {
+    renderStance(stance({ missingInformation: ["financial_risk"] }), ASSA_B);
+    expect(screen.getByText(/Bolagets bransch är okänd/)).toBeInTheDocument();
+  });
+
+  it("still names the dimension the reason belongs to", () => {
+    renderStance(stance({ missingInformation: ["financial_risk"] }), ASSA_B);
+    expect(screen.getByText(/Finansiell/)).toBeInTheDocument();
+  });
+
+  it("never prints the raw reason code", () => {
+    const { container } = render(
+      <LanguageProvider>
+        <Harness view={stance({ missingInformation: ["financial_risk"] })} gaps={ASSA_B} />
+      </LanguageProvider>,
+    );
+    expect(container.textContent).not.toContain("industry_unknown");
+  });
+
+  it("keeps the previous copy exactly when no reasons are supplied", () => {
+    renderStance(stance({ missingInformation: ["financial_risk"] }));
+    expect(screen.getByText(/Atlas saknar fortfarande:/)).toBeInTheDocument();
+    expect(screen.queryByText(/Bolagets bransch är okänd/)).not.toBeInTheDocument();
   });
 });

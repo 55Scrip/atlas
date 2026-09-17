@@ -61,6 +61,7 @@ import {
 } from "../investmentCase/deriveExecutiveSummary";
 import { LimitingFactorsCard } from "../investmentCase/LimitingFactorsCard";
 import { HeroCard, STRENGTH_SENTENCE_KEY, CHALLENGE_SENTENCE_KEY, type HeroAnalysisInput } from "../investmentCase/HeroCard";
+import type { DimensionGap } from "../stance/describeMissingInformation";
 import { InvestmentArgumentSection } from "../investmentCase/InvestmentArgumentSection";
 import type { ReasoningFacts } from "../investmentCase/AtlasReasoningSection";
 import { ExpandableDetail } from "../investmentCase/ExpandableDetail";
@@ -229,6 +230,10 @@ interface InvestmentCaseAnalysisView {
   conviction: { level: ConvictionLevel; reasons: string[] };
   coverage: CoverageAssessmentView;
   stance: StanceView | null;
+  /** Gap Reason Surface -- already in the `/analysis` payload this page
+   * fetches, just never named in this page's own narrowed view of it.
+   * Carries *why* each dimension is missing, so the hero can say it. */
+  explanation: { missingEvidence: DimensionGap[] } | null;
   businessAnalysis: { findings: BusinessFindingLite[] };
   valuationSupport: { status: ValuationSupportStatus; gap: ValuationSupportGapKind | null };
   risk: { findings: RiskFindingView[] };
@@ -722,6 +727,7 @@ function CurrentPicture({
     sharePrice: report.marketSnapshot ? report.marketSnapshot.sharePrice : null,
     currency: report.marketSnapshot ? report.marketSnapshot.currency : null,
     stance: report.stance,
+    missingEvidence: report.explanation?.missingEvidence ?? [],
     convictionReasonCodes: report.conviction.reasons as ConvictionReasonCode[],
     strengthKinds: report.strengths.map((s) => s.kind) as RecommendationDriverKind[],
     challengeKinds: report.risks.map((r) => r.kind) as RecommendationDriverKind[],

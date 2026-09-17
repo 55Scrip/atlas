@@ -41,6 +41,7 @@ import { formatFinancialValue } from "./FinancialsTable";
 import { deriveHeroHasNotableChange, deriveHeroTension, type HeroTensionKind } from "./deriveHeroNarrative";
 import type { TranslationKey } from "../i18n";
 import { StanceSummary } from "../stance/StanceSummary";
+import type { DimensionGap } from "../stance/describeMissingInformation";
 import type { StanceView } from "../stance/stanceApi";
 import { ExpandableDetail } from "./ExpandableDetail";
 
@@ -205,6 +206,11 @@ export interface HeroAnalysisInput {
    * wires one. Reuses this existing Hero area rather than a new
    * section -- see `StanceSummary`'s own docstring. */
   stance: StanceView | null;
+  /** Gap Reason Surface -- `explanation.missingEvidence`, already
+   * fetched for `ExplanationPanel` far below. Carried here so the hero
+   * can say *why* a dimension is missing, not only which one. Defaults
+   * to empty, which renders exactly the previous copy. */
+  missingEvidence?: readonly DimensionGap[];
   /** Implementation Sprint B2 (Hero Reordering) -- `ConvictionAssessment
    * .reasons`, real, already-fetched, previously never surfaced
    * anywhere on this page (`report.conviction.reasons` was fetched and
@@ -495,7 +501,11 @@ export function HeroCard({
           {analysis.stance && (
             <>
               <Divider tone="hairline" />
-              <StanceSummary stance={analysis.stance} t={t} />
+              <StanceSummary
+                stance={analysis.stance}
+                t={t}
+                gaps={analysis.missingEvidence ?? []}
+              />
             </>
           )}
         </>
