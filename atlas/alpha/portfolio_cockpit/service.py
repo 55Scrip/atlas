@@ -21,7 +21,13 @@ from atlas.alpha.portfolio_cockpit.models import (
     UnresolvedHolding,
     ValuationStatusCount,
 )
-from atlas.alpha.portfolio_cockpit.projection import business_summary, risk_projection, valuation_finding
+from atlas.alpha.portfolio_cockpit.projection import (
+    business_categories,
+    business_summary,
+    forward_evidence,
+    risk_projection,
+    valuation_finding,
+)
 from atlas.alpha.portfolio_status.service import PortfolioStatusService
 from atlas.alpha.portfolio_cockpit.contracts import ReviewPriority
 from atlas.analysis_engine.analysis_coverage import AnalysisCoverageLevel
@@ -137,6 +143,8 @@ class PortfolioCockpitService:
                     analysis_coverage=analysis.analysis_coverage,
                     valuation=resolved_valuation_finding,
                     business=business_summary(analysis.business_analysis),
+                    business_categories=business_categories(analysis.business_analysis),
+                    forward_evidence=forward_evidence(analysis.recommendation),
                     risk_projection=risk_projection(analysis.risk_analysis),
                     risk_findings=resolved_risk_findings,
                     confidence=analysis.confidence,

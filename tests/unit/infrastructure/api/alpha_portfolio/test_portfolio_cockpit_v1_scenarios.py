@@ -84,6 +84,16 @@ class TestAfterImport:
             "analysisCoverage",  # Internal Alpha Fix Sprint 1 (IA-003): separate from conviction
             "valuation",
             "business",
+            # Portfolio Holdings Cockpit v1: the whole already-computed
+            # business-category vector, so a Portfolio row derives the
+            # same Company rating its own Investment Case derives.
+            # Reading only `business` (Growth + Capital Allocation)
+            # produced a different rating for 15 of 25 real holdings.
+            "businessCategories",
+            # Portfolio Holdings Cockpit v1: counts of the verified
+            # forward evidence the recommendation reasoning already
+            # carries. Counts only -- never content, never polarity.
+            "forwardEvidence",
             "riskProjection",
             "riskFindings",
             "confidence",
@@ -94,6 +104,21 @@ class TestAfterImport:
         }
         assert set(holding["conviction"]) == {"level", "reasons"}
         assert set(holding["business"]) == {"growth", "capitalAllocation"}
+        # `business` is unchanged and still carries its two categories;
+        # `businessCategories` is additive, the full vector beside it.
+        assert {c["kind"] for c in holding["businessCategories"]} == {
+            "business_model",
+            "competitive_position",
+            "management",
+            "capital_allocation",
+            "growth",
+            "durability",
+        }
+        assert all(set(c) == {"kind", "status"} for c in holding["businessCategories"])
+        # No verified forward evidence for this fixture, and absence is
+        # `None` -- never a zero-count that would read as "Atlas looked
+        # and found nothing" when no reasoning was carried at all.
+        assert holding["forwardEvidence"] is None
         assert set(holding["riskProjection"]) == {"category", "status"}
         assert len(holding["riskFindings"]) == 4
         assert {f["category"] for f in holding["riskFindings"]} == {

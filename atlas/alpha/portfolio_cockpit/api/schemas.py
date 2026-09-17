@@ -21,7 +21,9 @@ from datetime import datetime
 from atlas.alpha.decision_support import DecisionSupportView as DecisionSupportViewDomain
 from atlas.alpha.portfolio_cockpit.models import (
     AnalysisCoverageLevelCount,
+    BusinessCategoryFinding,
     BusinessSummary,
+    ForwardEvidenceSummary,
     ConvictionLevelCount,
     HoldingAttention,
     PortfolioCockpitReport,
@@ -175,6 +177,35 @@ class BusinessSummaryView(CamelModel):
         return cls(growth=summary.growth.value, capital_allocation=summary.capital_allocation.value)
 
 
+class BusinessCategoryFindingView(CamelModel):
+    """One business category's own verdict -- see
+    `BusinessCategoryFinding`'s own docstring for why the Portfolio row
+    needs the whole vector rather than `BusinessSummaryView`'s two
+    categories."""
+
+    kind: str
+    status: str
+
+    @classmethod
+    def from_domain(cls, finding: BusinessCategoryFinding) -> "BusinessCategoryFindingView":
+        return cls(kind=finding.kind, status=finding.status.value)
+
+
+class ForwardEvidenceSummaryView(CamelModel):
+    """Counts of verified forward evidence, never its content and never
+    a polarity -- see `ForwardEvidenceSummary`'s own docstring."""
+
+    guidance_count: int
+    contracted_volume_count: int
+
+    @classmethod
+    def from_domain(cls, summary: ForwardEvidenceSummary) -> "ForwardEvidenceSummaryView":
+        return cls(
+            guidance_count=summary.guidance_count,
+            contracted_volume_count=summary.contracted_volume_count,
+        )
+
+
 class HoldingAttentionView(CamelModel):
     priority: str
     reasons: list[str]
@@ -209,6 +240,8 @@ class PortfolioHoldingAnalysisView(CamelModel):
     analysis_coverage: AnalysisCoverageAssessmentView
     valuation: ValuationFindingView
     business: BusinessSummaryView
+    business_categories: list[BusinessCategoryFindingView]
+    forward_evidence: ForwardEvidenceSummaryView | None
     risk_projection: RiskProjectionView
     risk_findings: list[RiskFindingView]
     confidence: str
@@ -229,6 +262,14 @@ class PortfolioHoldingAnalysisView(CamelModel):
             analysis_coverage=AnalysisCoverageAssessmentView.from_domain(analysis.analysis_coverage),
             valuation=ValuationFindingView.from_domain(analysis.valuation),
             business=BusinessSummaryView.from_domain(analysis.business),
+            business_categories=[
+                BusinessCategoryFindingView.from_domain(f) for f in analysis.business_categories
+            ],
+            forward_evidence=(
+                ForwardEvidenceSummaryView.from_domain(analysis.forward_evidence)
+                if analysis.forward_evidence is not None
+                else None
+            ),
             risk_projection=RiskProjectionView.from_domain(analysis.risk_projection),
             risk_findings=[RiskFindingView.from_domain(f) for f in analysis.risk_findings],
             confidence=analysis.confidence.value,

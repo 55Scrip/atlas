@@ -23,6 +23,8 @@ from atlas.alpha.portfolio_cockpit.contracts import AttentionReasonKind, ReviewP
 __all__ = [
     "RiskProjection",
     "BusinessSummary",
+    "BusinessCategoryFinding",
+    "ForwardEvidenceSummary",
     "HoldingAttention",
     "PortfolioHoldingAnalysis",
     "UnresolvedHolding",
@@ -50,6 +52,47 @@ class BusinessSummary:
 
     growth: BusinessCategoryStatus
     capital_allocation: BusinessCategoryStatus
+
+
+@dataclass(frozen=True)
+class BusinessCategoryFinding:
+    """One business category's own already-computed verdict, narrowed to
+    the two fields a Portfolio row needs (Portfolio Holdings Cockpit v1).
+
+    Why this exists beside `BusinessSummary`: the Investment Case's
+    Company rating averages the *whole* six-category vector, excluding
+    the categories with no real verdict. Portfolio previously had only
+    Growth and Capital Allocation, and deriving a Company rating from
+    those two produces a different number for 15 of 25 real holdings
+    (MSFT 8.0 here vs 8.7 on its own Case). Two screens, one fact, two
+    answers is exactly what this codebase refuses, so the row reads the
+    same vector the Case reads.
+
+    Nothing is computed here: `business_analysis.findings` is already in
+    hand in the same projection that builds `BusinessSummary`.
+    `BusinessSummary` is unchanged and still carries the two categories
+    its own consumers read."""
+
+    kind: str
+    status: BusinessCategoryStatus
+
+
+@dataclass(frozen=True)
+class ForwardEvidenceSummary:
+    """How much verified forward evidence a holding carries -- counts
+    only (Portfolio Holdings Cockpit v1).
+
+    Counts, never content and never polarity: a raised, lowered or
+    reaffirmed figure all count the same here, because a Portfolio row
+    must not read as a forecast or as good/bad news. The evidence
+    itself, with its revisions and its unestablished economics, stays in
+    the Investment Case's own Forward View chapter, one click away.
+
+    `None` when the recommendation carries no reasoning at all (a legacy
+    row), which the row renders exactly as it renders zero: quietly."""
+
+    guidance_count: int
+    contracted_volume_count: int
 
 
 @dataclass(frozen=True)
@@ -94,6 +137,8 @@ class PortfolioHoldingAnalysis:
     `atlas.analysis_engine.valuation.scenarios`), so this one method
     already *is* the honest Portfolio-level projection."""
     business: BusinessSummary
+    business_categories: tuple[BusinessCategoryFinding, ...]
+    forward_evidence: ForwardEvidenceSummary | None
     risk_projection: RiskProjection
     risk_findings: tuple[RiskFinding, ...]
     """The complete, untouched Risk vector (all `EVALUATED_RISK_CATEGORIES`
