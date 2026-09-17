@@ -259,10 +259,18 @@ describe("PortfolioPage (Product Sprint 8 -- Portfolio Excellence)", () => {
     const aaplRow = within(aaplRowButton.closest("tr")!);
     // Canonical recommendation, in the Investment Case's own words.
     expect(aaplRow.getByText("Minskning stöds")).toBeInTheDocument();
-    // Coverage, fit and the largest identified risk, all categorical.
-    expect(aaplRow.getByText("Utvärderat")).toBeInTheDocument();
+    // Fit and the largest identified risk, both categorical.
+    // Holdings Cockpit v1: the risk cell leads with the status and
+    // names the category beneath it, so a reader scanning the column
+    // compares severities rather than parsing "Category: Status" prose.
     expect(aaplRow.getByText("Svag passform")).toBeInTheDocument();
-    expect(aaplRow.getByText("Finansiell: Måttlig")).toBeInTheDocument();
+    expect(aaplRow.getByText("Måttlig")).toBeInTheDocument();
+    expect(aaplRow.getByText("Finansiell")).toBeInTheDocument();
+    // Analysis depth lost its column: it would have crowded out a more
+    // decision-useful dimension, and it now surfaces only as an
+    // exception line under the Atlas action when evidence is limited.
+    // A fully-evaluated holding says nothing about its own coverage.
+    expect(aaplRow.queryByText("Utvärderat")).not.toBeInTheDocument();
     // The Stance prose that used to fill a 320px column is gone from
     // the row -- the reasoning it summarised lives in the Investment
     // Case, which owns that explanation.
@@ -288,8 +296,19 @@ describe("PortfolioPage (Product Sprint 8 -- Portfolio Excellence)", () => {
     expect(text).not.toContain("Uppsida");
     expect(text).not.toContain("Nedsida");
     // `RiskProjection` is the highest-severity risk *category*, not a
-    // permanent-capital-loss estimate, so the header says so.
-    expect(text).toContain("Största risk");
+    // permanent-capital-loss estimate. Holdings Cockpit v1 shortened
+    // the header to "Risk" so nine columns fit, and the cell now
+    // carries the disclosure the header used to: it names the category
+    // beneath the status, so nothing reads as an aggregate risk score.
+    expect(text).toContain("Risk");
+    expect(text).not.toContain("Riskpoäng");
+    // Business and Investment stay two separate columns reading two
+    // different sources -- never one collapsed "quality" number.
+    expect(text).toContain("Verksamhet");
+    expect(text).toContain("Investering");
+    // Forward may never be labelled as a forecast.
+    expect(text).toContain("Framåt");
+    expect(text).not.toContain("Prognos");
   });
 
   it("shows no frontend-invented numeric score for the canonical recommendation", async () => {
@@ -353,6 +372,49 @@ describe("PortfolioPage (Product Sprint 8 -- Portfolio Excellence)", () => {
     renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
     await waitFor(() => expect(orderedTickersFromRowButtons().length).toBe(2));
     expect(orderedTickersFromRowButtons()).toEqual(["MSFT", "AAPL"]);
+  });
+
+  it("Holdings Cockpit v1: renders every holding, with nothing hidden behind a toggle", async () => {
+    // The cockpit exists to let the investor scan the portfolio as a
+    // whole. The table used to cap at 15 rows behind "View All
+    // Holdings" -- reasonable at 99px a row, wrong at 53px, where all
+    // 25 of the real Internal Alpha portfolio fit in ~1,334px, barely
+    // more than the old capped table occupied.
+    //
+    // Sized at the real portfolio's 25 holdings deliberately: 25 is the
+    // number that used to be truncated, so a reintroduced cap of 15 --
+    // or of 20, or of 24 -- fails here.
+    const tickers = Array.from({ length: 25 }, (_, index) => `T${String(index + 1).padStart(2, "0")}`);
+    mockFetch({
+      view: portfolioView({
+        holdings: tickers.map((ticker, index) => ({
+          ticker,
+          weightPercent: 25 - index,
+          valueAbsolute: null,
+          caseId: `case-${ticker}`,
+          reconciliationStatus: "NONE",
+        })),
+        numberOfHoldings: 25,
+      }),
+      cockpitHoldings: tickers.map((ticker, index) =>
+        cockpitHolding({ ticker, caseId: `case-${ticker}`, weightPercent: 25 - index }),
+      ),
+      fitAssessments: tickers.map((ticker, index) =>
+        fitAssessment({ ticker, caseId: `case-${ticker}`, currentWeightPercent: 25 - index }),
+      ),
+    });
+    renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
+    await screen.findByRole("button", { name: "Öppna T01s vy" });
+
+    const body = document.querySelector("table tbody")!;
+    expect(body.querySelectorAll("tr")).toHaveLength(25);
+    // Both ends of the list, so a cap at either end would fail.
+    expect(screen.getByRole("button", { name: "Öppna T25s vy" })).toBeInTheDocument();
+
+    // No paging affordance survives, and no "showing N of M" caveat --
+    // both would be lying now that nothing is hidden.
+    const table = document.querySelector("table")!.parentElement!.parentElement!;
+    expect(table.textContent ?? "").not.toMatch(/Visa alla|Visa färre|Visar \d+ av/);
   });
 
   it("re-sorts holdings alphabetically when A–Ö is selected", async () => {

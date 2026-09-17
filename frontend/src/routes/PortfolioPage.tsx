@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 import {
   ACCENT_LINK_STYLE,
@@ -31,7 +31,30 @@ import {
   type ReviewPriority,
 } from "../status/statusTone";
 import type { StatusTone } from "../foundation";
-import { RISK_CATEGORY_KEY, RISK_STATUS_KEY, type AnalysisRiskStatus } from "../changeIntelligence/describeChange";
+import {
+  RISK_CATEGORY_KEY,
+  RISK_STATUS_KEY,
+  VALUATION_STATUS_KEY,
+  type AnalysisBusinessCategory,
+  type AnalysisBusinessStatus,
+  type AnalysisRiskStatus,
+} from "../changeIntelligence/describeChange";
+/** Portfolio Holdings Cockpit v1 -- the Investment Case's own rating
+ * derivations and tier vocabulary, imported rather than reimplemented.
+ * A second, competing way of turning the same statuses into a number is
+ * exactly how two screens end up disagreeing about one holding. */
+import {
+  deriveCompanyRating,
+  deriveInvestmentRating,
+  type AtlasRating,
+} from "../investmentCase/atlasRatingModel";
+import { RATING_TIER_LABEL_KEY } from "../investmentCase/SevenCategoriesSection";
+import {
+  COCKPIT_COLUMN_HEADER_KEY,
+  COCKPIT_COLUMN_LINK_LABEL_KEY,
+  cockpitCellHref,
+  type CockpitColumnKey,
+} from "../portfolioCockpit/cockpitColumns";
 import { describeFitVerdict } from "../portfolioFit/describeFitVerdict";
 import { FitBadge } from "../portfolioFit/FitBadge";
 import { fetchPortfolioFitForHoldings, type PortfolioFitAssessmentView, type FitRating } from "../portfolioFit/portfolioFitApi";
@@ -219,6 +242,17 @@ interface PortfolioCockpitHoldingView {
   analysisCoverage: CockpitAnalysisCoverageView;
   valuation: CockpitValuationView;
   business: CockpitBusinessSummaryView;
+  /** Portfolio Holdings Cockpit v1 -- the whole already-computed
+   * six-category vector. The row derives its Business rating from this
+   * with the Investment Case's own `deriveCompanyRating`, so one
+   * holding reads the same number on both screens. Deriving it from
+   * `business` (Growth + Capital Allocation only) instead produced a
+   * different rating for 15 of 25 real holdings. */
+  businessCategories?: { kind: AnalysisBusinessCategory; status: AnalysisBusinessStatus }[];
+  /** Counts of verified forward evidence, or `null` when the
+   * recommendation carries no reasoning. Counts only: never content,
+   * never polarity, never a forecast. */
+  forwardEvidence?: { guidanceCount: number; contractedVolumeCount: number } | null;
   riskProjection: CockpitRiskProjectionView;
   confidence: EvidenceCoverageLevel;
   isThesisStale: boolean;
@@ -1306,12 +1340,6 @@ function PortfolioSidebar({
   );
 }
 
-/** Figma-fidelity rebuild -- rows shown before "View All Holdings"
- * expands the table, matching the approved screen's own "Showing 15 of
- * 25" / "View All Holdings (25)" pattern. Purely a display cap over
- * data already fully fetched -- no second request, no backend change. */
-const HOLDINGS_PAGE_SIZE = 15;
-
 /**
  * Holdings Table (Figma-fidelity rebuild) -- columns now match the
  * approved screen's real target set exactly: Ticker / Weight /
@@ -1713,13 +1741,20 @@ function HoldingsTable({
   onOpenEditPortfolio: () => void;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
+  /* Portfolio Holdings Cockpit v1: the table is a scanning surface, so
+     its own density is part of the product. Vertical padding is tighter
+     than the page default and the type steps down to the metadata size
+     -- nine columns of short categorical values do not need prose
+     sizing, and every extra pixel per row costs a holding the reader
+     could otherwise have seen without scrolling. */
   const cellStyle: CSSProperties = {
-    padding: "var(--space-metadata) var(--space-row)",
+    padding: "4px var(--space-row)",
     textAlign: "left",
     borderBottom: `var(--width-border-hairline) solid var(--color-border-hairline)`,
     fontFamily: "var(--type-family-metadata)",
     fontVariantNumeric: "tabular-nums",
-    fontSize: "var(--type-body-min-size)",
+    fontSize: "13px",
+    lineHeight: 1.25,
   };
   const headerCellStyle: CSSProperties = {
     ...cellStyle,
@@ -1731,7 +1766,6 @@ function HoldingsTable({
     borderBottom: `var(--width-border-standard) solid var(--color-border-standard)`,
   };
 
-  const [showAllHoldings, setShowAllHoldings] = useState(false);
   /** Alpha Integration Fix (One Product Pass): defaults to "weight"
    * (largest position first) -- Portfolio's own doctrine question is
    * "what do I own," so its default ordering is ownership-scale, not
@@ -1762,11 +1796,19 @@ function HoldingsTable({
    * from the cockpit report this page already fetches; nothing is
    * ranked, scored or combined here. */
   const riskProjectionByTicker = new Map<string, CockpitRiskProjectionView>();
+  /** Portfolio Holdings Cockpit v1: the whole cockpit row, keyed by
+   * ticker. The narrow maps above stay because the sort helpers read
+   * them; the table itself now reads one object per holding rather than
+   * threading eight parallel lookups into the row. That is also the
+   * seam a future simulation layer needs -- one canonical holdings
+   * collection it can transform before anything is rendered. */
+  const cockpitByTicker = new Map<string, PortfolioCockpitHoldingView>();
   if (cockpit.kind === "loaded") {
     for (const holding of cockpit.report.holdings) {
       coverageByTicker.set(holding.ticker, holding.analysisCoverage.level);
       decisionSupportByTicker.set(holding.ticker, holding.decisionSupport.level);
       riskProjectionByTicker.set(holding.ticker, holding.riskProjection);
+      cockpitByTicker.set(holding.ticker, holding);
     }
   }
   const orderedHoldings = sortHoldings(
@@ -1776,7 +1818,23 @@ function HoldingsTable({
     coverageByTicker,
     stanceByTicker,
   );
-  const visibleHoldings = showAllHoldings ? orderedHoldings : orderedHoldings.slice(0, HOLDINGS_PAGE_SIZE);
+  /** Portfolio Holdings Cockpit v1: every holding, in one continuous
+   * list.
+   *
+   * The table used to cap at 15 rows behind a "View All Holdings"
+   * toggle -- reasonable when a row was 99px tall and 25 of them ran to
+   * ~2,475px. At 53px the whole portfolio is ~1,334px, barely more than
+   * the old capped table, and a cockpit whose purpose is scanning the
+   * portfolio as a whole cannot ask the reader to unhide half of it
+   * first.
+   *
+   * Deliberately no virtualization and no replacement paging scheme:
+   * the data is already fully fetched in one request, and 25 rows of
+   * short categorical values is not a rendering problem. A portfolio
+   * large enough to make this page long would be a real product
+   * question about the cockpit, not something a hidden display cap
+   * should answer silently. */
+  const visibleHoldings = orderedHoldings;
   /* Holdings Atlas has no analysis for, straight from the backend's own
      coverage level. Nothing here decides *why* -- the Case does that. */
   const uncoveredHoldingCount = view.holdings.filter(
@@ -1856,12 +1914,18 @@ function HoldingsTable({
                     you can compare across; the reasoning it summarised
                     is one click away in the Investment Case, which owns
                     that explanation. */}
-                <th style={headerCellStyle}>{t("portfolio.holdingsTable.tickerHeader")}</th>
-                <th style={headerCellStyle}>{t("portfolio.holdingsTable.recommendationHeader")}</th>
-                <th style={headerCellStyle}>{t("portfolio.holdingsTable.currentViewHeader")}</th>
-                <th style={headerCellStyle}>{t("portfolio.holdingsTable.coverageHeader")}</th>
-                <th style={headerCellStyle}>{t("portfolio.holdingsTable.fitHeader")}</th>
-                <th style={headerCellStyle}>{t("portfolio.holdingsTable.largestRiskHeader")}</th>
+                <th style={headerCellStyle}>{t("portfolio.cockpitTable.companyHeader")}</th>
+                <th style={{ ...headerCellStyle, textAlign: "right" }}>
+                  {t("portfolio.cockpitTable.positionHeader")}
+                </th>
+                <th style={headerCellStyle}>{t("portfolio.cockpitTable.atlasHeader")}</th>
+                {(["business", "investment", "risk", "valuation", "forward", "fit"] as CockpitColumnKey[]).map(
+                  (column) => (
+                    <th key={column} style={headerCellStyle}>
+                      {t(COCKPIT_COLUMN_HEADER_KEY[column])}
+                    </th>
+                  ),
+                )}
               </tr>
             </thead>
             <tbody>
@@ -1875,14 +1939,10 @@ function HoldingsTable({
                     key={holding.ticker}
                     holding={holding}
                     isUnresolvedInCockpit={isUnresolvedInCockpit}
-                    stanceLevel={stanceByTicker.get(holding.ticker)}
-                    recommendationLevel={decisionSupportByTicker.get(holding.ticker)}
-                    coverageLevel={coverageByTicker.get(holding.ticker)}
+                    analysis={cockpitByTicker.get(holding.ticker)}
                     fitRating={fitRatingByTicker.get(holding.ticker)}
-                    largestRisk={riskProjectionByTicker.get(holding.ticker)}
                     thisCaseCreateStatus={caseCreateStatus[holding.ticker] ?? { kind: "idle" }}
                     openInvestmentCase={openInvestmentCase}
-                    onOpenEditPortfolio={onOpenEditPortfolio}
                     cellStyle={cellStyle}
                     t={t}
                   />
@@ -1895,12 +1955,6 @@ function HoldingsTable({
         <Inline gap="row" align="center" wrap style={{ justifyContent: "space-between" }}>
           <Text color="tertiary" as="span">
             {[
-              view.holdings.length > HOLDINGS_PAGE_SIZE
-                ? t("portfolio.holdingsTable.showingCount", {
-                    shown: visibleHoldings.length,
-                    total: view.holdings.length,
-                  })
-                : null,
               view.concentrationLevel
                 ? t("portfolio.concentration", {
                     value: CONCENTRATION_LEVEL_KEY[view.concentrationLevel]
@@ -1921,20 +1975,6 @@ function HoldingsTable({
               .filter(Boolean)
               .join(" · ")}
           </Text>
-          {view.holdings.length > HOLDINGS_PAGE_SIZE && (
-            <Link
-              href="#"
-              style={{ color: "var(--global-color-accent)" }}
-              onClick={(event) => {
-                event.preventDefault();
-                setShowAllHoldings((current) => !current);
-              }}
-            >
-              {showAllHoldings
-                ? t("portfolio.holdingsTable.viewFewer")
-                : t("portfolio.holdingsTable.viewAll", { count: view.holdings.length })}
-            </Link>
-          )}
         </Inline>
 
         <div>
@@ -1989,173 +2029,299 @@ function NotAssessedCell({ t }: { t: (key: TranslationKey, params?: Record<strin
     </Text>
   );
 }
+/**
+ * One holding = one row (Portfolio Holdings Cockpit v1).
+ *
+ * The row is a scanning unit, not a card: every cell states one
+ * already-computed conclusion in one or two lines, and links to the
+ * Investment Case chapter that explains it. No cell explains itself in
+ * place, and nothing here is computed, averaged or ranked -- the two
+ * ratings it shows are the Investment Case's own
+ * `deriveCompanyRating`/`deriveInvestmentRating` applied to the same
+ * inputs, so a holding reads the same numbers on both screens.
+ *
+ * Unknown is never rendered as bad. A category with no verdict is
+ * excluded from a rating rather than scored zero; a rating with no real
+ * input at all renders the em-dash, never "0/10" or "Weak".
+ */
+/** Two lines in one cell, with no gap token between them: a row that
+ * must stay around 48px cannot afford `Stack`'s smallest gap, and the
+ * secondary line is already distinguished by colour. */
+const STACKED_CELL_STYLE: CSSProperties = { display: "grid", lineHeight: 1.2, fontSize: "13px" };
+
+/** The secondary line of a stacked cell: the tier word, the category
+ * name, the absolute value. Smaller and quieter than the line above it,
+ * because the line above is what the reader is scanning for. */
+const SECONDARY_LINE_STYLE: CSSProperties = { fontSize: "11px", lineHeight: 1.2 };
 
 function HoldingsTableRow({
   holding,
   isUnresolvedInCockpit,
-  stanceLevel,
-  recommendationLevel,
-  coverageLevel,
+  analysis,
   fitRating,
-  largestRisk,
   thisCaseCreateStatus,
   openInvestmentCase,
-  onOpenEditPortfolio,
   cellStyle,
   t,
 }: {
   holding: HoldingView;
   isUnresolvedInCockpit: boolean;
-  stanceLevel: StanceLevel | undefined;
-  recommendationLevel: DecisionSupportLevel | undefined;
-  coverageLevel: AnalysisCoverageLevel | undefined;
+  /** The whole cockpit row for this holding, or `undefined` while the
+   * cockpit fetch is still in flight -- in which case every analytical
+   * cell reads as not-yet-assessed rather than as a negative verdict. */
+  analysis: PortfolioCockpitHoldingView | undefined;
   fitRating: FitRating | undefined;
-  largestRisk: CockpitRiskProjectionView | undefined;
   thisCaseCreateStatus: CaseCreateStatus;
   openInvestmentCase: (ticker: string, existingCaseId: string | null) => void;
-  onOpenEditPortfolio: () => void;
   cellStyle: CSSProperties;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
   const isCreating = thisCaseCreateStatus.kind === "creating";
-  const isAwaitingReconciliation = holding.reconciliationStatus === "AWAITING_RECONCILIATION";
 
-  /** Alpha Integration Fix (One Product Pass): a Holdings row now opens
-   * the real Investment Case directly, the same fix already made to
-   * Watchlist's own row-click. It used to route through Company
-   * Workspace first -- a mid-flow waypoint whose own content (Hero,
-   * limiting factors, "what changed") duplicates Investment Case
-   * outright (Alpha Product Integration Review, Phase 1). Company
-   * Workspace itself is unchanged and untouched by this fix. */
+  /** Alpha Integration Fix (One Product Pass): a Holdings row opens the
+   * real Investment Case directly. Clicking the row itself is the
+   * general case -- "explain this holding" -- and lands on the
+   * conclusion; a specific cell lands on the chapter for that
+   * dimension. */
   function handleRowActivate() {
     if (isCreating) return;
     openInvestmentCase(holding.ticker, holding.caseId);
   }
 
-  return (
-    <>
-      <tr
-        role="button"
-        tabIndex={0}
-        aria-label={t("portfolio.holdingsTable.rowAriaLabel", { ticker: holding.ticker })}
-        onClick={handleRowActivate}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            handleRowActivate();
-          }
-        }}
-        className={styles.row}
-        style={{ cursor: isCreating ? "default" : "pointer" }}
+  /* Both new cockpit fields are read as optional, the same way the
+     recommendation-reasoning contract reads every optional collection:
+     a payload written before the field existed is a legacy payload, not
+     a crash, and an absent vector must read as "not assessed" rather
+     than as a rating of zero. */
+  const businessRating = analysis ? deriveCompanyRating(analysis.businessCategories ?? []) : null;
+  const investmentRating = analysis ? deriveInvestmentRating(analysis.decisionSupport.level) : null;
+  const risk = analysis?.riskProjection;
+  const valuationStatus = analysis?.valuation.status;
+  const forward = analysis?.forwardEvidence ?? null;
+  /* Coverage is not a column of its own in v1 -- it would crowd out a
+     more decision-useful dimension. It surfaces only as an exception:
+     when Atlas could not evaluate much, the Atlas cell says so beneath
+     the action, and the full picture is in the Case's Evidence
+     chapter. A normal, fully-evaluated holding stays quiet. */
+  const hasLimitedEvidence =
+    analysis !== undefined &&
+    (analysis.analysisCoverage.level === "partial_coverage" ||
+      analysis.analysisCoverage.level === "no_coverage");
+
+  /** A cell that names a conclusion and links to the chapter explaining
+   * it. A real anchor, so it is keyboard reachable, focusable and
+   * openable in a new tab; `stopPropagation` keeps it from also firing
+   * the row's own conclusion navigation. */
+  function LinkedCell({ column, children }: { column: CockpitColumnKey; children: ReactNode }) {
+    const href = cockpitCellHref(holding.caseId, column);
+    if (!href) return <>{children}</>;
+    return (
+      <RouterLink
+        to={href}
+        state={{ origin: "portfolio", ticker: holding.ticker }}
+        aria-label={t(COCKPIT_COLUMN_LINK_LABEL_KEY[column], { ticker: holding.ticker })}
+        onClick={(event) => event.stopPropagation()}
+        style={{ color: "inherit", textDecoration: "none" }}
       >
-        <td style={{ ...cellStyle, fontFamily: "var(--type-family-prose)" }}>
-          <Inline gap="metadata" align="baseline" wrap>
-            <Text as="span" style={{ fontWeight: 600 }}>
-              {holding.ticker}
+        {children}
+      </RouterLink>
+    );
+  }
+
+  /** Score over tier, two quiet lines. The tier word carries the
+   * meaning for a reader who does not want to read numbers; the score
+   * carries the comparison for one scanning down the column. */
+  function RatingCell({ rating }: { rating: AtlasRating | null }) {
+    if (rating === null || rating.score === null) return <NotAssessedCell t={t} />;
+    return (
+      <div style={STACKED_CELL_STYLE}>
+        <Text as="span" style={{ fontWeight: 600 }}>
+          {rating.score.toFixed(1)}
+        </Text>
+        <Text as="span" color="tertiary" style={SECONDARY_LINE_STYLE}>
+          {t(RATING_TIER_LABEL_KEY[rating.tier])}
+        </Text>
+      </div>
+    );
+  }
+
+  return (
+    <tr
+      role="button"
+      tabIndex={0}
+      aria-label={t("portfolio.holdingsTable.rowAriaLabel", { ticker: holding.ticker })}
+      onClick={handleRowActivate}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          handleRowActivate();
+        }
+      }}
+      className={styles.row}
+      style={{ cursor: isCreating ? "default" : "pointer" }}
+    >
+      {/* Holding. The ticker is the scan key; the exceptions that used
+          to take a line each (opening, reconciled, unresolved) are
+          quiet secondary text and only when they apply. */}
+      <td style={{ ...cellStyle, fontFamily: "var(--type-family-prose)" }}>
+        <div style={STACKED_CELL_STYLE}>
+          <Text as="span" style={{ fontWeight: 600 }}>
+            {holding.ticker}
+          </Text>
+          {isCreating && (
+            <Text as="span" color="tertiary" style={SECONDARY_LINE_STYLE}>
+              {t("portfolio.holdings.opening")}
             </Text>
-            <Text as="span" color="tertiary">
-              {formatPercentPoints(holding.weightPercent)}
+          )}
+          {!isCreating && holding.reconciliationStatus === "UPDATED" && (
+            <Text as="span" color="tertiary" style={SECONDARY_LINE_STYLE}>
+              {t("portfolio.holdings.updatedAutomatically")}
             </Text>
-            {/* Real Value, shown only when this portfolio actually has
-                one -- a percent-only portfolio (the common case in this
-                data) no longer renders a permanently-empty column for
-                it. */}
-            {holding.valueAbsolute !== null && (
-              <Text as="span" color="tertiary">
-                {formatCurrency(holding.valueAbsolute)}
+          )}
+          {!isCreating && isUnresolvedInCockpit && (
+            <Text as="span" color="tertiary" style={SECONDARY_LINE_STYLE}>
+              {t("portfolio.cockpit.unresolved")}
+            </Text>
+          )}
+        </div>
+      </td>
+
+      {/* Position. Weight is the comparable figure, so it leads; the
+          absolute value is secondary and renders only for a portfolio
+          that actually has one. */}
+      <td style={{ ...cellStyle, textAlign: "right" }}>
+        <div style={STACKED_CELL_STYLE}>
+          <Text as="span" style={{ fontWeight: 600 }}>
+            {formatPercentPoints(holding.weightPercent)}
+          </Text>
+          {holding.valueAbsolute !== null && (
+            <Text as="span" color="tertiary" style={SECONDARY_LINE_STYLE}>
+              {formatCurrency(holding.valueAbsolute)}
+            </Text>
+          )}
+        </div>
+      </td>
+
+      {/* Atlas view -- the one cell that is allowed to shout. It reads
+          `decision_support`, Atlas's own authoritative evidence-support
+          state, and never infers an action from fit, risk, valuation or
+          a score. */}
+      <td style={cellStyle}>
+        <LinkedCell column="atlas">
+          <div style={STACKED_CELL_STYLE}>
+            {analysis ? (
+              <StatusBadge
+                label={t(DECISION_SUPPORT_BADGE_KEY[analysis.decisionSupport.level])}
+                tone={DECISION_SUPPORT_TONE[analysis.decisionSupport.level]}
+              />
+            ) : (
+              <NotAssessedCell t={t} />
+            )}
+            {hasLimitedEvidence && (
+              <Text as="span" color="tertiary" style={SECONDARY_LINE_STYLE}>
+                {t("portfolio.cockpitTable.limitedEvidence")}
               </Text>
             )}
-            {isCreating && (
-              <Text as="span" color="tertiary">
-                {t("portfolio.holdings.opening")}
+          </div>
+        </LinkedCell>
+      </td>
+
+      {/* Business -- how strong the company is. Deliberately a different
+          question from Investment beside it, from a different source:
+          this averages the business-category vector, that reads the
+          evidence-support state. They are never collapsed. */}
+      <td style={cellStyle}>
+        <LinkedCell column="business">
+          <RatingCell rating={businessRating} />
+        </LinkedCell>
+      </td>
+
+      {/* Investment -- how attractive the security is to buy today. */}
+      <td style={cellStyle}>
+        <LinkedCell column="investment">
+          <RatingCell rating={investmentRating} />
+        </LinkedCell>
+      </td>
+
+      {/* Risk. `RiskProjection` is the single highest-severity risk
+          *category* plus its status -- never an aggregate score, and
+          never merged with valuation risk, which is one of the
+          categories it selects among. */}
+      <td style={cellStyle}>
+        <LinkedCell column="risk">
+          {risk && risk.status !== "insufficient_input" ? (
+            <div style={STACKED_CELL_STYLE}>
+              <Text as="span" style={{ fontWeight: 600 }}>
+                {t(RISK_STATUS_KEY[risk.status])}
               </Text>
-            )}
-            {holding.reconciliationStatus === "UPDATED" && (
-              <Text as="span" color="tertiary">
-                {t("portfolio.holdings.updatedAutomatically")}
+              <Text as="span" color="tertiary" style={SECONDARY_LINE_STYLE}>
+                {t(RISK_CATEGORY_KEY[risk.category])}
               </Text>
-            )}
-            {isUnresolvedInCockpit && (
-              <Text as="span" color="tertiary">
-                {t("portfolio.cockpit.unresolved")}
-              </Text>
-            )}
-            {thisCaseCreateStatus.kind === "error" && (
-              <Text as="span" color="tertiary">
-                {t("portfolio.holdings.openCaseError")}
-              </Text>
-            )}
-            {isAwaitingReconciliation && (
-              <Link
-                href="#"
-                style={{ color: "var(--global-color-accent)" }}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  event.preventDefault();
-                  onOpenEditPortfolio();
-                }}
-              >
-                {t("portfolio.holdingsTable.needsUpdateLink")}
-              </Link>
-            )}
-          </Inline>
-        </td>
-        {/* Canonical recommendation, rendered through the identical
-            badge vocabulary the Investment Case hero uses -- so a
-            holding reads the same words on both surfaces. Deliberately
-            not `deriveInvestmentRating`, which turns this categorical
-            canonical value into a frontend-invented 0-10 score. */}
-        <td style={cellStyle}>
-          {recommendationLevel ? (
-            <StatusBadge
-              label={t(DECISION_SUPPORT_BADGE_KEY[recommendationLevel])}
-              tone={DECISION_SUPPORT_TONE[recommendationLevel]}
-              weight="strong"
-            />
+            </div>
           ) : (
             <NotAssessedCell t={t} />
           )}
-        </td>
-        <td style={cellStyle}>
-          {stanceLevel ? <StanceBadge level={stanceLevel} /> : <NotAssessedCell t={t} />}
-        </td>
-        {/* Why this column earns its place: 16 of 25 real holdings read
-            "insufficient evidence" as their recommendation. Without
-            coverage beside it the investor cannot tell "Atlas looked
-            and is unconvinced" from "Atlas has no data yet" -- two
-            states that call for completely different action. It was
-            already fetched and already sortable; only the column had
-            been dropped. */}
-        <td style={cellStyle}>
-          {coverageLevel ? (
-            <StatusBadge
-              label={t(ANALYSIS_COVERAGE_LEVEL_KEY[coverageLevel])}
-              tone={ANALYSIS_COVERAGE_TONE[coverageLevel]}
-            />
+        </LinkedCell>
+      </td>
+
+      {/* Valuation -- the FCF-yield conclusion against the company's own
+          history. No sensitivity range here: it is conditional
+          arithmetic, not a valuation verdict, and the Case subordinates
+          it for exactly that reason. */}
+      <td style={cellStyle}>
+        <LinkedCell column="valuation">
+          {valuationStatus && valuationStatus !== "insufficient_input" ? (
+            <Text as="span">{t(VALUATION_STATUS_KEY[valuationStatus])}</Text>
           ) : (
             <NotAssessedCell t={t} />
           )}
-        </td>
-        {/* Portfolio Fit's own distilled overall verdict, verbatim.
-            `unavailable` is one of its real members -- a disclosed
-            "not evaluated", never a neutral-looking middle score. */}
-        <td style={cellStyle}>
+        </LinkedCell>
+      </td>
+
+      {/* Forward. Counts of verified forward evidence, never a forecast
+          and never a polarity -- raised, lowered and reaffirmed all
+          count the same. Only 1 of 25 current holdings has any, so the
+          honest normal state here is the em-dash. */}
+      <td style={cellStyle}>
+        <LinkedCell column="forward">
+          {forward && forward.guidanceCount + forward.contractedVolumeCount > 0 ? (
+            <div style={STACKED_CELL_STYLE}>
+              <Text as="span">{t("portfolio.cockpitTable.forward.verified")}</Text>
+              <Text as="span" color="tertiary" style={SECONDARY_LINE_STYLE}>
+                {t(
+                  forward.guidanceCount === 1
+                    ? "portfolio.cockpitTable.forward.countOne"
+                    : "portfolio.cockpitTable.forward.countOther",
+                  { count: forward.guidanceCount },
+                )}
+              </Text>
+            </div>
+          ) : (
+            <NoneCell t={t} />
+          )}
+        </LinkedCell>
+      </td>
+
+      {/* Portfolio Fit's own distilled overall verdict, verbatim.
+          `unavailable` is one of its real members -- a disclosed
+          "not evaluated", never a neutral-looking middle score. */}
+      <td style={cellStyle}>
+        <LinkedCell column="fit">
           {fitRating ? <FitBadge rating={fitRating} /> : <NotAssessedCell t={t} />}
-        </td>
-        <td style={cellStyle}>
-          {largestRisk && largestRisk.status !== "insufficient_input" ? (
-            <Text as="span">
-              {t("portfolio.holdingsTable.riskCell", {
-                category: t(RISK_CATEGORY_KEY[largestRisk.category]),
-                status: t(RISK_STATUS_KEY[largestRisk.status]),
-              })}
-            </Text>
-          ) : (
-            <NotAssessedCell t={t} />
-          )}
-        </td>
-      </tr>
-    </>
+        </LinkedCell>
+      </td>
+    </tr>
+  );
+}
+
+/** The quiet em-dash. Used where Atlas holds nothing at all for a
+ * dimension -- distinct from `NotAssessedCell`, which says Atlas looked
+ * and could not conclude. Neither is ever a low score. */
+function NoneCell({ t }: { t: (key: TranslationKey) => string }) {
+  return (
+    <Text as="span" color="tertiary" aria-label={t("portfolio.cockpitTable.notAssessed")}>
+      {t("portfolio.cockpitTable.none")}
+    </Text>
   );
 }
 

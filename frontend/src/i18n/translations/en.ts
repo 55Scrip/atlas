@@ -249,6 +249,40 @@ export const en = {
   "portfolio.attention.reason.insufficient_evidence": "Evidence is insufficient for a confident assessment.",
 
   // ---------- holdings table (Portfolio Workspace v1) ----------
+  // ---------- Portfolio Holdings Cockpit v1 ----------
+  // Column headers are one or two words by design. "Business" rather
+  // than "Company": the first column is already the company, and two
+  // columns headed "Company" is a readability defect. The underlying
+  // Atlas concept and its chapter are unchanged.
+  "portfolio.cockpitTable.companyHeader": "Holding",
+  "portfolio.cockpitTable.positionHeader": "Position",
+  "portfolio.cockpitTable.atlasHeader": "Atlas",
+  "portfolio.cockpitTable.businessHeader": "Business",
+  "portfolio.cockpitTable.investmentHeader": "Investment",
+  "portfolio.cockpitTable.riskHeader": "Risk",
+  "portfolio.cockpitTable.valuationHeader": "Valuation",
+  "portfolio.cockpitTable.forwardHeader": "Forward",
+  "portfolio.cockpitTable.fitHeader": "Fit",
+  // Screen-reader text for a linked cell. The column is named as well
+  // as the ticker: a screen-reader user hears these in sequence with no
+  // visual header to anchor them.
+  "portfolio.cockpitTable.link.atlas": "Open {{ticker}} — Atlas's conclusion",
+  "portfolio.cockpitTable.link.business": "Open {{ticker}} — company analysis",
+  "portfolio.cockpitTable.link.investment": "Open {{ticker}} — Atlas's conclusion",
+  "portfolio.cockpitTable.link.risk": "Open {{ticker}} — risk analysis",
+  "portfolio.cockpitTable.link.valuation": "Open {{ticker}} — valuation analysis",
+  "portfolio.cockpitTable.link.forward": "Open {{ticker}} — forward view",
+  "portfolio.cockpitTable.link.fit": "Open {{ticker}} — portfolio fit",
+  // Forward. Counts only, never polarity: a raised, lowered or
+  // reaffirmed figure all read the same here.
+  "portfolio.cockpitTable.forward.verified": "Verified",
+  "portfolio.cockpitTable.forward.countOne": "{{count}} measure",
+  "portfolio.cockpitTable.forward.countOther": "{{count}} measures",
+  // The quiet honest state, used wherever Atlas has no conclusion. Never
+  // a zero, never a low grade.
+  "portfolio.cockpitTable.none": "—",
+  "portfolio.cockpitTable.notAssessed": "Not assessed",
+  "portfolio.cockpitTable.limitedEvidence": "Limited evidence",
   "portfolio.holdingsTable.tickerHeader": "Ticker",
   "portfolio.holdingsTable.coverageHeader": "Analysis depth",
   "portfolio.holdingsTable.reviewStatusHeader": "Review Status",
@@ -263,9 +297,6 @@ export const en = {
   "portfolio.holdingsTable.reasonHeader": "Reason",
   "portfolio.holdingsTable.openAction": "Open",
   "portfolio.holdingsTable.needsUpdateLink": "Needs updated weight",
-  "portfolio.holdingsTable.showingCount": "Showing {{shown}} of {{total}}",
-  "portfolio.holdingsTable.viewAll": "View All Holdings ({{count}})",
-  "portfolio.holdingsTable.viewFewer": "Show fewer",
   "portfolio.holdingsTable.coverage.substantial_coverage": "Evaluated",
   "portfolio.holdingsTable.coverage.partial_coverage": "Partly evaluated",
   "portfolio.holdingsTable.coverage.no_coverage": "Not yet evaluated",
