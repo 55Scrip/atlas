@@ -71,6 +71,25 @@ import { sortHoldings, type HoldingSortKey } from "../portfolio/sortHoldings";
 import styles from "./PortfolioPage.module.css";
 import { selectOpportunity } from "../portfolio/opportunityEligibility";
 import { reductionExposure, type ReductionExposure } from "../portfolio/reductionExposure";
+/** Portfolio Editing & Simulation Layer v1 -- the hypothetical
+ * portfolio. One canonical state for the whole page: rows, the
+ * allocation summary and the reduction-exposure aggregate all derive
+ * from the same `hypothetical`, so none of them can disagree about what
+ * the investor is currently exploring. See `simulationModel.ts` for the
+ * economic model and the audit that chose it. */
+import {
+  applyPortfolioEdits,
+  availableCapital,
+  editStep,
+  holdingKey,
+  resetPosition,
+  resetSimulation,
+  setPosition,
+  type HypotheticalHolding,
+  type HypotheticalPortfolio,
+  type PortfolioEdits,
+  type PortfolioSimulationBase,
+} from "../portfolioSimulation/simulationModel";
 
 /** Alpha Integration Fix (One Product Pass): Portfolio no longer treats
  * the shared `/api/daily-brief-agenda` fetch (filtered to
@@ -316,6 +335,10 @@ interface ReplaceRow {
  * with no linked Case yet creates one and records the association.
  */
 export function PortfolioPage() {
+  /* Portfolio Editing & Simulation Layer v1 -- see the derivation
+     below. Hypothetical only: no persistence, no trade, no Decision
+     Memory. */
+  const [edits, setEdits] = useState<PortfolioEdits>({});
   const { t } = useTranslation();
   const navigate = useNavigate();
   const portfolioResource = useAlphaPortfolio();
@@ -570,21 +593,81 @@ export function PortfolioPage() {
       });
   }
 
-  const unallocatedPercent =
-    status.kind === "loaded" && status.view.exists && status.view.holdings.length > 0
-      ? 100 -
-        status.view.holdings.reduce((sum, holding) => sum + holding.weightPercent, 0) -
-        (status.view.cashWeightPercent ?? 0)
-      : null;
-
   /** Product Sprint 8 (Portfolio Excellence): weight-sorted holdings and
    * the Cockpit coverage count were previously each computed twice
    * independently (once in `PortfolioPulse`, once in `PortfolioSidebar`)
    * over the exact same source data -- the same duplication risk this
    * sprint's own Deliverable 16 flags. Computed once here instead and
    * passed down, so the two can never quietly disagree. */
-  const holdings = status.kind === "loaded" && status.view.exists ? status.view.holdings : [];
+  /* Portfolio Editing & Simulation Layer v1.
+   *
+   * `edits` is the entire hypothetical state: absolute target values
+   * keyed by holding identity. Everything else is derived, so there is
+   * nothing to keep in sync and nothing to drift. It lives here, at the
+   * page, because rows, the allocation summary and the reduction
+   * aggregate must all read one hypothetical portfolio rather than
+   * three.
+   *
+   * Deliberately not persisted anywhere -- not to the portfolio, not to
+   * local storage, not to the URL. A reload returns the real portfolio,
+   * which is the clearest possible statement that nothing explored here
+   * was an action. */
+  const simulationHoldings = status.kind === "loaded" ? status.view.holdings : [];
+  /* The editable quantum. `valueAbsolute` when the portfolio carries
+     real values -- it does for all 25 real holdings -- and otherwise
+     the weight itself, so a percent-only portfolio stays editable
+     without inventing money it never stated. The model only conserves a
+     total, so it is honest either way; only the unit the UI renders
+     differs. */
+  const simulationUsesValue = status.kind === "loaded" && status.view.hasAbsoluteValues;
+  const simulationBase: PortfolioSimulationBase = {
+    holdings: simulationHoldings.map((holding) => ({
+      ticker: holding.ticker,
+      caseId: holding.caseId,
+      valueAbsolute: simulationUsesValue ? (holding.valueAbsolute ?? 0) : holding.weightPercent,
+      currency: null,
+    })),
+    /* Base unallocated capital, in the same quantum as the positions.
+       In the value path that is the investor's own stated cash, which
+       is null for the real portfolio and so contributes nothing.
+       In the percent-only path it is deliberately zero: there the
+       quantum *is* the weight, weights already sum to 100, and adding a
+       separately-stated cash weight on top would renormalize every
+       holding and change displayed weights with no edit made. Freed
+       weight still becomes unallocated -- inside the same 100. */
+    unallocatedValue:
+      status.kind === "loaded" && simulationUsesValue ? (status.view.cashValueAbsolute ?? 0) : 0,
+  };
+  const hypothetical = applyPortfolioEdits(simulationBase, edits);
+  const hypotheticalByKey = new Map(hypothetical.holdings.map((h) => [h.key, h]));
+
+  /* One canonical state, read by everything that participates in the
+     simulation. `holdings` below is the *hypothetical* holdings list,
+     so largest position, the concentration summary and the allocation
+     card cannot quietly disagree with the rows about what the investor
+     is exploring. Only position-derived facts change: nothing here
+     re-derives an analytical verdict. */
+  const persistedHoldings = status.kind === "loaded" && status.view.exists ? status.view.holdings : [];
+  const holdings: HoldingView[] = persistedHoldings.map((holding) => {
+    const simulated = hypotheticalByKey.get(holdingKey(holding));
+    if (!simulated) return holding;
+    return {
+      ...holding,
+      weightPercent: simulated.hypotheticalWeightPercent,
+      valueAbsolute: simulationUsesValue ? simulated.hypotheticalValue : holding.valueAbsolute,
+    };
+  });
   const holdingsByWeightDesc = [...holdings].sort((a, b) => b.weightPercent - a.weightPercent);
+  /* Unallocated capital, from the same hypothetical portfolio. It was
+     `100 - sum(weights) - cash` over the persisted holdings, which is
+     exactly what `unallocatedWeightPercent` already is once freed
+     capital is included -- so this reads it rather than recomputing a
+     second, divergent answer. With no edits the two are identical, and
+     the Allocation card reads as it always did. */
+  const unallocatedPercent =
+    status.kind === "loaded" && status.view.exists && status.view.holdings.length > 0
+      ? hypothetical.unallocatedWeightPercent
+      : null;
   const largestHolding = holdingsByWeightDesc[0] ?? null;
   const coveredCount =
     cockpit.kind === "loaded"
@@ -649,7 +732,27 @@ export function PortfolioPage() {
    * portfolio they add up to was never stated, so reading it meant
    * scanning for one enum and adding weights by hand. Counts what the
    * Decision Layer already published; decides nothing. */
-  const reduction = reductionExposure(cockpit.kind === "loaded" ? cockpit.report.holdings : []);
+  /** Portfolio Reduction-Exposure Aggregation: each row already says
+   * "Reduction supported" and each Case agrees, but the share of the
+   * portfolio they add up to was never stated, so reading it meant
+   * scanning for one enum and adding weights by hand. Counts what the
+   * Decision Layer already published; decides nothing.
+   *
+   * Simulation v1: fed the *hypothetical* weights. This is the one
+   * aggregate safe to recompute here, because it is arithmetic over a
+   * weight and an already-published `decisionSupport` level -- no
+   * analytical conclusion is re-derived, and the level itself is read
+   * verbatim from the cockpit report. Reduce a reduction-supported
+   * holding and the exposure falls; remove it and its weight leaves the
+   * total entirely. */
+  const reduction = reductionExposure(
+    cockpit.kind === "loaded"
+      ? cockpit.report.holdings.map((holding) => {
+          const simulated = hypotheticalByKey.get(holdingKey(holding));
+          return simulated ? { ...holding, weightPercent: simulated.hypotheticalWeightPercent } : holding;
+        })
+      : [],
+  );
   const biggestOpportunity = opportunity.holding;
   const biggestRisk = fitEvaluated.length > 1 ? fitEvaluated[fitEvaluated.length - 1]! : null;
   const hasDistinctRiskAndOpportunity =
@@ -879,6 +982,13 @@ export function PortfolioPage() {
                   caseCreateStatus={caseCreateStatus}
                   openInvestmentCase={openInvestmentCase}
                   onOpenEditPortfolio={openReplaceForm}
+                  hypothetical={hypothetical}
+                  simulationUsesValue={simulationUsesValue}
+                  onEditPosition={(key, value, baseValue) =>
+                    setEdits((current) => setPosition(current, key, value, baseValue))
+                  }
+                  onResetPosition={(key) => setEdits((current) => resetPosition(current, key))}
+                  onResetSimulation={() => setEdits(resetSimulation())}
                   t={t}
                 />
               </div>
@@ -1730,6 +1840,11 @@ function HoldingsTable({
   caseCreateStatus,
   openInvestmentCase,
   onOpenEditPortfolio,
+  hypothetical,
+  simulationUsesValue,
+  onEditPosition,
+  onResetPosition,
+  onResetSimulation,
   t,
 }: {
   view: PortfolioView;
@@ -1739,6 +1854,15 @@ function HoldingsTable({
   caseCreateStatus: Record<string, CaseCreateStatus>;
   openInvestmentCase: (ticker: string, existingCaseId: string | null) => void;
   onOpenEditPortfolio: () => void;
+  /** Portfolio Editing & Simulation Layer v1 -- the one hypothetical
+   * portfolio every part of this table reads. Never a second copy. */
+  hypothetical: HypotheticalPortfolio;
+  /** Whether the editable quantum is money or weight -- see the page's
+   * own derivation. Decides only which unit the row renders. */
+  simulationUsesValue: boolean;
+  onEditPosition: (key: string, value: number, baseValue: number) => void;
+  onResetPosition: (key: string) => void;
+  onResetSimulation: () => void;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
   /* Portfolio Holdings Cockpit v1: the table is a scanning surface, so
@@ -1748,7 +1872,16 @@ function HoldingsTable({
      sizing, and every extra pixel per row costs a holding the reader
      could otherwise have seen without scrolling. */
   const cellStyle: CSSProperties = {
-    padding: "4px var(--space-row)",
+    /* Simulation v1 trimmed the horizontal padding from 12px to 8px a
+       side. The controls column is a tenth column, and at 12px it
+       pushed the table 61px past the viewport -- reintroducing the
+       horizontal scroll the cockpit sprint had just removed. Eight
+       pixels across ten columns buys most of it back, and naming the
+       step on the control ("−10%" rather than a bare glyph) needed the
+       last of it -- so 6px a side. The columns are short categorical
+       values that do not need a wider gutter, and this keeps the whole
+       nine-column cockpit inside 1440px with no horizontal scroll. */
+    padding: "4px 6px",
     textAlign: "left",
     borderBottom: `var(--width-border-hairline) solid var(--color-border-hairline)`,
     fontFamily: "var(--type-family-metadata)",
@@ -1880,6 +2013,34 @@ function HoldingsTable({
         ))}
       </Inline>
 
+      {/* Portfolio Editing & Simulation Layer v1 -- the one place the
+          page says the investor is exploring rather than recording.
+          Absent entirely when there are no edits, so an untouched
+          Portfolio looks exactly as it did before this sprint. The
+          wording is deliberately "hypothetical", never "unsaved": there
+          is nothing to save, and saying otherwise would imply these
+          edits are expected to become real. */}
+      {hypothetical.isDirty && (
+        <Inline gap="row" align="center" wrap style={{ justifyContent: "space-between" }}>
+          <Inline gap="metadata" align="center" wrap>
+            <StatusBadge label={t("portfolio.simulation.active")} tone="neutral" />
+            <Text as="span" color="secondary" style={{ fontSize: "13px" }}>
+              {t(
+                hypothetical.changedCount === 1
+                  ? "portfolio.simulation.changeCountOne"
+                  : "portfolio.simulation.changeCountOther",
+                { count: hypothetical.changedCount },
+              )}
+              {" · "}
+              {t("portfolio.simulation.notRecorded")}
+            </Text>
+          </Inline>
+          <Button variant="tertiary" onClick={onResetSimulation}>
+            {t("portfolio.simulation.reset")}
+          </Button>
+        </Inline>
+      )}
+
       <div style={{ overflowX: "auto", minWidth: 0 }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
@@ -1926,6 +2087,13 @@ function HoldingsTable({
                     </th>
                   ),
                 )}
+                {/* Simulation controls. The header is visually empty --
+                    a column of two icon buttons needs no title -- but
+                    carries an accessible name so the column is
+                    announced rather than read as a gap. */}
+                <th style={headerCellStyle}>
+                  <VisuallyHidden>{t("portfolio.simulation.columnHeader")}</VisuallyHidden>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -1943,6 +2111,11 @@ function HoldingsTable({
                     fitRating={fitRatingByTicker.get(holding.ticker)}
                     thisCaseCreateStatus={caseCreateStatus[holding.ticker] ?? { kind: "idle" }}
                     openInvestmentCase={openInvestmentCase}
+                    simulated={hypothetical.holdings.find((h) => h.key === holdingKey(holding))}
+                    simulationUsesValue={simulationUsesValue}
+                    availableToInvest={availableCapital(hypothetical)}
+                    onEditPosition={onEditPosition}
+                    onResetPosition={onResetPosition}
                     cellStyle={cellStyle}
                     t={t}
                   />
@@ -2061,6 +2234,11 @@ function HoldingsTableRow({
   fitRating,
   thisCaseCreateStatus,
   openInvestmentCase,
+  simulated,
+  simulationUsesValue,
+  availableToInvest,
+  onEditPosition,
+  onResetPosition,
   cellStyle,
   t,
 }: {
@@ -2073,6 +2251,18 @@ function HoldingsTableRow({
   fitRating: FitRating | undefined;
   thisCaseCreateStatus: CaseCreateStatus;
   openInvestmentCase: (ticker: string, existingCaseId: string | null) => void;
+  /** This holding's position in the hypothetical portfolio. Always
+   * present for a real holding; `undefined` only while the portfolio is
+   * still loading, in which case the row shows its persisted position
+   * and offers no controls. */
+  simulated: HypotheticalHolding | undefined;
+  simulationUsesValue: boolean;
+  /** Unallocated capital available to fund an increase right now. The
+   * `+` control disables at zero rather than letting the model silently
+   * clamp an edit the investor asked for. */
+  availableToInvest: number;
+  onEditPosition: (key: string, value: number, baseValue: number) => void;
+  onResetPosition: (key: string) => void;
   cellStyle: CSSProperties;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
@@ -2189,14 +2379,31 @@ function HoldingsTableRow({
       {/* Position. Weight is the comparable figure, so it leads; the
           absolute value is secondary and renders only for a portfolio
           that actually has one. */}
+      {/* Position. Unchanged, this reads exactly as it did before the
+          simulation layer existed. Changed, it states the persisted
+          figure and the hypothetical one together -- the investor has
+          to be able to see what they started from, or "what if" has no
+          anchor. */}
       <td style={{ ...cellStyle, textAlign: "right" }}>
         <div style={STACKED_CELL_STYLE}>
           <Text as="span" style={{ fontWeight: 600 }}>
-            {formatPercentPoints(holding.weightPercent)}
+            {simulated?.isChanged ? (
+              <>
+                <Text as="span" color="tertiary" style={{ fontWeight: 400 }}>
+                  {formatPercentPoints(simulated.baseWeightPercent)}
+                </Text>
+                {" → "}
+                {formatPercentPoints(simulated.hypotheticalWeightPercent)}
+              </>
+            ) : (
+              formatPercentPoints(simulated ? simulated.hypotheticalWeightPercent : holding.weightPercent)
+            )}
           </Text>
-          {holding.valueAbsolute !== null && (
+          {simulationUsesValue && holding.valueAbsolute !== null && (
             <Text as="span" color="tertiary" style={SECONDARY_LINE_STYLE}>
-              {formatCurrency(holding.valueAbsolute)}
+              {simulated?.isChanged
+                ? `${formatCurrency(simulated.baseValue)} → ${formatCurrency(simulated.hypotheticalValue)}`
+                : formatCurrency(simulated ? simulated.hypotheticalValue : holding.valueAbsolute)}
             </Text>
           )}
         </div>
@@ -2310,7 +2517,97 @@ function HoldingsTableRow({
           {fitRating ? <FitBadge rating={fitRating} /> : <NotAssessedCell t={t} />}
         </LinkedCell>
       </td>
+
+      {/* Simulation controls. Hypothetical only: none of these calls a
+          portfolio endpoint, records a trade or writes Decision Memory.
+          `stopPropagation` keeps a control from also opening the
+          Investment Case the row itself links to. */}
+      <td style={cellStyle} onClick={(event) => event.stopPropagation()}>
+        {simulated && (
+          <Inline gap="metadata" style={{ gap: "2px" }} align="center">
+            {/* The unit is on the control, not only in its accessible
+                name. A bare "−" reads as "one share" -- and Atlas holds
+                no share counts for any of these holdings, so that would
+                be the one interpretation the data cannot support.
+                "−10%" says what the click actually does: move the
+                position by a tenth of its *persisted* size. */}
+            <SimulationButton
+              label={t("portfolio.simulation.stepDown")}
+              title={t("portfolio.simulation.reduceLabel", { ticker: holding.ticker })}
+              disabled={simulated.hypotheticalValue <= 0}
+              onClick={() =>
+                onEditPosition(
+                  simulated.key,
+                  simulated.hypotheticalValue - editStep(simulated.baseValue),
+                  simulated.baseValue,
+                )
+              }
+            />
+            <SimulationButton
+              label={t("portfolio.simulation.stepUp")}
+              title={t("portfolio.simulation.increaseLabel", { ticker: holding.ticker })}
+              /* Fully invested means nothing to invest with until
+                 something is reduced. Disabling says so plainly rather
+                 than accepting the click and quietly clamping it. */
+              disabled={availableToInvest <= 0}
+              onClick={() =>
+                onEditPosition(
+                  simulated.key,
+                  simulated.hypotheticalValue + editStep(simulated.baseValue),
+                  simulated.baseValue,
+                )
+              }
+            />
+            {simulated.isChanged && (
+              <SimulationButton
+                label={t("portfolio.simulation.restoreGlyph")}
+                title={t("portfolio.simulation.restoreLabel", { ticker: holding.ticker })}
+                onClick={() => onResetPosition(simulated.key)}
+              />
+            )}
+          </Inline>
+        )}
+      </td>
     </tr>
+  );
+}
+
+/** One compact simulation control. A real `<button>` with a real
+ * accessible name -- the glyph alone ("−", "+", "↺") means nothing to a
+ * screen reader, and the name states both the holding and the operation
+ * so a row of three controls is unambiguous when heard in sequence. */
+function SimulationButton({
+  label,
+  title,
+  disabled = false,
+  onClick,
+}: {
+  label: string;
+  title: string;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={title}
+      title={title}
+      disabled={disabled}
+      onClick={onClick}
+      style={{
+        font: "inherit",
+        lineHeight: 1,
+        padding: "2px 6px",
+        cursor: disabled ? "default" : "pointer",
+        background: "transparent",
+        color: disabled ? "var(--color-text-tertiary)" : "var(--color-text-secondary)",
+        border: "var(--width-border-hairline) solid var(--color-border-hairline)",
+        borderRadius: "var(--radius-card)",
+        opacity: disabled ? 0.45 : 1,
+      }}
+    >
+      {label}
+    </button>
   );
 }
 

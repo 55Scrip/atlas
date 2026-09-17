@@ -254,6 +254,28 @@ export const en = {
   // than "Company": the first column is already the company, and two
   // columns headed "Company" is a readability defect. The underlying
   // Atlas concept and its chapter are unchanged.
+  // ---------- Portfolio Editing & Simulation Layer v1 ----------
+  // Deliberately "hypothetical", never "unsaved": there is nothing to
+  // save, and calling it unsaved would imply these edits are expected
+  // to become real. Nothing here is a trade, and none of this wording
+  // may suggest one was made.
+  "portfolio.simulation.active": "Hypothetical",
+  "portfolio.simulation.changeCountOne": "{{count}} change explored",
+  "portfolio.simulation.changeCountOther": "{{count}} changes explored",
+  "portfolio.simulation.notRecorded": "nothing recorded, your portfolio is unchanged",
+  "portfolio.simulation.reset": "Reset to current portfolio",
+  "portfolio.simulation.columnHeader": "Explore position",
+  // The step is a tenth of the *persisted* position, shown on the
+  // control itself: Atlas holds no share quantities, so a bare "−"
+  // would read as one share -- the one meaning the data cannot
+  // support. "↺" is decorative; its button carries the real name.
+  "portfolio.simulation.stepDown": "−10%",
+  "portfolio.simulation.stepUp": "+10%",
+  "portfolio.simulation.restoreGlyph": "↺",
+  "portfolio.simulation.reduceLabel": "Reduce {{ticker}} by 10% of its current position",
+  "portfolio.simulation.increaseLabel": "Increase {{ticker}} by 10% of its current position",
+  "portfolio.simulation.restoreLabel": "Restore {{ticker}} to its current position",
+  "portfolio.simulation.unallocated": "Unallocated in this exploration",
   "portfolio.cockpitTable.companyHeader": "Holding",
   "portfolio.cockpitTable.positionHeader": "Position",
   "portfolio.cockpitTable.atlasHeader": "Atlas",

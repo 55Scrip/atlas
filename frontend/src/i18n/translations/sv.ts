@@ -254,6 +254,24 @@ export const sv: Record<TranslationKey, string> = {
 
   // ---------- holdings table (Portfolio Workspace v1) ----------
   // ---------- Portfolio Holdings Cockpit v1 ----------
+  // ---------- Portfolio Editing & Simulation Layer v1 ----------
+  "portfolio.simulation.active": "Hypotetiskt",
+  "portfolio.simulation.changeCountOne": "{{count}} förändring utforskad",
+  "portfolio.simulation.changeCountOther": "{{count}} förändringar utforskade",
+  "portfolio.simulation.notRecorded": "inget registreras, din portfölj är oförändrad",
+  "portfolio.simulation.reset": "Återställ till nuvarande portfölj",
+  "portfolio.simulation.columnHeader": "Utforska position",
+  // The step is a tenth of the *persisted* position, shown on the
+  // control itself: Atlas holds no share quantities, so a bare "−"
+  // would read as one share -- the one meaning the data cannot
+  // support. "↺" is decorative; its button carries the real name.
+  "portfolio.simulation.stepDown": "−10%",
+  "portfolio.simulation.stepUp": "+10%",
+  "portfolio.simulation.restoreGlyph": "↺",
+  "portfolio.simulation.reduceLabel": "Minska {{ticker}} med 10 % av nuvarande position",
+  "portfolio.simulation.increaseLabel": "Öka {{ticker}} med 10 % av nuvarande position",
+  "portfolio.simulation.restoreLabel": "Återställ {{ticker}} till nuvarande position",
+  "portfolio.simulation.unallocated": "Oallokerat i den här utforskningen",
   "portfolio.cockpitTable.companyHeader": "Innehav",
   "portfolio.cockpitTable.positionHeader": "Position",
   "portfolio.cockpitTable.atlasHeader": "Atlas",
