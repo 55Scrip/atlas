@@ -458,12 +458,29 @@ function HorizonPanel({
 
 export function AtlasOutlookSection({
   outlook,
-  latestChanges,
+  latestChanges = [],
+  showWhatChanged = true,
   t,
   locale,
 }: {
   outlook: OutlookView;
-  latestChanges: ChangeFindingView[];
+  latestChanges?: ChangeFindingView[];
+  /**
+   * Product Convergence Sprint 1 (Investment Case Hierarchy). This
+   * section's own What-Changed block renders the top five of
+   * `latestChanges` through `describeChange` -- the same list, through
+   * the same function, that `WhatChangedSection` renders in full, and
+   * that one is strictly richer: it leads with the Atlas Thesis impact
+   * verdict, groups changes by direction, and attaches the current
+   * evidence behind each dimension.
+   *
+   * On the Investment Case this section now reads inside the Valuation
+   * chapter, where a case-wide change feed does not belong, so the
+   * caller turns the block off and `WhatChangedSection` is the one
+   * representation. Defaults to the previous behaviour, so every other
+   * caller is unaffected.
+   */
+  showWhatChanged?: boolean;
   t: Translate;
   locale: string;
 }) {
@@ -482,19 +499,23 @@ export function AtlasOutlookSection({
         <HorizonPanel headingKey="longTerm" horizon={outlook.longTerm} t={t} locale={locale} />
       </Inline>
 
-      <Divider tone="hairline" />
+      {showWhatChanged && (
+        <>
+          <Divider tone="hairline" />
 
-      <Label>{t("investmentCase.outlook.whatChangedLabel")}</Label>
-      {latestChanges.length === 0 ? (
-        <Text color="secondary">{t("investmentCase.outlook.noChanges")}</Text>
-      ) : (
-        <Stack gap="metadata">
-          {latestChanges.slice(0, 5).map((change) => (
-            <Text as="p" key={change.id}>
-              {describeChange(change, t)}
-            </Text>
-          ))}
-        </Stack>
+          <Label>{t("investmentCase.outlook.whatChangedLabel")}</Label>
+          {latestChanges.length === 0 ? (
+            <Text color="secondary">{t("investmentCase.outlook.noChanges")}</Text>
+          ) : (
+            <Stack gap="metadata">
+              {latestChanges.slice(0, 5).map((change) => (
+                <Text as="p" key={change.id}>
+                  {describeChange(change, t)}
+                </Text>
+              ))}
+            </Stack>
+          )}
+        </>
       )}
     </Stack>
   );

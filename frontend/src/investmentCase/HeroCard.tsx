@@ -285,6 +285,51 @@ interface HeroCardProps {
    * every existing caller (`CompanyWorkspacePage.tsx`) keeps its
    * current behavior; only `InvestmentCasePage.tsx` opts in. */
   suppressTensionSentence?: boolean;
+  /**
+   * Product Convergence Sprint 1 (Investment Case Hierarchy). Omits the
+   * three blocks below that state, in the Hero's own vocabulary, what
+   * `AtlasInvestmentReasoning` states canonically directly underneath
+   * it: the driver list, what would change the view, and the Biggest
+   * Strength / Biggest Concern / Open Question grid.
+   *
+   * Internal Alpha found all three rendering at once on META, one after
+   * another: the same "low financial risk supports the case" sentence
+   * appeared in the driver list and again as Biggest Strength, and the
+   * two What-Would-Change blocks disagreed outright -- the Hero read
+   * `recommendation.what_would_change` (one trigger) while canonical
+   * reasoning read `reasoning.what_would_change` (two). One judgment,
+   * two sources, stacked.
+   *
+   * The canonical card is the authoritative one: it is the backend's
+   * own reasoning, in the backend's own precedence order, as closed
+   * tokens the frontend translates -- and it carries key unknowns and
+   * verified forward context the Hero has no access to. So the Hero
+   * keeps what only it has (recommendation, conviction, the why
+   * sentence, price, freshness, what changed since last visit) and
+   * stops restating the rest.
+   *
+   * Defaults to `false`, and the Investment Case passes `true` only
+   * when canonical reasoning is actually present -- a case whose row
+   * carries no reasoning keeps the Hero's own preview rather than
+   * losing the facts entirely. `CompanyWorkspacePage`, which renders no
+   * reasoning card, is unaffected.
+   */
+  suppressReasoningPreview?: boolean;
+  /**
+   * Product Convergence Sprint 1B (Investment Case Compression). Omits
+   * the "Since you were here" block when it has nothing to report --
+   * that is, when this is not a baseline case and no change was
+   * detected.
+   *
+   * It cost 73px of labelled heading plus "No material change since the
+   * previous analysis", inside the one block of the page that has to
+   * stay short. Normal states are quiet; a baseline note and a real
+   * change count still render, and the itemised list is unchanged in
+   * `WhatChangedSection`.
+   *
+   * Defaults to `false`, so `CompanyWorkspacePage` is unaffected.
+   */
+  suppressEmptyChangeNote?: boolean;
   /** Internal Alpha Stabilization 1 (MSFT price root cause fix) -- the
    * manual "Uppdatera" escape hatch next to "Aktuellt pris". Optional
    * so this component stays usable without it (e.g. in tests that
@@ -401,6 +446,8 @@ export function HeroCard({
   locale,
   suppressLimitingFactorPreview = false,
   suppressTensionSentence = false,
+  suppressReasoningPreview = false,
+  suppressEmptyChangeNote = false,
   onRefreshPrice,
   isRefreshingPrice = false,
 }: HeroCardProps) {
@@ -560,7 +607,7 @@ export function HeroCard({
               decisive factors behind the recommendation -- never every
               available signal, only `strengths[]`/`risks[]`'s own
               closed classification, capped and combined. */}
-          {drivers.length > 0 && (
+          {!suppressReasoningPreview && drivers.length > 0 && (
             <Stack gap="metadata">
               <Label>{t("investmentCase.drivers.heading")}</Label>
               <ul style={{ margin: 0, paddingLeft: "1.25em", display: "flex", flexDirection: "column", gap: "var(--space-metadata)" }}>
@@ -586,7 +633,7 @@ export function HeroCard({
               silence standing in for "not computed." Always `[]` for a
               withheld recommendation, so this never renders in that
               branch. */}
-          {analysis.whatWouldChange.length > 0 && (
+          {!suppressReasoningPreview && analysis.whatWouldChange.length > 0 && (
             <Stack gap="metadata">
               <Label>{t("investmentCase.whatWouldChange.heading")}</Label>
               <ul style={{ margin: 0, paddingLeft: "1.25em", display: "flex", flexDirection: "column", gap: "var(--space-metadata)" }}>
@@ -599,29 +646,34 @@ export function HeroCard({
             </Stack>
           )}
 
-          <Divider tone="hairline" />
-
           {/* Since you were here -- the same real facts
-              (`isBaselineCase`/`latestChangeCount`) as before, unchanged
-              placement. The full, itemized change list remains exactly
-              where it already was, one section down
-              (`WhatChangedSection`) -- this is a preview, not a
-              duplicate. */}
-          <Stack gap="metadata">
-            <Label>{t("investmentCase.hero.sinceYouWereHere.heading")}</Label>
-            <Text as="p">
-              {analysis.isBaselineCase
-                ? t("investmentCase.whatChanged.baseline")
-                : analysis.latestChangeCount === 0
-                  ? t("investmentCase.whatChanged.noChange")
-                  : t(
-                      analysis.latestChangeCount === 1
-                        ? "investmentCase.hero.sinceYouWereHere.countOne"
-                        : "investmentCase.hero.sinceYouWereHere.countOther",
-                      { count: analysis.latestChangeCount },
-                    )}
-            </Text>
-          </Stack>
+              (`isBaselineCase`/`latestChangeCount`) as before. The full,
+              itemized change list remains exactly where it already was,
+              one section down (`WhatChangedSection`) -- this is a
+              preview, not a duplicate.
+
+              Sprint 1B: a case that is neither a baseline nor changed
+              has nothing to report, and reports it silently. */}
+          {!(suppressEmptyChangeNote && !analysis.isBaselineCase && analysis.latestChangeCount === 0) && (
+            <>
+              <Divider tone="hairline" />
+              <Stack gap="metadata">
+                <Label>{t("investmentCase.hero.sinceYouWereHere.heading")}</Label>
+                <Text as="p">
+                  {analysis.isBaselineCase
+                    ? t("investmentCase.whatChanged.baseline")
+                    : analysis.latestChangeCount === 0
+                      ? t("investmentCase.whatChanged.noChange")
+                      : t(
+                          analysis.latestChangeCount === 1
+                            ? "investmentCase.hero.sinceYouWereHere.countOne"
+                            : "investmentCase.hero.sinceYouWereHere.countOther",
+                          { count: analysis.latestChangeCount },
+                        )}
+                </Text>
+              </Stack>
+            </>
+          )}
 
           <Divider tone="hairline" />
 
@@ -638,42 +690,48 @@ export function HeroCard({
               used for the supporting-strip risk chip; the open
               question is the same real, resolved question
               `EvidenceCoverageCard` shows in its own expandable detail. */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-              gap: "var(--space-row)",
-            }}
-          >
-            <Surface tier="elevated">
-              <Stack gap="metadata">
-                <Label>{t("investmentCase.strengthConcernPriority.strengthLabel")}</Label>
-                <Text as="p">
-                  {analysis.topStrengthKind
-                    ? t(STRENGTH_SENTENCE_KEY[analysis.topStrengthKind])
-                    : t("investmentCase.strengthConcernPriority.noStrength")}
-                </Text>
-              </Stack>
-            </Surface>
-            <Surface tier="elevated">
-              <Stack gap="metadata">
-                <Label>{t("investmentCase.strengthConcernPriority.concernLabel")}</Label>
-                <Text as="p">
-                  {mostSevereRisk
-                    ? t(CONCERN_SENTENCE_KEY[mostSevereRisk.category])
-                    : t("investmentCase.strengthConcernPriority.noConcern")}
-                </Text>
-              </Stack>
-            </Surface>
-            <Surface tier="elevated">
-              <Stack gap="metadata">
-                <Label>{t("investmentCase.hero.openQuestionLabel")}</Label>
-                <Text as="p">{primaryOpenQuestionKey ? t(primaryOpenQuestionKey) : t("investmentCase.hero.openQuestion.none")}</Text>
-              </Stack>
-            </Surface>
-          </div>
+          {!suppressReasoningPreview && (
+            <>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                  gap: "var(--space-row)",
+                }}
+              >
+                <Surface tier="elevated">
+                  <Stack gap="metadata">
+                    <Label>{t("investmentCase.strengthConcernPriority.strengthLabel")}</Label>
+                    <Text as="p">
+                      {analysis.topStrengthKind
+                        ? t(STRENGTH_SENTENCE_KEY[analysis.topStrengthKind])
+                        : t("investmentCase.strengthConcernPriority.noStrength")}
+                    </Text>
+                  </Stack>
+                </Surface>
+                <Surface tier="elevated">
+                  <Stack gap="metadata">
+                    <Label>{t("investmentCase.strengthConcernPriority.concernLabel")}</Label>
+                    <Text as="p">
+                      {mostSevereRisk
+                        ? t(CONCERN_SENTENCE_KEY[mostSevereRisk.category])
+                        : t("investmentCase.strengthConcernPriority.noConcern")}
+                    </Text>
+                  </Stack>
+                </Surface>
+                <Surface tier="elevated">
+                  <Stack gap="metadata">
+                    <Label>{t("investmentCase.hero.openQuestionLabel")}</Label>
+                    <Text as="p">
+                      {primaryOpenQuestionKey ? t(primaryOpenQuestionKey) : t("investmentCase.hero.openQuestion.none")}
+                    </Text>
+                  </Stack>
+                </Surface>
+              </div>
 
-          <Divider tone="hairline" />
+              <Divider tone="hairline" />
+            </>
+          )}
 
           {/* Redesign From Zero Sprint V2: renamed from "Key Metrics" to
               "Additional details" -- Recommendation and Expected Return/

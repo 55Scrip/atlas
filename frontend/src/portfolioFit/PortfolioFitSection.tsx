@@ -35,13 +35,24 @@ import type { PortfolioFitAssessmentView } from "./portfolioFitApi";
  * `DiscoveryCandidateCard` (Product Sprint 5) -- extracted here rather
  * than duplicated, per that sprint's own "no duplicated logic" rule.
  */
-export function PortfolioFitSection({ assessment }: { assessment: PortfolioFitAssessmentView | null }) {
+export function PortfolioFitSection({
+  assessment,
+  showHeading = true,
+}: {
+  assessment: PortfolioFitAssessmentView | null;
+  /** Product Convergence Sprint 1 (Investment Case Hierarchy): the
+   * Investment Case now renders this inside a Portfolio Fit chapter
+   * whose own heading is the same word, so it passes `false` and keeps
+   * one title. Defaults to the previous behaviour for every other
+   * caller. */
+  showHeading?: boolean;
+}) {
   const { t } = useTranslation();
 
   if (assessment === null) {
     return (
       <Stack gap="metadata">
-        <Heading level={3}>{t("portfolioFit.section.heading")}</Heading>
+        {showHeading && <Heading level={3}>{t("portfolioFit.section.heading")}</Heading>}
         <Text color="tertiary">{t("portfolioFit.section.unavailable")}</Text>
       </Stack>
     );
@@ -52,7 +63,7 @@ export function PortfolioFitSection({ assessment }: { assessment: PortfolioFitAs
 
   return (
     <Stack gap="metadata">
-      <Heading level={3}>{t("portfolioFit.section.heading")}</Heading>
+      {showHeading && <Heading level={3}>{t("portfolioFit.section.heading")}</Heading>}
 
       <Inline gap="row" align="center">
         <FitBadge rating={assessment.overall} />
