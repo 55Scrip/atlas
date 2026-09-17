@@ -7,7 +7,11 @@ actually contains the figure Atlas's doctrine defines.
 """
 from __future__ import annotations
 
-from atlas.business_data_providers.esef.debt import DebtOutcome, resolve_gross_debt
+from atlas.business_data_providers.esef.debt import (
+    LEASE_CONCEPTS,
+    DebtOutcome,
+    resolve_gross_debt,
+)
 from atlas.business_data_providers.esef.taxonomy import EsefTaxonomy
 
 CURRENT = "ifrs-full_CurrentLiabilities"
@@ -163,6 +167,128 @@ def test_sandvik_proves_the_guard_against_its_own_annual_report() -> None:
     # The number the filing would have handed over, named so that any change
     # making it acceptable fails here rather than quietly in a Case.
     assert result.gross_debt != 42_755e6
+
+
+def test_a_lease_receivable_is_not_a_lease_liability() -> None:
+    """The near-miss that would have broken Volvo, found by auditing what its
+    filing actually tags.
+
+    Volvo's captive finance arm leases trucks *to* customers, so its 2024
+    filing carries `CurrentFinanceLeaseReceivables` (122,677 MSEK) and
+    `NoncurrentFinanceLeaseReceivables` (134,605 MSEK). Those are assets. Any
+    rule that decided lease visibility by looking for "Lease" in a concept
+    name would find them, conclude the filing shows its leases, and let
+    Volvo's bond-plus-bucket figure through as lease-exclusive gross debt.
+
+    `LEASE_CONCEPTS` is a membership set of three liability concepts, so the
+    receivables are invisible to it -- which is the whole reason it is a set
+    of names rather than a pattern. This test is here because the distinction
+    only becomes visible when an issuer happens to hold both.
+    """
+    assert not any("Receivable" in concept for concept in LEASE_CONCEPTS)
+    volvo = taxonomy(
+        current=("ifrs-full_CurrentBondsIssuedAndCurrentPortionOfNoncurrentBondsIssued",),
+        noncurrent=("ifrs-full_NoncurrentPortionOfNoncurrentBondsIssued",),
+    )
+    result = resolve_gross_debt(volvo, values(**{
+        "ifrs-full_CurrentBondsIssuedAndCurrentPortionOfNoncurrentBondsIssued": 45_460e6,
+        "ifrs-full_NoncurrentPortionOfNoncurrentBondsIssued": 109_031e6,
+        # Present in the filing, and irrelevant: assets, not liabilities.
+        "ifrs-full_CurrentFinanceLeaseReceivables": 122_677e6,
+        "ifrs-full_NoncurrentFinanceLeaseReceivables": 134_605e6,
+    }))
+    assert result.outcome is DebtOutcome.LEASES_NOT_VISIBLE
+    assert result.gross_debt is None
+
+
+def test_a_generic_financial_liabilities_bucket_is_not_borrowings() -> None:
+    """Atlas Copco, whose balance sheet tags no borrowings concept at all.
+
+    Its debt sits inside `OtherNoncurrentFinancialLiabilities` (31,688 MSEK)
+    and `OtherCurrentFinancialLiabilities` (3,076 MSEK) -- standard IFRS
+    concepts that mean "other financial liabilities" and hold borrowings,
+    lease liabilities and derivatives together. Under IFRS a lease liability
+    *is* a financial liability, so the bucket cannot be read as debt however
+    much of it happens to be debt.
+
+    Admitting these two concepts would resolve Atlas Copco instantly and
+    would be wrong for every issuer that uses them. The honest answer is that
+    this filing does not tag debt.
+    """
+    atlas_copco = taxonomy(
+        current=("ifrs-full_OtherCurrentFinancialLiabilities",
+                 "ifrs-full_TradeAndOtherCurrentPayablesToTradeSuppliers",
+                 "ifrs-full_CurrentProvisions"),
+        noncurrent=("ifrs-full_OtherNoncurrentFinancialLiabilities",
+                    "ifrs-full_DeferredTaxLiabilities",
+                    "ifrs-full_OtherLongtermProvisions"),
+    )
+    result = resolve_gross_debt(atlas_copco, values(**{
+        "ifrs-full_OtherCurrentFinancialLiabilities": 3_076e6,
+        "ifrs-full_OtherNoncurrentFinancialLiabilities": 31_688e6,
+    }))
+    assert result.outcome is DebtOutcome.NOT_TAGGED
+    assert result.gross_debt is None
+    assert result.gross_debt != 34_764e6   # what admitting the buckets would have produced
+
+
+def test_a_borrowings_concept_with_no_value_withholds_rather_than_counting_the_rest() -> None:
+    """An incomplete set of debt components is not a smaller debt figure.
+
+    The balance sheet declares four borrowings children; three carry a value
+    at this date and one does not. Dropping the fourth and summing the three
+    produces a confident under-count of exactly the kind Volvo's bond-only
+    143,611 was -- the arithmetic is clean, every component is real, and
+    nothing in the answer shows a line is missing.
+
+    A mutation that ignored the unreported concept passed the whole suite,
+    which is why this is here.
+    """
+    issuer = taxonomy(
+        current=("ifrs-full_CurrentBorrowingsAndCurrentPortionOfNoncurrentBorrowings",
+                 "ifrs-full_CurrentCommercialPapersIssued",
+                 "ifrs-full_CurrentLeaseLiabilities"),
+        noncurrent=("ifrs-full_LongtermBorrowings", "ifrs-full_NoncurrentLeaseLiabilities"),
+    )
+    result = resolve_gross_debt(issuer, values(**{
+        "ifrs-full_CurrentBorrowingsAndCurrentPortionOfNoncurrentBorrowings": 11_958e6,
+        "ifrs-full_LongtermBorrowings": 54_989e6,
+        "ifrs-full_CurrentLeaseLiabilities": 1_737e6,
+        "ifrs-full_NoncurrentLeaseLiabilities": 4_817e6,
+        # `CurrentCommercialPapersIssued` is declared and carries no value here.
+    }))
+    assert result.outcome is DebtOutcome.NOT_TAGGED
+    assert result.gross_debt is None
+    assert result.gross_debt != 66_947e6   # the tidy sum of the three that did report
+    assert "ifrs-full_CurrentCommercialPapersIssued" in result.unresolved
+
+
+def test_a_reported_total_is_never_added_to_the_two_sides() -> None:
+    """`ifrs-full_Borrowings` is the whole of what the two sides split.
+
+    An issuer that tags the total *and* its two halves would be counted
+    twice by a resolver that treats the total as just another borrowings
+    concept -- here 66,947 would become 133,894. `TOTAL_BORROWINGS` is kept
+    out of the per-side membership sets for exactly this reason, and is
+    consulted only through anchoring, where it identifies what an extension
+    is part of rather than contributing a figure of its own.
+    """
+    issuer = taxonomy(
+        current=("ifrs-full_CurrentBorrowingsAndCurrentPortionOfNoncurrentBorrowings",
+                 "ifrs-full_CurrentLeaseLiabilities", "ifrs-full_Borrowings"),
+        noncurrent=("ifrs-full_LongtermBorrowings", "ifrs-full_NoncurrentLeaseLiabilities"),
+    )
+    result = resolve_gross_debt(issuer, values(**{
+        "ifrs-full_CurrentBorrowingsAndCurrentPortionOfNoncurrentBorrowings": 11_958e6,
+        "ifrs-full_LongtermBorrowings": 54_989e6,
+        "ifrs-full_Borrowings": 66_947e6,
+        "ifrs-full_CurrentLeaseLiabilities": 1_737e6,
+        "ifrs-full_NoncurrentLeaseLiabilities": 4_817e6,
+    }))
+    assert result.outcome is DebtOutcome.RESOLVED
+    assert result.gross_debt == 66_947e6
+    assert result.gross_debt != 133_894e6
+    assert "ifrs-full_Borrowings" not in [concept for concept, _ in result.components]
 
 
 def test_one_side_alone_is_not_half_a_debt_figure() -> None:

@@ -294,8 +294,9 @@ def test_nothing_here_is_written_per_issuer() -> None:
             and id(node) not in docstrings
         ]
         for literal in literals:
-            for name in ("VOLV-B", "ATCO-B", "ASSA-B", "INVE-B", "SU.PA",
-                         "abvolvo", "schneiderelectric", "atla_", "ASSAABLOY"):
+            for name in ("VOLV-B", "ATCO-B", "ASSA-B", "INVE-B", "SU.PA", "SAND", "MTRS", "ALFA",
+                         "abvolvo", "schneiderelectric", "atla_", "ASSAABLOY",
+                         "sandvik", "investor", "atlascopco", "munters", "alfalaval"):
                 assert name not in literal, (
                     f"{name!r} appears in executable code in {module.__name__}: {literal!r}"
                 )
