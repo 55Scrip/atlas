@@ -61,6 +61,32 @@ INSTANT_CANDIDATES: dict[str, tuple[str, ...]] = {
 
 _UNDIMENSIONED = {"concept", "entity", "period", "unit", "language"}
 
+#: What an inline-XBRL converter writes into a fact whose source value it could
+#: not turn into a number. It is a tagged fact carrying no figure -- the issuer
+#: meant to report something and the filing does not actually say what.
+#:
+#: Investor AB's 2023 report has this on 43% of its facts, including its own
+#: primary statements, and its 2024 report repeats it across the 2023
+#: comparative column; the same issuer's 2021 and 2022 reports have none, and
+#: neither does any other issuer sampled. Dropping these quietly would make a
+#: broken filing indistinguishable from one that simply did not tag a concept,
+#: which are very different things to tell an investor.
+_TRANSFORM_ERROR = "ixTransformValueError"
+
+
+def _numeric(value) -> tuple[float | None, bool]:
+    """`(number, was_a_reporting_error)`.
+
+    The second element is what separates "the issuer did not report this" from
+    "the issuer reported this and the filing does not carry the value".
+    """
+    if isinstance(value, str) and _TRANSFORM_ERROR in value:
+        return None, True
+    try:
+        return float(value), False
+    except (TypeError, ValueError):
+        return None, False
+
 
 def _to_linkbase(qname: str) -> str:
     """`ifrs-full:Revenue` -> `ifrs-full_Revenue`, the form linkbases use."""
@@ -72,8 +98,14 @@ def _undimensioned(dimensions: dict) -> bool:
     return not set(dimensions) - _UNDIMENSIONED
 
 
-def duration_facts(document: dict, concept: str) -> dict[str, tuple[float, str | None]]:
-    """Consolidated period facts, keyed by the fiscal year they *end* in."""
+def duration_facts(document: dict, concept: str, *, errors: set | None = None
+                   ) -> dict[str, tuple[float, str | None]]:
+    """Consolidated period facts, keyed by the fiscal year they *end* in.
+
+    A fact whose value is a converter error is left out of the result and, if
+    `errors` is given, its period is added there -- absent from the data, and
+    absent for a reason worth reporting.
+    """
     out: dict[str, tuple[float, str | None]] = {}
     for fact in document.get("facts", {}).values():
         dimensions = fact.get("dimensions", {})
@@ -83,14 +115,19 @@ def duration_facts(document: dict, concept: str) -> dict[str, tuple[float, str |
         if "/" not in period:
             continue
         try:
-            ends = date.fromisoformat(period.split("/")[1][:10]) - timedelta(days=1)
-            out[ends.isoformat()] = (float(fact["value"]), dimensions.get("unit"))
+            ends = (date.fromisoformat(period.split("/")[1][:10]) - timedelta(days=1)).isoformat()
         except (TypeError, ValueError):
             continue
+        value, reporting_error = _numeric(fact.get("value"))
+        if reporting_error and errors is not None:
+            errors.add(ends)
+        if value is not None:
+            out[ends] = (value, dimensions.get("unit"))
     return out
 
 
-def instant_facts(document: dict, concept: str) -> dict[str, tuple[float, str | None]]:
+def instant_facts(document: dict, concept: str, *, errors: set | None = None
+                  ) -> dict[str, tuple[float, str | None]]:
     """Consolidated balance facts, keyed by the date the balance is *as of*.
 
     The offset is the whole point: XBRL writes the instant as the following
@@ -105,10 +142,14 @@ def instant_facts(document: dict, concept: str) -> dict[str, tuple[float, str | 
         if "/" in period:
             continue
         try:
-            as_of = date.fromisoformat(period[:10]) - timedelta(days=1)
-            out[as_of.isoformat()] = (float(fact["value"]), dimensions.get("unit"))
+            as_of = (date.fromisoformat(period[:10]) - timedelta(days=1)).isoformat()
         except (TypeError, ValueError):
             continue
+        value, reporting_error = _numeric(fact.get("value"))
+        if reporting_error and errors is not None:
+            errors.add(as_of)
+        if value is not None:
+            out[as_of] = (value, dimensions.get("unit"))
     return out
 
 
@@ -124,19 +165,27 @@ def _resolve(document, taxonomy, candidates, reader, at):
     """A standard concept if one is reported; otherwise the issuer's own
     extensions that anchoring declares to be parts of it, summed.
 
-    Returns `(value, currency, concepts_used)` or `(None, None, ())`.
+    Returns `(value, currency, concepts_used, reported_but_unusable)`. The last
+    flag says the concept *was* tagged for this period and the filing carried a
+    converter error in place of the number -- a different fact about the world
+    from the concept never having been tagged.
     """
+    unusable = False
     for concept in candidates:
-        found = reader(document, concept).get(at)
+        errors: set = set()
+        found = reader(document, concept, errors=errors).get(at)
         if found is not None:
-            return found[0], _currency(found[1]), (concept,)
+            return found[0], _currency(found[1]), (concept,), False
+        unusable = unusable or at in errors
 
     for concept in candidates:
         parts = taxonomy.extensions_narrower_than(_to_linkbase(concept))
         values, currencies, used = [], set(), []
         for part in sorted(parts):
-            found = reader(document, to_qname(part)).get(at)
+            errors = set()
+            found = reader(document, to_qname(part), errors=errors).get(at)
             if found is None:
+                unusable = unusable or at in errors
                 continue
             values.append(found[0])
             currencies.add(_currency(found[1]))
@@ -145,8 +194,8 @@ def _resolve(document, taxonomy, candidates, reader, at):
         # field. Partial coverage is still reported -- anchoring proved every
         # part belongs, and Atlas prefers a stated subset to a silent guess.
         if values and len(currencies) == 1:
-            return sum(values), currencies.pop(), tuple(used)
-    return None, None, ()
+            return sum(values), currencies.pop(), tuple(used), False
+    return None, None, (), unusable
 
 
 @dataclass(frozen=True)
@@ -159,6 +208,11 @@ class NormalizedPeriod:
     #: Atlas field -> the concepts it was read from, for the audit trail.
     concepts: dict[str, tuple[str, ...]] = field(default_factory=dict)
     withheld: tuple[str, ...] = ()
+    #: Fields the filing tagged for this period and then failed to carry a
+    #: value for. A subset of `withheld`, separated because "the report is
+    #: broken here" and "the company does not report this" are different
+    #: answers and only one of them is about the company.
+    reported_but_unusable: tuple[str, ...] = ()
 
     @property
     def free_cash_flow(self) -> float | None:
@@ -174,12 +228,16 @@ def normalize_filing(document: dict, taxonomy: EsefTaxonomy, period_end: str) ->
     values: dict[str, float] = {}
     concepts: dict[str, tuple[str, ...]] = {}
     withheld: list[str] = []
+    unusable: list[str] = []
     currencies: set[str] = set()
 
     for field_name, candidates in CONCEPT_CANDIDATES.items():
-        value, currency, used = _resolve(document, taxonomy, candidates, duration_facts, period_end)
+        value, currency, used, broken = _resolve(
+            document, taxonomy, candidates, duration_facts, period_end)
         if value is None:
             withheld.append(field_name)
+            if broken:
+                unusable.append(field_name)
             continue
         values[field_name] = value
         concepts[field_name] = used
@@ -187,9 +245,12 @@ def normalize_filing(document: dict, taxonomy: EsefTaxonomy, period_end: str) ->
             currencies.add(currency)
 
     for field_name, candidates in INSTANT_CANDIDATES.items():
-        value, currency, used = _resolve(document, taxonomy, candidates, instant_facts, period_end)
+        value, currency, used, broken = _resolve(
+            document, taxonomy, candidates, instant_facts, period_end)
         if value is None:
             withheld.append(field_name)
+            if broken:
+                unusable.append(field_name)
             continue
         values[field_name] = value
         concepts[field_name] = used
@@ -201,4 +262,5 @@ def normalize_filing(document: dict, taxonomy: EsefTaxonomy, period_end: str) ->
     # the caller should see it as an absent currency rather than a chosen one.
     currency = currencies.pop() if len(currencies) == 1 else None
     return NormalizedPeriod(period_end=period_end, currency=currency, values=values,
-                            concepts=concepts, withheld=tuple(sorted(withheld)))
+                            concepts=concepts, withheld=tuple(sorted(withheld)),
+                            reported_but_unusable=tuple(sorted(unusable)))

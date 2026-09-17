@@ -243,3 +243,57 @@ def test_nothing_here_is_written_per_issuer() -> None:
                 assert name not in literal, (
                     f"{name!r} appears in executable code in {module.__name__}: {literal!r}"
                 )
+
+
+# --- A filing that reports a value it cannot carry ---------------------
+
+TRANSFORM_ERROR = "(ixTransformValueError)"
+
+
+def test_a_converter_error_is_not_a_number() -> None:
+    """Inline XBRL writes this into a fact whose source value it could not
+    transform. It is a string, and no arithmetic may treat it otherwise."""
+    doc = document(fact("ifrs-full:Revenue", "2023-01-01T00:00:00/2024-01-01T00:00:00",
+                        TRANSFORM_ERROR))
+    assert duration_facts(doc, "ifrs-full:Revenue") == {}
+
+
+def test_a_broken_value_is_reported_apart_from_an_untagged_concept() -> None:
+    """Investor AB's 2023 report carries this on 43% of its facts, including
+    its own primary statements; the same issuer's 2021 and 2022 reports carry
+    none. Dropping it quietly would make a broken filing look exactly like one
+    that never tagged the concept, and only one of those is a fact about the
+    company."""
+    broken = document(fact("ifrs-full:Revenue", "2023-01-01T00:00:00/2024-01-01T00:00:00",
+                           TRANSFORM_ERROR))
+    period = normalize_filing(broken, EMPTY, "2023-12-31")
+    assert "revenue" in period.withheld
+    assert "revenue" in period.reported_but_unusable
+
+
+def test_a_concept_nobody_tagged_is_not_called_broken() -> None:
+    """Investor reports no capital expenditure in any year. That is the
+    company's own reporting, not a defect, and must not be described as one."""
+    period = normalize_filing(document(), EMPTY, "2023-12-31")
+    assert "revenue" in period.withheld
+    assert period.reported_but_unusable == ()
+
+
+def test_one_broken_period_does_not_spoil_a_good_one() -> None:
+    """The 2024 filing carries a working 2024 figure and a broken 2023
+    comparative. The good year must survive the bad one."""
+    doc = document(
+        fact("ifrs-full:Revenue", "2024-01-01T00:00:00/2025-01-01T00:00:00", 63_196e6),
+        fact("ifrs-full:Revenue", "2023-01-01T00:00:00/2024-01-01T00:00:00", TRANSFORM_ERROR),
+    )
+    good = normalize_filing(doc, EMPTY, "2024-12-31")
+    bad = normalize_filing(doc, EMPTY, "2023-12-31")
+    assert good.values["revenue"] == 63_196e6
+    assert good.reported_but_unusable == ()
+    assert "revenue" in bad.reported_but_unusable
+
+
+def test_a_broken_balance_value_is_caught_too() -> None:
+    doc = document(fact("ifrs-full:Assets", "2024-01-01T00:00:00", TRANSFORM_ERROR))
+    period = normalize_filing(doc, EMPTY, "2023-12-31")
+    assert "total_assets" in period.reported_but_unusable

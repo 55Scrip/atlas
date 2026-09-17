@@ -124,6 +124,10 @@ def document_for(ticker: str, evidence: EsefPeriodEvidence, lei: str) -> RawBusi
     metadata["esef_concepts"] = json.dumps(
         {name: list(concepts) for name, concepts in sorted(period.concepts.items())})
     metadata["esef_withheld"] = json.dumps(sorted(period.withheld))
+    # Fields the filing tagged and then failed to carry a value for, as
+    # distinct from fields the company does not report. Only the first is a
+    # defect in the filing, and only the first might be fixed by a later one.
+    metadata["esef_reported_but_unusable"] = json.dumps(sorted(period.reported_but_unusable))
     metadata["esef_debt_outcome"] = debt.outcome.value
     metadata["esef_debt_reason"] = debt.reason
 
