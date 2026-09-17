@@ -18,18 +18,29 @@ import type { TranslationKey } from "../i18n";
  * imported from the Investment Case's own registry, so a chapter
  * renamed there cannot leave a dangling link here.
  *
- * Why `atlas` and `investment` both point at `#conclusion`: they are
- * two readings of one judgment. `atlas` is the evidence-support state
- * in Atlas's own words ("Reduction supported"); `investment` is that
- * same state placed on a 0-10 scale. The chapter that explains either
- * of them is the conclusion -- there is no separate "investment
- * attractiveness" chapter to send the reader to, and inventing one
- * would be a product claim this sprint has no permission to make.
+ * `atlas` points at `#conclusion` because that is the chapter which
+ * explains the evidence-support state it shows.
+ */
+/**
+ * Position Editor v1 / semantic cleanup: `investment` is gone from the
+ * Portfolio cockpit.
+ *
+ * It was `deriveInvestmentRating(decisionSupport.level)` -- the *same
+ * field* the Atlas column already states in Atlas's own words, put on a
+ * 0-10 scale. So it carried no information the row did not already
+ * have, and on an owned position "Investment 3.0 / Weak" reads as a
+ * grade on the investment the investor holds. What it actually means is
+ * "at today's price this is not attractive enough to increase", which
+ * is what "Reduction supported" beside it already says.
+ *
+ * The construct itself is untouched: the Investment Case's own
+ * six-dimension strip still uses it, where it sits beside Company,
+ * Portfolio and Evidence and reads as one pillar among several rather
+ * than as a verdict on the holding.
  */
 export type CockpitColumnKey =
   | "atlas"
   | "business"
-  | "investment"
   | "risk"
   | "valuation"
   | "forward"
@@ -38,7 +49,6 @@ export type CockpitColumnKey =
 export const COCKPIT_COLUMN_CHAPTER: Record<CockpitColumnKey, CaseChapterId> = {
   atlas: "conclusion",
   business: "company",
-  investment: "conclusion",
   risk: "risk",
   valuation: "valuation",
   forward: "forward-view",
@@ -57,7 +67,6 @@ export const COCKPIT_COLUMN_CHAPTER: Record<CockpitColumnKey, CaseChapterId> = {
 export const COCKPIT_COLUMN_HEADER_KEY: Record<CockpitColumnKey, TranslationKey> = {
   atlas: "portfolio.cockpitTable.atlasHeader",
   business: "portfolio.cockpitTable.businessHeader",
-  investment: "portfolio.cockpitTable.investmentHeader",
   risk: "portfolio.cockpitTable.riskHeader",
   valuation: "portfolio.cockpitTable.valuationHeader",
   forward: "portfolio.cockpitTable.forwardHeader",
@@ -71,7 +80,6 @@ export const COCKPIT_COLUMN_HEADER_KEY: Record<CockpitColumnKey, TranslationKey>
 export const COCKPIT_COLUMN_LINK_LABEL_KEY: Record<CockpitColumnKey, TranslationKey> = {
   atlas: "portfolio.cockpitTable.link.atlas",
   business: "portfolio.cockpitTable.link.business",
-  investment: "portfolio.cockpitTable.link.investment",
   risk: "portfolio.cockpitTable.link.risk",
   valuation: "portfolio.cockpitTable.link.valuation",
   forward: "portfolio.cockpitTable.link.forward",

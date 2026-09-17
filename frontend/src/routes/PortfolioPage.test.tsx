@@ -302,10 +302,13 @@ describe("PortfolioPage (Product Sprint 8 -- Portfolio Excellence)", () => {
     // beneath the status, so nothing reads as an aggregate risk score.
     expect(text).toContain("Risk");
     expect(text).not.toContain("Riskpoäng");
-    // Business and Investment stay two separate columns reading two
-    // different sources -- never one collapsed "quality" number.
+    // Business stays its own column. Investment is gone from the
+    // cockpit: it read `decisionSupport.level` -- the same field the
+    // Atlas column states in words -- on a 0-10 scale, so on an owned
+    // position it read as a grade on the holding while carrying no
+    // information the row did not already have.
     expect(text).toContain("Verksamhet");
-    expect(text).toContain("Investering");
+    expect(text).not.toContain("Investering");
     // Forward may never be labelled as a forecast.
     expect(text).toContain("Framåt");
     expect(text).not.toContain("Prognos");
@@ -316,9 +319,11 @@ describe("PortfolioPage (Product Sprint 8 -- Portfolio Excellence)", () => {
     renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
     await screen.findByRole("button", { name: "Öppna AAPLs vy" });
     const table = document.querySelector("table")!;
-    // `deriveInvestmentRating` turns a categorical canonical value into
-    // a 0-10 score. The table renders the canonical badge instead.
-    expect(table.textContent ?? "").not.toMatch(/Investering \d/);
+    // `deriveInvestmentRating` turned a categorical canonical value into
+    // a 0-10 score. The cockpit no longer shows it at all; the
+    // canonical badge is the only rendering of that field here.
+    expect(table.textContent ?? "").not.toMatch(/Investering/);
+    expect(table.textContent ?? "").toContain("Minskning stöds");
   });
 
   it("renders unknown analytics honestly rather than as a neutral value", async () => {

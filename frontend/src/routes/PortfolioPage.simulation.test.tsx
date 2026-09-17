@@ -140,11 +140,36 @@ function row(ticker: string) {
 }
 
 /** Cells by position, because several columns legitimately share an
- * accessible name -- Atlas and Investment both explain themselves at
- * `#conclusion`, so both links are called "Atlas slutsats". */
-const CELL = { holding: 0, position: 1, atlas: 2, business: 3, investment: 4, risk: 5, valuation: 6, forward: 7, fit: 8 } as const;
+ * accessible name.
+ *
+ * Position Editor v1 removed the Investment column, so every index from
+ * here on shifted left by one. Leaving the old map in place did not
+ * fail: each index still found *a* cell, so the invariance test below
+ * silently compared Risk against Valuation and Fit against the action
+ * cell -- passing while checking nothing it claimed to check. Indices
+ * are asserted against the header row in `cellText` for that reason. */
+const CELL = { holding: 0, position: 1, atlas: 2, business: 3, risk: 4, valuation: 5, forward: 6, fit: 7, action: 8 } as const;
+
+/** Header labels in column order, so a column added, removed or moved
+ * in the page breaks this map loudly instead of shifting every
+ * assertion below it onto its neighbour. */
+const CELL_HEADER: Record<keyof typeof CELL, string> = {
+  holding: "Innehav",
+  position: "Position",
+  atlas: "Atlas",
+  business: "Verksamhet",
+  risk: "Risk",
+  valuation: "Värdering",
+  forward: "Framåt",
+  fit: "Passform",
+  action: "Utforska position",
+};
 
 function cellText(ticker: string, cell: keyof typeof CELL): string {
+  const headers = [...document.querySelectorAll("table thead th")].map((th) =>
+    (th.textContent ?? "").trim(),
+  );
+  expect(headers[CELL[cell]], `column ${cell} is not where CELL says it is`).toBe(CELL_HEADER[cell]);
   return rowEl(ticker).querySelectorAll("td")[CELL[cell]]!.textContent ?? "";
 }
 
@@ -378,7 +403,7 @@ describe("simulation -- what may and may not react", () => {
     const user = userEvent.setup();
     renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
     await screen.findByRole("button", { name: "Öppna METAs vy" });
-    const columns = ["atlas", "business", "investment", "risk", "valuation", "forward", "fit"] as const;
+    const columns = ["atlas", "business", "risk", "valuation", "forward", "fit"] as const;
     const before = Object.fromEntries(columns.map((c) => [c, cellText("META", c)]));
 
     await reduce(user, "META", 5);

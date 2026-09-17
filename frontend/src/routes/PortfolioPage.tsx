@@ -45,7 +45,6 @@ import {
  * exactly how two screens end up disagreeing about one holding. */
 import {
   deriveCompanyRating,
-  deriveInvestmentRating,
   type AtlasRating,
 } from "../investmentCase/atlasRatingModel";
 import { RATING_TIER_LABEL_KEY } from "../investmentCase/SevenCategoriesSection";
@@ -2137,7 +2136,7 @@ function HoldingsTable({
                   {t("portfolio.cockpitTable.positionHeader")}
                 </th>
                 <th style={headerCellStyle}>{t("portfolio.cockpitTable.atlasHeader")}</th>
-                {(["business", "investment", "risk", "valuation", "forward", "fit"] as CockpitColumnKey[]).map(
+                {(["business", "risk", "valuation", "forward", "fit"] as CockpitColumnKey[]).map(
                   (column) => (
                     <th key={column} style={headerCellStyle}>
                       {t(COCKPIT_COLUMN_HEADER_KEY[column])}
@@ -2267,8 +2266,8 @@ function NotAssessedCell({ t }: { t: (key: TranslationKey, params?: Record<strin
  * Investment Case chapter that explains it. No cell explains itself in
  * place, and nothing here is computed, averaged or ranked -- the two
  * ratings it shows are the Investment Case's own
- * `deriveCompanyRating`/`deriveInvestmentRating` applied to the same
- * inputs, so a holding reads the same numbers on both screens.
+ * `deriveCompanyRating` applied to the same inputs, so a holding reads
+ * the same Business number on both screens.
  *
  * Unknown is never rendered as bad. A category with no verdict is
  * excluded from a rating rather than scored zero; a rating with no real
@@ -2341,7 +2340,6 @@ function HoldingsTableRow({
      a crash, and an absent vector must read as "not assessed" rather
      than as a rating of zero. */
   const businessRating = analysis ? deriveCompanyRating(analysis.businessCategories ?? []) : null;
-  const investmentRating = analysis ? deriveInvestmentRating(analysis.decisionSupport.level) : null;
   const risk = analysis?.riskProjection;
   const valuationStatus = analysis?.valuation.status;
   const forward = analysis?.forwardEvidence ?? null;
@@ -2490,20 +2488,13 @@ function HoldingsTableRow({
         </LinkedCell>
       </td>
 
-      {/* Business -- how strong the company is. Deliberately a different
-          question from Investment beside it, from a different source:
-          this averages the business-category vector, that reads the
+      {/* Business -- how strong the company is. A different question
+          from the Atlas action beside it, from a different source: this
+          averages the business-category vector, that reads the
           evidence-support state. They are never collapsed. */}
       <td style={cellStyle}>
         <LinkedCell column="business">
           <RatingCell rating={businessRating} />
-        </LinkedCell>
-      </td>
-
-      {/* Investment -- how attractive the security is to buy today. */}
-      <td style={cellStyle}>
-        <LinkedCell column="investment">
-          <RatingCell rating={investmentRating} />
         </LinkedCell>
       </td>
 

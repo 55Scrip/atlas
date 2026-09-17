@@ -19,19 +19,30 @@ import {
  * accident: that a cell links to the chapter that actually explains it,
  * and that a cell never states a conclusion Atlas did not reach.
  */
-const ALL: CockpitColumnKey[] = ["atlas", "business", "investment", "risk", "valuation", "forward", "fit"];
+const ALL: CockpitColumnKey[] = ["atlas", "business", "risk", "valuation", "forward", "fit"];
 
 describe("cockpit column -> Investment Case chapter", () => {
   it("sends every dimension to the chapter that explains it", () => {
     expect(COCKPIT_COLUMN_CHAPTER).toEqual({
       atlas: "conclusion",
       business: "company",
-      investment: "conclusion",
       risk: "risk",
       valuation: "valuation",
       forward: "forward-view",
       fit: "portfolio-fit",
     });
+  });
+
+  it("carries no Investment column", () => {
+    // It was `deriveInvestmentRating(decisionSupport.level)` -- the same
+    // field the Atlas column already states in Atlas's own words, on a
+    // 0-10 scale. On an owned position "Investment 3.0 / Weak" reads as
+    // a grade on the holding; what it meant was "not attractive enough
+    // to increase at today's price", which "Reduction supported" beside
+    // it already said. Removing it loses no information.
+    expect(Object.keys(COCKPIT_COLUMN_CHAPTER)).not.toContain("investment");
+    expect(SOURCE).not.toContain('column="investment"');
+    expect(SOURCE).not.toContain("deriveInvestmentRating");
   });
 
   it("only ever targets a chapter the Investment Case actually declares", () => {
@@ -47,7 +58,7 @@ describe("cockpit column -> Investment Case chapter", () => {
     // risk. Both would look right and explain the wrong thing.
     expect(COCKPIT_COLUMN_CHAPTER.risk).not.toBe(COCKPIT_COLUMN_CHAPTER.valuation);
     expect(COCKPIT_COLUMN_CHAPTER.fit).not.toBe(COCKPIT_COLUMN_CHAPTER.risk);
-    expect(COCKPIT_COLUMN_CHAPTER.business).not.toBe(COCKPIT_COLUMN_CHAPTER.investment);
+    expect(COCKPIT_COLUMN_CHAPTER.business).not.toBe(COCKPIT_COLUMN_CHAPTER.atlas);
   });
 
   it("builds a case-scoped URL carrying the chapter fragment", () => {
@@ -112,14 +123,13 @@ describe("cockpit row honesty", () => {
     // risk reading valuation.
     const row = SOURCE.slice(SOURCE.indexOf("function HoldingsTableRow"));
     expect(row).toContain("deriveCompanyRating(analysis.businessCategories");
-    expect(row).toContain("deriveInvestmentRating(analysis.decisionSupport.level)");
     expect(row).toContain("analysis?.riskProjection");
     expect(row).toContain("analysis?.valuation.status");
     // The action is the engine's own evidence-support state and is
     // never derived from fit, risk, valuation or a score.
     const atlasCell = row.slice(row.indexOf('column="atlas"'), row.indexOf('column="business"'));
     expect(atlasCell).toContain("DECISION_SUPPORT_BADGE_KEY[analysis.decisionSupport.level]");
-    expect(atlasCell).not.toContain("fitRating");
+    expect(atlasCell).not.toContain("allocationFit");
     expect(atlasCell).not.toContain("riskProjection");
   });
 
