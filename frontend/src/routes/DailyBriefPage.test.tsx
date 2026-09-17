@@ -135,13 +135,31 @@ describe("DailyBriefPage (Daily Brief 2.0 -- Since your last visit)", () => {
     expect(screen.queryByText("Nytt")).not.toBeInTheDocument();
   });
 
-  it("collapses more than 3 change groups behind one disclosure, never dropping any", async () => {
+  /** A lower-tier change, so the disclosure boundary still applies to it
+   * -- the default fixture is a move to Reduce, which is now never
+   * collapsed (see the test below). */
+  function diagnosticGroup(ticker: string, id: string) {
+    return changeGroup({
+      ticker,
+      primary: {
+        ...(changeGroup().primary as object),
+        id,
+        ticker,
+        caseId: `case-${id}`,
+        reasonCode: "portfolio_decision_transition",
+        value: "operationally_limited",
+        secondaryValue: "unknown",
+      },
+    });
+  }
+
+  it("collapses more than 3 lower-tier change groups behind one disclosure, never dropping any", async () => {
     mockFetch({
       changeGroups: [
-        changeGroup({ ticker: "AAA", primary: { ...changeGroup().primary as object, id: "a", ticker: "AAA", caseId: "case-aaa" } }),
-        changeGroup({ ticker: "BBB", primary: { ...changeGroup().primary as object, id: "b", ticker: "BBB", caseId: "case-bbb" } }),
-        changeGroup({ ticker: "CCC", primary: { ...changeGroup().primary as object, id: "c", ticker: "CCC", caseId: "case-ccc" } }),
-        changeGroup({ ticker: "DDD", primary: { ...changeGroup().primary as object, id: "d", ticker: "DDD", caseId: "case-ddd" } }),
+        diagnosticGroup("AAA", "a"),
+        diagnosticGroup("BBB", "b"),
+        diagnosticGroup("CCC", "c"),
+        diagnosticGroup("DDD", "d"),
       ],
     });
     renderWithProviders(<DailyBriefPage />, { route: "/daily-brief" });
@@ -151,6 +169,42 @@ describe("DailyBriefPage (Daily Brief 2.0 -- Since your last visit)", () => {
     // DDD is behind a disclosure, not absent from the page entirely.
     expect(screen.getByText("1 punkt till")).toBeInTheDocument();
     expect(screen.getByText("DDD")).toBeInTheDocument();
+  });
+
+  it("never collapses a supported action to keep the visible list short", async () => {
+    // The audit's failure in miniature: with a fixed cap applied before
+    // ranking, the fourth Reduce sat behind a disclosure while coverage
+    // diagnostics were shown. Four actions now means four visible cards
+    // and no disclosure at all.
+    mockFetch({
+      changeGroups: ["AAA", "BBB", "CCC", "DDD"].map((ticker, index) =>
+        changeGroup({
+          ticker,
+          primary: { ...(changeGroup().primary as object), id: `r${index}`, ticker, caseId: `case-${ticker}` },
+        }),
+      ),
+    });
+    renderWithProviders(<DailyBriefPage />, { route: "/daily-brief" });
+    await waitFor(() => expect(screen.getByText("AAA")).toBeInTheDocument());
+    expect(screen.getByText("DDD")).toBeInTheDocument();
+    expect(screen.queryByText("1 punkt till")).not.toBeInTheDocument();
+  });
+
+  it("puts every supported action ahead of every coverage diagnostic", async () => {
+    mockFetch({
+      changeGroups: [
+        diagnosticGroup("ALFA", "alfa"),
+        changeGroup({
+          ticker: "META",
+          primary: { ...(changeGroup().primary as object), id: "meta", ticker: "META", caseId: "case-meta" },
+        }),
+        diagnosticGroup("ASSA-B", "assa"),
+      ],
+    });
+    renderWithProviders(<DailyBriefPage />, { route: "/daily-brief" });
+    await waitFor(() => expect(screen.getByText("META")).toBeInTheDocument());
+    const rendered = screen.getAllByText(/^(ALFA|META|ASSA-B)$/).map((node) => node.textContent);
+    expect(rendered[0]).toBe("META");
   });
 
   it("shows a 'more updates' link when a company has more than one real eligible change (Phase 10)", async () => {

@@ -5,6 +5,7 @@ import { ACCENT_LINK_STYLE, Container, Divider, Heading, Inline, Stack, Text } f
 import { useTranslation } from "../i18n";
 import { fetchDailyBriefAgenda, type DailyBriefAgendaView } from "../dailyBriefAgenda/dailyBriefAgendaApi";
 import { fetchDailyBriefChangeLog, type TickerChangeGroupView } from "../dailyBriefAgenda/dailyBriefChangeLogApi";
+import { orderBySignificance, visibleCount } from "../dailyBriefAgenda/changeSignificance";
 import { describeChangeLogEntry } from "../dailyBriefAgenda/describeChangeLogEntry";
 import { fetchDailyBriefViewState, markDailyBriefViewed } from "../dailyBriefAgenda/dailyBriefViewStateApi";
 import { ExpandableDetail } from "../investmentCase/ExpandableDetail";
@@ -265,9 +266,14 @@ export function DailyBriefPage() {
 /** Phase 7, Section 1: "Since your last visit" -- the only section
  * reporting real, durably-recorded eligible changes
  * (`eligibility.py`'s own materiality rule, applied once on the
- * backend, never re-derived here). Capped at 3 primary cards, one per
- * company (Phase 10), with the remainder behind one disclosure -- never
- * dropped, never hidden permanently. */
+ * backend, never re-derived here). One primary card per company (Phase
+ * 10), with the remainder behind one disclosure -- never dropped, never
+ * hidden permanently.
+ *
+ * This is now a *floor*, not a cap: `visibleCount` shows at least this
+ * many and always enough to cover every supported action, because the
+ * fixed three used to be applied before the list was ranked and could
+ * therefore fall between two reduce transitions. */
 const MAX_VISIBLE_CHANGE_GROUPS = 3;
 
 function SinceYourLastVisitSection({
@@ -302,29 +308,38 @@ function SinceYourLastVisitSection({
       ) : changeLogStatus.groups.length === 0 ? (
         <Text color="secondary">{t("dailyBrief.sinceLastVisit.empty")}</Text>
       ) : (
-        <>
-          <Stack gap="inter-section">
-            {changeLogStatus.groups.slice(0, MAX_VISIBLE_CHANGE_GROUPS).map((group) => (
-              <ChangeGroupCard key={group.ticker} group={group} onOpen={onOpen} />
-            ))}
-          </Stack>
-          {changeLogStatus.groups.length > MAX_VISIBLE_CHANGE_GROUPS && (
-            <ExpandableDetail
-              summaryLabel={t(
-                changeLogStatus.groups.length - MAX_VISIBLE_CHANGE_GROUPS === 1
-                  ? "dailyBriefAgenda.collapsed.headingOne"
-                  : "dailyBriefAgenda.collapsed.headingOther",
-                { count: changeLogStatus.groups.length - MAX_VISIBLE_CHANGE_GROUPS },
-              )}
-            >
+        (() => {
+          // Ordered before anything is sliced, which is the whole fix: the
+          // collapse boundary used to fall wherever the alphabet put it.
+          const ordered = orderBySignificance(changeLogStatus.groups);
+          const visible = visibleCount(ordered, MAX_VISIBLE_CHANGE_GROUPS);
+          const hidden = ordered.length - visible;
+          return (
+            <>
               <Stack gap="inter-section">
-                {changeLogStatus.groups.slice(MAX_VISIBLE_CHANGE_GROUPS).map((group) => (
+                {ordered.slice(0, visible).map((group) => (
                   <ChangeGroupCard key={group.ticker} group={group} onOpen={onOpen} />
                 ))}
               </Stack>
-            </ExpandableDetail>
-          )}
-        </>
+              {hidden > 0 && (
+                <ExpandableDetail
+                  summaryLabel={t(
+                    hidden === 1
+                      ? "dailyBriefAgenda.collapsed.headingOne"
+                      : "dailyBriefAgenda.collapsed.headingOther",
+                    { count: hidden },
+                  )}
+                >
+                  <Stack gap="inter-section">
+                    {ordered.slice(visible).map((group) => (
+                      <ChangeGroupCard key={group.ticker} group={group} onOpen={onOpen} />
+                    ))}
+                  </Stack>
+                </ExpandableDetail>
+              )}
+            </>
+          );
+        })()
       )}
     </Stack>
   );
