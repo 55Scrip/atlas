@@ -22,6 +22,7 @@ import hashlib
 import json
 import urllib.parse
 import urllib.request
+import zipfile
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -156,15 +157,48 @@ def _download(path: str, cache: Path) -> Path:
     return target
 
 
+def _unreadable(target: Path, description: str, error: Exception) -> EsefSourceError:
+    """Turn "these bytes are not that document" into a retrieval failure.
+
+    A download can end early -- a dropped connection, a full disk, an
+    interrupted run -- and what lands on disk is then a file of the right
+    name that is not the document. The caller cannot do anything more
+    useful about that than about a refused connection, so it is the same
+    kind of failure and is raised as one, which keeps one issuer's bad
+    filing from ending a batch.
+
+    The truncated file is discarded on the way out. Left in place it would
+    satisfy the cache on every future run, and a transient network fault
+    would become a permanent one for that filing.
+    """
+    target.unlink(missing_ok=True)
+    return EsefSourceError(f"{description} is unreadable ({type(error).__name__})")
+
+
 def fetch_facts(filing: EsefFiling, cache: Path) -> dict:
     """The report's facts, as xbrl-json."""
     if not filing.facts_path:
         raise EsefSourceError(f"{filing.filing_id} has no facts document in the index")
-    return json.loads(_download(filing.facts_path, cache).read_text())
+    target = _download(filing.facts_path, cache)
+    try:
+        return json.loads(target.read_text())
+    except (ValueError, UnicodeDecodeError) as error:
+        raise _unreadable(target, f"the facts of {filing.filing_id}", error) from error
 
 
 def fetch_package(filing: EsefFiling, cache: Path) -> Path:
-    """The taxonomy package, which is where concept meaning lives."""
+    """The taxonomy package, which is where concept meaning lives.
+
+    Opened here to prove it can be, rather than left for the caller to
+    discover: a package that will not open is a failed retrieval, and this
+    is where retrieval failures are named.
+    """
     if not filing.package_path:
         raise EsefSourceError(f"{filing.filing_id} has no taxonomy package in the index")
-    return _download(filing.package_path, cache)
+    target = _download(filing.package_path, cache)
+    try:
+        with zipfile.ZipFile(target):
+            pass
+    except (zipfile.BadZipFile, OSError) as error:
+        raise _unreadable(target, f"the taxonomy package of {filing.filing_id}", error) from error
+    return target
