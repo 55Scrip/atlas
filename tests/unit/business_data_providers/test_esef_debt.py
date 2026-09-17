@@ -121,6 +121,50 @@ def test_borrowings_with_no_lease_liability_anywhere_withholds() -> None:
     assert result.gross_debt is None
 
 
+def test_sandvik_proves_the_guard_against_its_own_annual_report() -> None:
+    """The second independently verified instance of the same doctrine, and
+    the one that shows the guard is not merely cautious but correct.
+
+    Sandvik's 2024 balance sheet tags exactly two borrowings figures --
+    6,269m current and 36,486m non-current -- and no lease liability
+    anywhere, so Atlas withholds. Its annual report says why, in note K22
+    ("Ovriga rantebarande skulder") and in the accounting policy above it:
+    lease liabilities are *presented within* other interest-bearing
+    liabilities. The note's own breakdown adds to the tagged totals exactly:
+
+        non-current  bonds 24,062 + leases 4,814 + bank 7,564 + other 46
+                     = 36,486
+        current      bonds  3,712 + leases 1,297 + bank 1,210 + other 51
+                     =  6,269
+
+    So the 42,755m those two concepts sum to contains 6,111m of lease
+    liabilities. Accepting it as Atlas's lease-exclusive gross debt would
+    have overstated the figure by 16.7%, in a filing where every concept
+    used is a correct standard IFRS concept and nothing looks wrong.
+
+    The note is not machine-readable -- ESEF mandates detailed tagging of
+    the primary statements, and notes are block-tagged -- so those 4,814 and
+    1,297 cannot be read and subtracted. Withholding is not a gap waiting
+    to be closed here; it is the only honest answer available from the
+    filing.
+    """
+    sandvik = taxonomy(
+        current=("ifrs-full_CurrentBorrowingsAndCurrentPortionOfNoncurrentBorrowings",
+                 "ifrs-full_CurrentTaxLiabilitiesCurrent", "ifrs-full_OtherCurrentLiabilities"),
+        noncurrent=("ifrs-full_LongtermBorrowings", "ifrs-full_DeferredTaxLiabilities",
+                    "ifrs-full_OtherNoncurrentLiabilities"),
+    )
+    result = resolve_gross_debt(sandvik, values(**{
+        "ifrs-full_CurrentBorrowingsAndCurrentPortionOfNoncurrentBorrowings": 6_269e6,
+        "ifrs-full_LongtermBorrowings": 36_486e6,
+    }))
+    assert result.outcome is DebtOutcome.LEASES_NOT_VISIBLE
+    assert result.gross_debt is None
+    # The number the filing would have handed over, named so that any change
+    # making it acceptable fails here rather than quietly in a Case.
+    assert result.gross_debt != 42_755e6
+
+
 def test_one_side_alone_is_not_half_a_debt_figure() -> None:
     """Schneider tags long-term borrowings and nothing current."""
     schneider = taxonomy(
