@@ -284,6 +284,7 @@ export const sv: Record<TranslationKey, string> = {
   "portfolio.assessment.drivenBy": "främst {{ticker}} {{from}} → {{to}}",
   "portfolio.assessment.notAssessedNote":
     "Sektor- och geografisk spridning, förväntad avkastning, volatilitet och tematiska exponeringar bedöms inte: Atlas saknar sektordata, landdata täcker 58 % av portföljvärdet, och det finns ingen avkastningshistorik eller kausal modell.",
+  "portfolio.fit.positionSizeOnly": "endast positionsstorlek",
   "portfolio.simulation.active": "Hypotetiskt",
   "portfolio.simulation.changeCountOne": "{{count}} förändring utforskad",
   "portfolio.simulation.changeCountOther": "{{count}} förändringar utforskade",
@@ -1972,6 +1973,13 @@ export const sv: Record<TranslationKey, string> = {
   "portfolioFit.trend.unchanged": "Passformen är oförändrad sedan din senaste genomgång",
   "portfolioFit.trend.unavailable": "Trend inte tillgänglig än",
   "portfolioFit.section.heading": "Portföljpassform",
+  "portfolioFit.section.positionSizeOnly": "positionens storlek i portföljen",
+  "portfolioFit.section.noPortfolioRelativeAssessment":
+    "Atlas har ännu ingen portföljrelativ bedömning för det här innehavet.",
+  "portfolioFit.section.notYetAssessed":
+    "Atlas bedömer ännu inte sektor-, geografisk, tematisk eller beroendeöverlappning med dina övriga innehav, eller positionens bidrag till diversifieringen — och kan därför inte ge en fullständig bedömning av portföljpassformen.",
+  "portfolioFit.section.overallIncludesCaseQuality":
+    "samlat betyg, som också väger in verksamhet, värdering och risk — egenskaper hos bolaget snarare än hos hur det passar i portföljen",
   "portfolioFit.section.loading": "Utvärderar portföljpassform…",
   "portfolioFit.section.unavailable": "Portföljpassform är inte tillgänglig för detta case än.",
   "portfolioFit.section.whyItFits": "Varför det passar",

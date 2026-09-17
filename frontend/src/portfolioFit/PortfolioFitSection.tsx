@@ -58,30 +58,92 @@ export function PortfolioFitSection({
     );
   }
 
-  const { favorable, unfavorable, other } = groupFitDimensions(assessment.dimensions);
   const verdictText = describeFitVerdict(assessment, t);
+  /* Position Editor v1 / semantic cleanup. Of the five dimensions this
+     engine produces, only `allocation` asks a portfolio question --
+     how big this position is against the portfolio's own
+     concentration. `business`, `valuation` and `risk` are properties of
+     the company, and `cash_impact` is a property of the portfolio that
+     is identical for every holding.
+     
+     That matters because the overall verdict is a vote across all five,
+     with a Poor Risk Fit acting as a hard gate -- so "Weak Fit" was
+     often a restatement of "expensive, with valuation risk", which the
+     Case already says at length in its own Valuation and Risk chapters.
+     A great company at a great price can still fit a portfolio badly,
+     and this chapter has to be able to say so.
+     
+     So the chapter now leads with what Atlas can actually assess about
+     portfolio fit, and states plainly what it cannot yet. The
+     case-derived dimensions are not deleted -- they are real, and they
+     stay one disclosure down under their own honest heading -- but they
+     no longer masquerade as the portfolio verdict. */
+  const allocation = assessment.dimensions.find((d) => d.kind === "allocation");
+  /* Allocation is promoted to the primary surface above, so it is not
+     repeated in the grouped listing -- the same sentence appearing twice
+     on one screen reads as two findings. `cash_impact` stays in the
+     listing: it is portfolio-level, but it is identical for every
+     holding, so it says nothing about *this* position's fit. */
+  const { favorable, unfavorable, other } = groupFitDimensions(
+    assessment.dimensions.filter((d) => d.kind !== "allocation"),
+  );
 
   return (
     <Stack gap="metadata">
       {showHeading && <Heading level={3}>{t("portfolioFit.section.heading")}</Heading>}
 
-      <Inline gap="row" align="center">
-        <FitBadge rating={assessment.overall} />
-        {assessment.trend !== "unavailable" && (
-          <Text color="tertiary" as="span">
-            {t(FIT_TREND_KEY[assessment.trend])}
-          </Text>
-        )}
-      </Inline>
-      {verdictText && (
+      {/* What Atlas can assess today. */}
+      {allocation && allocation.rating !== "unavailable" ? (
+        <>
+          <Inline gap="row" align="center">
+            <FitBadge rating={allocation.rating} />
+            <Text color="tertiary" as="span">
+              {t("portfolioFit.section.positionSizeOnly")}
+            </Text>
+          </Inline>
+          {allocation.reasoning.map((line) => (
+            <Text color="secondary" as="p" key={line}>
+              {line}
+            </Text>
+          ))}
+        </>
+      ) : (
         <Text color="secondary" as="p">
-          {verdictText}
+          {t("portfolioFit.section.noPortfolioRelativeAssessment")}
         </Text>
       )}
+
+      {/* And what it cannot. Stated every time, not only when something
+          is missing: the absence is a standing property of Atlas today,
+          not a gap in this particular holding's data. */}
+      <Text color="tertiary" as="p">
+        {t("portfolioFit.section.notYetAssessed")}
+      </Text>
 
       {(favorable.length > 0 || unfavorable.length > 0 || other.length > 0 || assessment.dataGaps.length > 0) && (
         <ExpandableDetail summaryLabel={t("portfolioFit.section.allDimensions")}>
           <Stack gap="metadata">
+            {/* The engine's own overall verdict and its case-derived
+                dimensions, kept in full but named for what they are.
+                Nothing is deleted; it simply no longer reads as the
+                portfolio answer. */}
+            <Inline gap="row" align="center">
+              <FitBadge rating={assessment.overall} />
+              <Text color="tertiary" as="span">
+                {t("portfolioFit.section.overallIncludesCaseQuality")}
+              </Text>
+              {assessment.trend !== "unavailable" && (
+                <Text color="tertiary" as="span">
+                  {t(FIT_TREND_KEY[assessment.trend])}
+                </Text>
+              )}
+            </Inline>
+            {verdictText && (
+              <Text color="secondary" as="p">
+                {verdictText}
+              </Text>
+            )}
+
             {favorable.length > 0 && (
               <Stack gap="metadata">
                 <Text as="p" style={{ fontWeight: 600 }}>

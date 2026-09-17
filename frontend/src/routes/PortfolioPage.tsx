@@ -1963,6 +1963,25 @@ function HoldingsTable({
    * other keys remain cheap client-side re-sorts over data already on
    * the page, no new fetch. */
   const [sortKey, setSortKey] = useState<HoldingSortKey>("weight");
+  /* Position Editor v1 / semantic cleanup: the cockpit reads the
+     *allocation* dimension, not the overall verdict.
+     
+     `assessment.overall` is a vote across Business, Valuation, Risk,
+     Allocation and Cash Impact, with a Poor Risk Fit acting as a hard
+     gate. Three of those five are properties of the case, so the
+     overall label was substantially a restatement of valuation and risk
+     -- which the cockpit already shows in their own columns -- wearing
+     the name of a portfolio question it does not answer.
+     
+     Allocation is the one dimension that genuinely compares this
+     holding against the portfolio: its weight, against the portfolio's
+     own concentration. Nothing is recomputed here; the engine's own
+     per-dimension rating is read verbatim. */
+  const allocationFitByTicker = new Map<string, FitRating>();
+  for (const [ticker, assessment] of fitByTicker) {
+    const allocation = assessment.dimensions.find((d) => d.kind === "allocation");
+    if (allocation && allocation.rating !== "unavailable") allocationFitByTicker.set(ticker, allocation.rating);
+  }
   const fitRatingByTicker = new Map<string, FitRating>();
   for (const [ticker, assessment] of fitByTicker) {
     fitRatingByTicker.set(ticker, assessment.overall);
@@ -2164,7 +2183,7 @@ function HoldingsTable({
                     holding={holding}
                     isUnresolvedInCockpit={isUnresolvedInCockpit}
                     analysis={cockpitByTicker.get(holding.ticker)}
-                    fitRating={fitRatingByTicker.get(holding.ticker)}
+                    allocationFit={allocationFitByTicker.get(holding.ticker)}
                     thisCaseCreateStatus={caseCreateStatus[holding.ticker] ?? { kind: "idle" }}
                     openInvestmentCase={openInvestmentCase}
                     simulated={hypothetical.holdings.find((h) => h.key === holdingKey(holding))}
@@ -2287,7 +2306,7 @@ function HoldingsTableRow({
   holding,
   isUnresolvedInCockpit,
   analysis,
-  fitRating,
+  allocationFit,
   thisCaseCreateStatus,
   openInvestmentCase,
   simulated,
@@ -2304,7 +2323,10 @@ function HoldingsTableRow({
    * cockpit fetch is still in flight -- in which case every analytical
    * cell reads as not-yet-assessed rather than as a negative verdict. */
   analysis: PortfolioCockpitHoldingView | undefined;
-  fitRating: FitRating | undefined;
+  /** The Portfolio Fit engine's own `allocation` rating -- this
+   * position's weight against the portfolio's concentration, read
+   * verbatim. Deliberately not the overall verdict; see the Fit cell. */
+  allocationFit: FitRating | undefined;
   thisCaseCreateStatus: CaseCreateStatus;
   openInvestmentCase: (ticker: string, existingCaseId: string | null) => void;
   /** This holding's position in the hypothetical portfolio. Always
@@ -2557,12 +2579,35 @@ function HoldingsTableRow({
         </LinkedCell>
       </td>
 
-      {/* Portfolio Fit's own distilled overall verdict, verbatim.
-          `unavailable` is one of its real members -- a disclosed
-          "not evaluated", never a neutral-looking middle score. */}
+      {/* Portfolio Fit, restricted to what is actually about the
+          portfolio.
+          
+          The engine's overall verdict is a vote across five dimensions,
+          three of which (Business, Valuation, Risk) are properties of
+          the case rather than of how the holding sits beside the rest
+          of the portfolio -- and a Poor Risk Fit is a hard gate on the
+          whole verdict. So "Weak Fit" on META was largely restating
+          "expensive, with valuation risk", which the two columns to its
+          left already say.
+          
+          What is genuinely portfolio-relational today is the allocation
+          dimension: this position's weight against the portfolio's own
+          concentration. That is what the cell shows. The overall label
+          is not shown here, because Atlas cannot yet assess the things
+          that would make it true -- overlap, shared dependencies,
+          correlation -- and the chapter one click away says so. */}
       <td style={cellStyle}>
         <LinkedCell column="fit">
-          {fitRating ? <FitBadge rating={fitRating} /> : <NotAssessedCell t={t} />}
+          {allocationFit ? (
+            <div style={STACKED_CELL_STYLE}>
+              <FitBadge rating={allocationFit} />
+              <Text as="span" color="tertiary" style={SECONDARY_LINE_STYLE}>
+                {t("portfolio.fit.positionSizeOnly")}
+              </Text>
+            </div>
+          ) : (
+            <NotAssessedCell t={t} />
+          )}
         </LinkedCell>
       </td>
 

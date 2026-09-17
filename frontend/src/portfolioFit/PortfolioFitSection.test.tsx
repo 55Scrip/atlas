@@ -25,6 +25,7 @@ function assessment(overrides: Partial<PortfolioFitAssessmentView> = {}): Portfo
     overallReasoningCode: null,
     overallReasoningCount: null,
     dimensions: [
+      { kind: "allocation", rating: "good", reasoning: ["This holding is 12.5% of the portfolio (portfolio concentration overall: moderate)."], unavailableReason: null },
       { kind: "business", rating: "good", reasoning: ["4 of 6 business categories rated Strong, 1 Moderate, 1 Weak."], unavailableReason: null },
       { kind: "risk", rating: "weak", reasoning: ["1 of 4 evaluated risk categories rated High, 1 Moderate, 2 Low."], unavailableReason: null },
       { kind: "cash_impact", rating: "unavailable", reasoning: [], unavailableReason: "Portfolio cash position has not been recorded." },
@@ -107,9 +108,44 @@ describe("PortfolioFitSection — Convergence Sprint 1 compression", () => {
 
   it("shows the distilled result on the primary surface", () => {
     renderSection(assessment());
-    expect(screen.getByText(/More dimensions rated Good\/Excellent/)).toBeInTheDocument();
+    // Superseded by Position Editor v1. Sprint 1 asserted the *overall*
+    // verdict was the distilled result. It is not: it votes across five
+    // dimensions, three of which describe the company rather than the
+    // portfolio, with a Poor Risk Fit as a hard gate -- so it could read
+    // "Weak Fit" purely because the stock is expensive, which the Case
+    // says at length in its own chapters. The distilled portfolio-fit
+    // result is the one dimension that asks a portfolio question.
+    const distilled = screen.getByText(/12,5 % av portföljen|12.5% of the portfolio/);
+    expect(distilled.closest("details")).toBeNull();
+  });
+
+  it("Position Editor v1: keeps the case-quality verdict, but behind disclosure", () => {
+    renderSection(assessment());
     const verdict = screen.getByText(/More dimensions rated Good\/Excellent/);
-    expect(verdict.closest("details")).toBeNull();
+    expect(verdict.closest("details")).not.toBeNull();
+  });
+
+  it("Position Editor v1: names what Atlas does not yet assess, on every holding", () => {
+    // Stated unconditionally, not only when a dimension is missing: the
+    // absence of overlap and correlation analysis is a property of Atlas
+    // today, not a gap in this holding's data. A reader who sees only
+    // "Bra passform" would otherwise reasonably conclude Atlas had
+    // checked this position against the rest of the portfolio.
+    renderSection(assessment());
+    const gap = screen.getByText(/bedömer ännu inte sektor/);
+    expect(gap).toBeInTheDocument();
+    expect(gap.closest("details")).toBeNull();
+  });
+
+  it("Position Editor v1: says so plainly when no portfolio-relative dimension exists", () => {
+    const withoutAllocation = assessment();
+    renderSection({
+      ...withoutAllocation,
+      dimensions: withoutAllocation.dimensions.filter((d) => d.kind !== "allocation"),
+    });
+    expect(
+      screen.getByText("Atlas har ännu ingen portföljrelativ bedömning för det här innehavet."),
+    ).toBeInTheDocument();
   });
 
   it("keeps every per-dimension row closed by default", () => {

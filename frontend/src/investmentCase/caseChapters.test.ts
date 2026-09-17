@@ -131,6 +131,24 @@ describe("Investment Case chapter rendering", () => {
     }
   });
 
+  it("Position Editor v1: badges the Portfolio Fit chapter from the portfolio-relative dimension", () => {
+    // The chapter used to badge `fitAssessment.overall`, which votes
+    // across business, valuation and risk as well -- so a chapter
+    // headed "Portfolio Fit" could read "Weak Fit" purely because the
+    // stock was expensive, restating the Valuation chapter two
+    // chapters further down. The badge must come from allocation, the
+    // one dimension that asks a portfolio question.
+    const open = SOURCE.slice(chapterAt("portfolio-fit"), SOURCE.indexOf(">", chapterAt("portfolio-fit") + 40));
+    expect(open).toContain("fitAllocation");
+    // And `fitAllocation` must itself be the allocation dimension --
+    // pinning only the usage would let the definition drift back to the
+    // overall rating under an honest-looking name.
+    const definition = SOURCE.slice(SOURCE.indexOf("const fitAllocation ="), SOURCE.indexOf(";", SOURCE.indexOf("const fitAllocation =")));
+    expect(definition).toContain('kind === "allocation"');
+    expect(open).not.toContain("fitAssessment.overall");
+    expect(open).not.toContain("describeFitVerdict");
+  });
+
   it("keeps each chapter's analysis behind a disclosure", () => {
     // Sprint 1B's core correction: Sprint 1 made the chapters real but
     // left their analysis expanded, so the page grew from 3,908px to

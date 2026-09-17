@@ -40,7 +40,6 @@ import {
   type ValuationSupportStatus,
 } from "../status/statusTone";
 import { PortfolioFitSection } from "../portfolioFit/PortfolioFitSection";
-import { describeFitVerdict } from "../portfolioFit/describeFitVerdict";
 import { EvidenceGraphSection } from "../evidenceGraph/EvidenceGraphSection";
 import { fetchEvidenceGraph, type EvidenceGraphView } from "../evidenceGraph/evidenceGraphApi";
 import { DecisionReadinessSection } from "../decisionReadiness/DecisionReadinessSection";
@@ -5984,6 +5983,12 @@ function InvestmentCaseChapters({
      heading above a closed disclosure. */
   const companyRating = deriveCompanyRating(analysis.businessAnalysis.findings);
   const fitAssessment = portfolioFitStatus.kind === "loaded" ? portfolioFitStatus.assessment : null;
+  /* The one portfolio-relative dimension -- see the Portfolio Fit
+     chapter below. `unavailable` is excluded deliberately: an
+     unavailable dimension has no rating to badge, and a chapter with no
+     badge reads more honestly than one badged from a fallback. */
+  const fitAllocation =
+    fitAssessment?.dimensions.find((d) => d.kind === "allocation" && d.rating !== "unavailable") ?? null;
   const forwardSummary = forwardViewSummary(forwardContext, t);
   const valuationSupportStatus = analysis.valuationSupport.status as ValuationSupportStatus;
 
@@ -6180,14 +6185,22 @@ function InvestmentCaseChapters({
           Sprint 1B: the rating and its one-line verdict are the
           headline; the dimension rows and the portfolio context
           (weight, largest position, concentration, cash) are one click
-          down. */}
+          down.
+
+          Position Editor v1: the chapter badge was the *overall* fit
+          rating, which votes across business, valuation and risk as
+          well -- so a chapter titled Portfolio Fit could show "Weak
+          Fit" because the stock is expensive. The badge now states the
+          one dimension that is genuinely portfolio-relative, position
+          size; the overall rating is still rendered in full inside the
+          section below, under a heading that says what it includes. */}
       <Surface tier="primary">
         <CaseChapter
           id="portfolio-fit"
           t={t}
-          status={fitAssessment ? t(FIT_RATING_KEY[fitAssessment.overall]) : undefined}
-          statusTone={fitAssessment ? FIT_RATING_TONE[fitAssessment.overall] : "neutral"}
-          headline={fitAssessment ? describeFitVerdict(fitAssessment, t) : null}
+          status={fitAllocation ? t(FIT_RATING_KEY[fitAllocation.rating]) : undefined}
+          statusTone={fitAllocation ? FIT_RATING_TONE[fitAllocation.rating] : "neutral"}
+          headline={fitAllocation ? (fitAllocation.reasoning[0] ?? null) : null}
           subheading={t("investmentCase.portfolioFit.doctrine")}
         >
           {portfolioFitStatus.kind === "loading" && (

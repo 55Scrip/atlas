@@ -93,7 +93,15 @@ function fitAssessment(overrides: Record<string, unknown> = {}) {
     overallReasoning: ["More dimensions rated Weak/Poor than Good/Excellent."],
     overallReasoningCode: null,
     overallReasoningCount: null,
-    dimensions: [],
+    // The allocation dimension is what the cockpit's Fit cell reads:
+    // this position's weight against the portfolio's concentration,
+    // which is the one genuinely portfolio-relational dimension the
+    // engine produces.
+    dimensions: [
+      { kind: "allocation", rating: "weak", reasoning: ["This holding is 30.0% of the portfolio."] },
+      { kind: "valuation", rating: "weak", reasoning: ["Relative valuation: expensive."] },
+      { kind: "risk", rating: "weak", reasoning: ["1 of 4 risk categories High."] },
+    ],
     trend: "declining",
     dataGaps: [],
     generatedAt: "2026-01-01T00:00:00Z",
@@ -263,7 +271,10 @@ describe("PortfolioPage (Product Sprint 8 -- Portfolio Excellence)", () => {
     // Holdings Cockpit v1: the risk cell leads with the status and
     // names the category beneath it, so a reader scanning the column
     // compares severities rather than parsing "Category: Status" prose.
-    expect(aaplRow.getByText("Svag passform")).toBeInTheDocument();
+    // The Fit cell now carries the allocation dimension -- this
+    // position's weight against the portfolio's concentration -- and
+    // says so, rather than an overall verdict driven by case analysis.
+    expect(aaplRow.getByText("endast positionsstorlek")).toBeInTheDocument();
     expect(aaplRow.getByText("Måttlig")).toBeInTheDocument();
     expect(aaplRow.getByText("Finansiell")).toBeInTheDocument();
     // Analysis depth lost its column: it would have crowded out a more
@@ -451,11 +462,43 @@ describe("PortfolioPage (Product Sprint 8 -- Portfolio Excellence)", () => {
     const heading = await screen.findByText("Portföljsvagheter");
     const section = within(heading.closest("div")!);
     expect(section.getByText("Svag passform")).toBeInTheDocument();
-    // Twice now, deliberately: once here, and once as AAPL's own Fit
-    // cell in the comparative Holdings Table. The duplication this
-    // guards against was a second *Fit overview section* restating
-    // Weaknesses, not a column in the table people compare in.
-    expect(screen.getAllByText("Svag passform")).toHaveLength(2);
+    // The Holdings Table used to show this same *overall* verdict in
+    // its Fit cell. That verdict is a vote across five dimensions, of
+    // which Business, Valuation and Risk are properties of the case --
+    // so it largely restated the two columns beside it under a
+    // portfolio-sounding name, and a Poor Risk Fit could gate the whole
+    // thing. The cockpit now reads the allocation dimension, which is
+    // genuinely about how this position sits in the portfolio, and
+    // labels it as such.
+    const table = document.querySelector("table")!;
+    expect(within(table).getAllByText("endast positionsstorlek").length).toBeGreaterThan(0);
+    expect(section.getByText("Svag passform")).toBeInTheDocument();
+  });
+
+  it("reads the allocation dimension in the Fit cell, not the overall vote", async () => {
+    // The distinguishing case: a holding whose overall fit is Weak --
+    // because the case is expensive and risky -- but whose *size* in
+    // the portfolio is unremarkable. Before this sprint the cockpit
+    // showed "Svag passform" here, which read as "this position does
+    // not belong in your portfolio" when Atlas had assessed no such
+    // thing. The two ratings must be able to disagree, and the cell
+    // must follow allocation.
+    mockFetch({
+      fitAssessments: [
+        fitAssessment({
+          overall: "weak",
+          dimensions: [
+            { kind: "allocation", rating: "excellent", reasoning: ["This holding is 3.0% of the portfolio."] },
+            { kind: "valuation", rating: "poor", reasoning: ["Relative valuation: expensive."] },
+          ],
+        }),
+      ],
+    });
+    renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
+    await screen.findByText("Portföljsvagheter");
+    const table = within(document.querySelector("table")!);
+    expect(table.getAllByText("Utmärkt passform").length).toBeGreaterThan(0);
+    expect(table.queryByText("Svag passform")).not.toBeInTheDocument();
   });
 
   it("lists AAPL in Portfolio Weaknesses (weak fit + reduction-supported) but not MSFT", async () => {

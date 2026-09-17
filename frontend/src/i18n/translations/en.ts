@@ -294,6 +294,8 @@ export const en = {
   "portfolio.assessment.drivenBy": "mainly {{ticker}} {{from}} → {{to}}",
   "portfolio.assessment.notAssessedNote":
     "Sector and geographic diversification, expected return, volatility and thematic exposures are not assessed: Atlas has no sector data, country data covers 58% of portfolio value, and no return-series or causal model exists.",
+  // Portfolio Fit, restricted to what is genuinely about the portfolio.
+  "portfolio.fit.positionSizeOnly": "position size only",
   "portfolio.simulation.active": "Hypothetical",
   "portfolio.simulation.changeCountOne": "{{count}} change explored",
   "portfolio.simulation.changeCountOther": "{{count}} changes explored",
@@ -2017,6 +2019,13 @@ export const en = {
   "portfolioFit.trend.unchanged": "Fit is unchanged since your last review",
   "portfolioFit.trend.unavailable": "Trend not yet available",
   "portfolioFit.section.heading": "Portfolio Fit",
+  "portfolioFit.section.positionSizeOnly": "position size in this portfolio",
+  "portfolioFit.section.noPortfolioRelativeAssessment":
+    "Atlas has no portfolio-relative assessment for this holding yet.",
+  "portfolioFit.section.notYetAssessed":
+    "Atlas does not yet assess sector, geographic, thematic or dependency overlap with your other holdings, or this position's contribution to diversification — so it cannot yet give a complete portfolio-fit verdict.",
+  "portfolioFit.section.overallIncludesCaseQuality":
+    "overall rating, which also weighs business, valuation and risk — properties of the company rather than of how it fits this portfolio",
   "portfolioFit.section.loading": "Evaluating Portfolio Fit…",
   "portfolioFit.section.unavailable": "Portfolio Fit is not available for this Case yet.",
   "portfolioFit.section.whyItFits": "Why it fits",
