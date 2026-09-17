@@ -63,11 +63,33 @@ def test_evidence_that_exists_but_cannot_conclude_is_partial() -> None:
 
 def test_identity_is_decided_before_anything_else() -> None:
     """Counting statements is meaningless while Atlas does not know which
-    company it is looking at."""
+    company it is looking at -- and the way Atlas knows has widened.
+
+    This test used to assert that a recorded `NO_MATCH` outranked any number
+    of statements, and that was right while every statement arrived *through*
+    ticker-based identity resolution: statements and a failed resolution could
+    not honestly coexist, so the failure was the more trustworthy of the two.
+
+    European filing evidence is not reached that way. An ESEF statement comes
+    from the company's own regulatory filing, found through its ISIN and its
+    LEI, and never consults the ticker that failed. So the two can now coexist,
+    and the audited accounts are the stronger evidence of identity -- Atlas
+    holding four years of a company's balance sheet while reporting that it
+    cannot identify the company is not a defensible thing to say.
+
+    What is still true, and is what this test now pins, is the ordering
+    itself: with no statements and nothing else to replace a failed
+    resolution, identity remains the first and only answer.
+    """
+    assert _describe(
+        resolution_was_no_match=True, has_company_profile=False,
+        has_market_snapshot=False, financial_statement_count=0,
+    ) is CoverageStatus.IDENTITY_UNRESOLVED
     assert _describe(
         resolution_was_no_match=True, has_company_profile=False,
         has_market_snapshot=False, financial_statement_count=99,
-    ) is CoverageStatus.IDENTITY_UNRESOLVED
+        analysis_is_withheld=True,
+    ) is CoverageStatus.PARTIAL_EVIDENCE
 
 
 def test_a_profile_overrides_a_stale_no_match() -> None:

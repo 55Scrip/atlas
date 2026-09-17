@@ -100,11 +100,19 @@ def describe_coverage(
     # resolved to a security with a known venue, "no source recognised this
     # symbol" is a fact about an older, weaker question.
     identified_in_the_security_master = bool(listing_mics)
+    # A filed financial statement is itself identity evidence, and stronger
+    # than a company profile: Atlas holding four years of a company's audited
+    # accounts, read from that company's own regulatory filing, cannot
+    # coherently report that it has not identified the company. European
+    # holdings reach exactly this state -- statements from their ESEF filings,
+    # no security master entry yet, and a `NO_MATCH` recorded long ago by a
+    # ticker lookup against sources that never covered their venues.
     if (
         resolution_was_no_match
         and not has_company_profile
         and not has_market_snapshot
         and not identified_in_the_security_master
+        and financial_statement_count == 0
     ):
         return CoverageStatus.IDENTITY_UNRESOLVED
     if financial_statement_count == 0:

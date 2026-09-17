@@ -112,3 +112,26 @@ def test_a_stale_no_match_still_wins_when_nothing_has_replaced_it() -> None:
         assert coverage(resolution_was_no_match=True, has_company_profile=False,
                         has_market_snapshot=False,
                         listing_mics=mics) is CoverageStatus.IDENTITY_UNRESOLVED
+
+
+def test_a_filed_statement_is_itself_identity_evidence() -> None:
+    """Atlas holding four years of a company's audited accounts, read from
+    that company's own regulatory filing, cannot coherently report that it
+    has not identified the company.
+
+    This is the state every European holding reaches once its ESEF filings
+    are ingested: real statements, no security master entry yet, and a
+    NO_MATCH recorded long ago by a ticker lookup against sources that never
+    covered Stockholm or Paris.
+    """
+    assert coverage(resolution_was_no_match=True, has_company_profile=False,
+                    has_market_snapshot=False, listing_mics=None,
+                    financial_statement_count=4) is CoverageStatus.PARTIAL_EVIDENCE
+
+
+def test_a_holding_with_no_statements_and_no_venue_is_still_unresolved() -> None:
+    """The holdings nobody has ingested or re-imported. Nothing has replaced
+    the failed resolution, so the honest answer has not changed."""
+    assert coverage(resolution_was_no_match=True, has_company_profile=False,
+                    has_market_snapshot=False, listing_mics=None,
+                    financial_statement_count=0) is CoverageStatus.IDENTITY_UNRESOLVED
