@@ -1502,7 +1502,7 @@ export const en = {
   "dailyBriefAgenda.action.compare": "Compare",
   "dailyBriefAgenda.action.goToPortfolio": "Go to Portfolio",
   "dailyBriefAgenda.heading": "Today's most important developments",
-  "dailyBriefAgenda.lastUpdated": "Last updated {{time}}",
+  "dailyBriefAgenda.lastUpdated": "Brief compiled {{time}}",
   "dailyBriefAgenda.summary.holdingsMonitored": "Atlas is monitoring {{count}} holdings.",
   "dailyBriefAgenda.group.updateCountOne": "1 update",
   "dailyBriefAgenda.group.updateCountOther": "{{count}} updates",

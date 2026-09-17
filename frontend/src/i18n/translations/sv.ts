@@ -1489,7 +1489,7 @@ export const sv: Record<TranslationKey, string> = {
   "dailyBriefAgenda.action.compare": "Jämför",
   "dailyBriefAgenda.action.goToPortfolio": "Gå till portföljen",
   "dailyBriefAgenda.heading": "Dagens viktigaste händelser",
-  "dailyBriefAgenda.lastUpdated": "Senast uppdaterad {{time}}",
+  "dailyBriefAgenda.lastUpdated": "Genomgången sammanställd {{time}}",
   "dailyBriefAgenda.summary.holdingsMonitored": "Atlas bevakar {{count}} innehav.",
   "dailyBriefAgenda.group.updateCountOne": "1 uppdatering",
   "dailyBriefAgenda.group.updateCountOther": "{{count}} uppdateringar",

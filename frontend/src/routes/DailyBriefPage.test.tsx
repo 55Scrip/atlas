@@ -374,3 +374,20 @@ describe("DailyBriefPage -- one failed dependency does not erase the rest", () =
     expect(text).not.toMatch(/\d+\s*\/\s*10/);
   });
 });
+
+
+/**
+ * Freshness truth. The header timestamp is `agenda.generatedAt` -- when
+ * this brief was compiled. It used to be labelled "Last updated", which on
+ * a data product reads as "the data was updated then". It was not: the
+ * brief composes from stored evidence and fetches nothing, so a brief
+ * compiled at 14:59 can be built entirely from evidence twelve days old.
+ */
+describe("DailyBriefPage -- the header timestamp says what it is", () => {
+  it("names compilation, not a data update", async () => {
+    mockFetch({});
+    renderWithProviders(<DailyBriefPage />, { route: "/daily-brief" });
+    await waitFor(() => expect(screen.getByText(/Genomgången sammanställd/)).toBeInTheDocument());
+    expect(screen.queryByText(/^Senast uppdaterad/)).not.toBeInTheDocument();
+  });
+});
