@@ -56,7 +56,22 @@ DEFAULT_HOLDINGS: dict[str, str] = {
     "INVE-B": "SE0015811963",
     "ASSA-B": "SE0007100581",
     "SU.PA": "FR0000121972",
+    "SAND": "SE0000667891",
+    "ALFA": "SE0000695876",
+    "MTRS": "SE0009806607",
 }
+#: European holdings deliberately absent, and why. Kept here because "we did
+#: not try" and "we tried and the evidence does not exist" are different
+#: answers, and only the second is a fact about the world.
+#:
+#: LATO-B  -- no verified ISIN. Every candidate tried failed its ISO 6166 check
+#:            digit, and searching for one by company name is the identity
+#:            guessing this whole pipeline refuses. A real broker export
+#:            carries the ISIN and resolves it immediately.
+#: ABB     -- ABB Ltd is domiciled in Switzerland, which has no filings in the
+#:            ESEF index at all (0, against 1,415 for Sweden). The EU mandate
+#:            does not reach it, so there is no ESEF evidence to ingest.
+#: TSMC    -- Taiwan, outside the mandate for the same reason.
 
 
 def main(argv: list[str] | None = None) -> int:
