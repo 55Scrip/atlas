@@ -69,6 +69,30 @@ def test_only_the_undimensioned_fact_is_the_consolidated_figure() -> None:
     assert duration_facts(doc, "ifrs-full:Revenue")["2023-12-31"][0] == 552_764e6
 
 
+def test_the_consolidated_figure_wins_wherever_it_sits_in_the_file() -> None:
+    """The test above passed for the wrong reason, which a mutation found:
+    with the consolidated fact written second it overwrites the segment one
+    in the result, so dropping the dimension filter entirely still produced
+    552,764. Order in an XBRL document means nothing -- the filter has to be
+    what decides, so here the segment fact comes last.
+    """
+    doc = document(
+        fact("ifrs-full:Revenue", "2023-01-01T00:00:00/2024-01-01T00:00:00", 552_764e6),
+        fact("ifrs-full:Revenue", "2023-01-01T00:00:00/2024-01-01T00:00:00", 533_269e6,
+             segment="TrucksMember"),
+    )
+    assert duration_facts(doc, "ifrs-full:Revenue")["2023-12-31"][0] == 552_764e6
+
+
+def test_a_segment_balance_is_not_the_balance_sheet_either() -> None:
+    """The same rule on the instant reader, which has its own loop."""
+    doc = document(
+        fact("ifrs-full:Assets", "2025-01-01T00:00:00", 223_605e6),
+        fact("ifrs-full:Assets", "2025-01-01T00:00:00", 91_402e6, segment="TrucksMember"),
+    )
+    assert instant_facts(doc, "ifrs-full:Assets")["2024-12-31"][0] == 223_605e6
+
+
 # --- Units and currency ------------------------------------------------
 
 
@@ -169,6 +193,24 @@ def test_anchoring_direction_is_not_symmetric() -> None:
     assert "capital_expenditure" in normalize_filing(doc, reversed_anchor, "2023-12-31").withheld
 
 
+def test_anchored_parts_in_two_currencies_are_not_added_together() -> None:
+    """The comment in `_resolve` says a field assembled from two currencies is
+    not a field, and no test held it: a mutation dropping the currency check
+    passed the whole suite. Summing 13,120 MSEK and 10,267 MEUR produces a
+    number that is not money in any currency, and anchoring proving both parts
+    belong to capex does nothing to make the units agree.
+    """
+    doc = document(
+        fact("abvolvo:PurchaseOfTangibleAssetsLessLeasingVehiclesClassifiedAsInvestingActivities",
+             "2023-01-01T00:00:00/2024-01-01T00:00:00", 13_120e6),
+        fact("abvolvo:PurchaseOfLeasingVehiclesClassifiedAsInvestingActivities",
+             "2023-01-01T00:00:00/2024-01-01T00:00:00", 10_267e6, unit="iso4217:EUR"),
+    )
+    period = normalize_filing(doc, VOLVO_ANCHORS, "2023-12-31")
+    assert "capital_expenditure" in period.withheld
+    assert "capital_expenditure" not in period.values
+
+
 def test_an_unanchored_extension_is_never_read_by_its_name() -> None:
     """Its name says capex. Nothing says it is capex, so it is not read."""
     doc = document(fact("abvolvo:PurchaseOfTangibleAssetsClassifiedAsInvestingActivities",
@@ -207,6 +249,20 @@ def test_linkbase_names_convert_for_every_prefix_not_just_the_standard_one(linkb
     """Converting only `ifrs-full` leaves every issuer extension unfindable,
     which looks exactly like an issuer that tagged nothing."""
     assert to_qname(linkbase) == qname
+
+
+def test_the_separator_is_the_first_underscore_not_the_last() -> None:
+    """Every case above happens to carry exactly one underscore, so splitting
+    on the first and on the last give the same answer and the rule was never
+    actually pinned -- a mutation that split on the last underscore passed the
+    whole suite.
+
+    The rule is stated in `to_qname` and matters for any prefix that contains
+    one: the local name is camel case and never does, so everything before the
+    first underscore is the prefix and everything after it is the name.
+    """
+    assert to_qname("atlas_copco_NoncurrentInterestBearingLiabilities") == (
+        "atlas:copco_NoncurrentInterestBearingLiabilities")
 
 
 def test_nothing_here_is_written_per_issuer() -> None:
