@@ -76,17 +76,15 @@ describe("Investment Case reading hierarchy", () => {
   });
 
   it("puts Atlas's conclusion above the whole analytical body", () => {
-    // Sprint 1B's core correction. `InvestmentCaseCanonicalSections` renders
-    // the seven-category bar's supporting analysis -- Outlook, Investment
-    // Argument, Atlas Reasoning, Evidence and the audit panels. It sat ~700
-    // lines above the conclusion, so Sprint 1's local reorder was correct but
-    // not sufficient.
-    expect(positionOf("AtlasInvestmentReasoning")).toBeLessThan(
-      positionOf("InvestmentCaseCanonicalSections"),
-    );
-    expect(positionOf("ExecutiveSummaryCard")).toBeLessThan(
-      positionOf("InvestmentCaseCanonicalSections"),
-    );
+    // Sprint 1B's core correction, still asserted -- only the component's
+    // name changed. `InvestmentCaseCanonicalSections` rendered one flat
+    // stack of fifteen panels; Product Convergence Sprint 1 renamed it
+    // `InvestmentCaseChapters` and split that stack into the seven
+    // semantic chapters below the conclusion. The invariant is the same
+    // one: the analytical body must not precede the conclusion it
+    // explains.
+    expect(positionOf("AtlasInvestmentReasoning")).toBeLessThan(positionOf("InvestmentCaseChapters"));
+    expect(positionOf("ExecutiveSummaryCard")).toBeLessThan(positionOf("InvestmentCaseChapters"));
   });
 
   it("keeps the evidence/audit layer out of the default reading surface", () => {
@@ -112,7 +110,6 @@ describe("Investment Case reading hierarchy", () => {
     for (const panel of [
       "ManagementIntelligencePanel",
       "RegulatoryIntelligencePanel",
-      "CompanyHealthAssessmentSection",
       "InterpretedFinancialEvidenceSection",
       "CompanyOverviewSection",
     ]) {
@@ -122,13 +119,54 @@ describe("Investment Case reading hierarchy", () => {
     }
   });
 
-  it("keeps Outlook and Evidence on the default surface", () => {
+  it("gives the Company chapter a visible conclusion of its own", () => {
+    // This assertion has now been through two sprints, and what it
+    // protects is the same both times: arriving at `#company` must tell
+    // you what Atlas concluded about the business.
+    //
+    // Sprint 1 satisfied that by putting `CompanyHealthAssessmentSection`
+    // on the chapter's surface. Sprint 1B found the real cost of that --
+    // five status cards and five summary sentences is analysis, not a
+    // conclusion, and it was part of why META grew from 3,908px to
+    // 5,457px. The chapter now states its conclusion in the heading
+    // itself (`deriveCompanyRating`'s existing tier, plus the
+    // business-quality summary sentence) and the five cards sit one
+    // click down.
+    //
+    // So the conclusion is *more* visible than before, not less: it is
+    // two lines instead of a card grid.
+    expect(inDisclosure("CompanyHealthAssessmentSection")).toBe(true);
+    const chapter = SOURCE.indexOf('id="company"');
+    const open = SOURCE.slice(chapter, SOURCE.indexOf(">", SOURCE.indexOf("headline=", chapter)));
+    expect(open).toContain("RATING_TIER_LABEL_KEY");
+    expect(open).toContain("BUSINESS_QUALITY_SUMMARY_KEY");
+  });
+
+  it("keeps Evidence on the default surface", () => {
     // Reducing default exposure must not mean hiding the investment case
-    // itself. Outlook and Evidence add information the primary narrative
-    // does not carry, and stay visible.
-    for (const section of ["AtlasOutlookSection", "EvidenceSection"]) {
-      expect(inDisclosure(section), `${section} should stay on the default surface`).toBe(false);
-    }
+    // itself. The Evidence headline adds information the primary
+    // narrative does not carry, and stays visible.
+    expect(inDisclosure("EvidenceSection"), "EvidenceSection should stay on the default surface").toBe(false);
+  });
+
+  it("subordinates valuation sensitivity to the valuation conclusion", () => {
+    // Product Convergence Sprint 1, a deliberate supersession of the
+    // assertion above, which used to cover `AtlasOutlookSection` too.
+    //
+    // Sprint 1C kept it on the default surface because the page had no
+    // Valuation chapter to subordinate it to -- hiding it would have
+    // hidden the only valuation depth there was. Now the chapter states
+    // the conclusion, the current yield, the history it rests on and the
+    // support state first, and this sprint's own ordering puts
+    // sensitivity among what follows behind disclosure.
+    //
+    // It matters because this is conditional re-rating arithmetic whose
+    // range can be extreme (Internal Alpha saw -77% -> +182%); rendered
+    // eagerly under a two-line conclusion it reads with the authority of
+    // a valuation verdict. Nothing about the calculation changed, and
+    // its "not a forecast" caption is still the first thing inside.
+    expect(inDisclosure("AtlasOutlookSection")).toBe(true);
+    expect(positionOf("ValuationDetailSection")).toBeLessThan(positionOf("AtlasOutlookSection"));
   });
 
   it("invents no Figma-only metric on this page", () => {

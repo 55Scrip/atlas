@@ -562,6 +562,7 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.analysis.business.largestPositionLabel": "Största position: {{ticker}} ({{percent}}%)",
   "investmentCase.analysis.business.otherCategoriesHeading": "Övriga dimensioner",
   "investmentCase.analysis.valuation.heading": "Värdering",
+  "investmentCase.analysis.valuation.evidenceLabel": "Visa underlaget bakom värderingen",
   "investmentCase.analysis.valuation.method.fcf_yield_relative": "FCF-avkastning (relativ)",
   "investmentCase.analysis.valuation.currentYieldLabel": "Aktuell FCF-avkastning",
   "investmentCase.analysis.valuation.gap.missingMarketPrice": "Marknadspris saknas.",
@@ -629,7 +630,6 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.analysis.evidence.coverageLabel": "Underlagsdjup",
   "investmentCase.analysis.evidence.qualityHeading": "Underlagets kvalitet",
   "investmentCase.analysis.evidence.missingEvidenceHeading": "Saknat underlag",
-  "investmentCase.analysis.evidence.viewAll": "Visa allt underlag",
   "investmentCase.analysis.evidence.latestLabel": "Senaste",
   "investmentCase.analysis.evidence.noneRecorded": "Inget underlag registrerat för det här caset ännu.",
   "investmentCase.analysis.valuationScenarios.heading": "Värderingsscenarier",
@@ -989,7 +989,15 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.forwardView.statedIn": "Uttalat {{period}}",
   "investmentCase.forwardView.observationsNote":
     "En observation per källuttalande — samma avtal kan förekomma i flera, så de listas och summeras aldrig.",
+  "investmentCase.risk.mostImportant": "Viktigaste risken just nu: {{category}} — {{status}}.",
+  "investmentCase.risk.filedEvidenceLabel": "Inrapporterade riskfaktorer och rättsliga processer",
+  "investmentCase.portfolioFit.doctrine":
+    "Portföljpassformen informerar beslutet. Den väger aldrig över hur stark själva caset är.",
+  "investmentCase.portfolioFit.notHeld": "Bolaget är för närvarande inget innehav i din portfölj.",
+  "investmentCase.evidence.recordLabel": "Underlaget bakom caset",
   // Sprint 1B (Investment Case Compression)
+  "investmentCase.chapter.showAnalysis": "Visa analys",
+  "investmentCase.chapter.valuationSupportLabel": "Värderingsstöd",
   "investmentCase.strategy.status.notAssessed": "Inte bedömd än",
   "investmentCase.strategy.unavailableShort": "Atlas modellerar ännu inte hur bolaget skapar värde.",
   "investmentCase.forwardView.status.none": "Saknas än",
@@ -1000,6 +1008,9 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.forwardView.count.guidanceOther": "{{count}} guidade mått",
   "investmentCase.forwardView.count.volumeOne": "{{count}} observation av kontrakterad volym",
   "investmentCase.forwardView.count.volumeOther": "{{count}} observationer av kontrakterad volym",
+  "investmentCase.risk.scopeNoteShort": "Fyra kategorier, var för sig. Makro-, geopolitisk och sektorrisk bedöms inte.",
+  "investmentCase.risk.showAll": "Visa alla risker",
+  "investmentCase.portfolioFit.showAnalysis": "Visa portföljanalys",
   "investmentCase.actions.recordManuallyLabel": "Registrera ett beslut manuellt",
   "investmentCase.actions.notLinkedNote":
     "Beslutsåtgärder blir tillgängliga när det här caset kopplas till ett portföljinnehav.",

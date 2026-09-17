@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { Link as RouterLink, useLocation, useParams } from "react-router-dom";
-import { ACCENT_LINK_STYLE, Button, Container, Divider, Heading, Inline, Label, Link, Stack, StatusBadge, StatusText, Surface, Text, VisuallyHidden } from "../foundation";
+import { ACCENT_LINK_STYLE, Button, Container, Divider, Heading, Inline, Label, Stack, StatusBadge, StatusText, Surface, Text, VisuallyHidden } from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
 import {
   deriveActivity,
@@ -21,11 +21,14 @@ import {
   DECISION_SUPPORT_TONE,
   DATA_FRESHNESS_STATUS_KEY,
   DATA_FRESHNESS_STATUS_TONE,
+  CONFIDENCE_TONE,
   FIT_RATING_KEY,
+  FIT_RATING_TONE,
   MONITORING_STATUS_KEY,
   MONITORING_STATUS_TONE,
   RISK_STATUS_TONE,
   VALUATION_STATUS_TONE,
+  VALUATION_SUPPORT_LABEL_KEY,
   type ChangeTriggerKind,
   type ConvictionLevel,
   type ConvictionReasonCode,
@@ -37,6 +40,7 @@ import {
   type ValuationSupportStatus,
 } from "../status/statusTone";
 import { PortfolioFitSection } from "../portfolioFit/PortfolioFitSection";
+import { describeFitVerdict } from "../portfolioFit/describeFitVerdict";
 import { EvidenceGraphSection } from "../evidenceGraph/EvidenceGraphSection";
 import { fetchEvidenceGraph, type EvidenceGraphView } from "../evidenceGraph/evidenceGraphApi";
 import { DecisionReadinessSection } from "../decisionReadiness/DecisionReadinessSection";
@@ -133,8 +137,7 @@ import {
   formatShareCount,
   type FinancialPeriodView,
 } from "../investmentCase/FinancialsTable";
-import { HeroCard, HERO_WHY_KEY, type HeroAnalysisInput } from "../investmentCase/HeroCard";
-import { deriveHeroTension } from "../investmentCase/deriveHeroNarrative";
+import { HeroCard, type HeroAnalysisInput } from "../investmentCase/HeroCard";
 import {
   deriveCompanyRating,
   deriveEvidenceRating,
@@ -143,7 +146,17 @@ import {
   derivePortfolioRating,
   deriveRisk,
 } from "../investmentCase/atlasRatingModel";
-import { SevenCategoriesSection, CaseDnaLine, type SevenCategoriesInput } from "../investmentCase/SevenCategoriesSection";
+import {
+  SevenCategoriesSection,
+  RATING_TIER_LABEL_KEY,
+  RATING_TIER_TONE,
+  type SevenCategoriesInput,
+} from "../investmentCase/SevenCategoriesSection";
+import { CaseChapter, useCaseChapterDeepLink } from "../investmentCase/CaseChapter";
+import { CaseChapterNav } from "../investmentCase/CaseChapterNav";
+import { StrategySection } from "../investmentCase/StrategySection";
+import { ForwardViewSection, forwardViewSummary } from "../investmentCase/ForwardViewSection";
+import type { ForwardReasoningContextView } from "../investmentDecision/reasoningContract";
 import { AtlasDecisionSummary } from "../investmentCase/AtlasDecisionSummary";
 import { ExpandableDetail } from "../investmentCase/ExpandableDetail";
 import { AtlasOutlookSection, type OutlookView } from "../investmentCase/AtlasOutlookSection";
@@ -2510,6 +2523,26 @@ export function InvestmentCasePage() {
    * 8's own full section, further down this page, is the same
    * `portfolioFitStatus` fetch read in full; this line stays the
    * existing compact one-word summary, never a duplicated computation). */
+  /**
+   * Product Convergence Sprint 1 (Investment Case Hierarchy) -- deep
+   * links.
+   *
+   * `/investment-case/<case-id>#risk` must land on Risk whether the
+   * reader typed it, reloaded it, or arrived from another Atlas screen.
+   * The browser's own fragment handling has already run and found
+   * nothing by the time the case finishes loading, so the arrival is
+   * completed here instead, keyed on the chapter id rather than on any
+   * DOM position. An unknown fragment, or a chapter this case does not
+   * render, simply does nothing -- see `useCaseChapterDeepLink`.
+   *
+   * The readiness condition is deliberately the exact condition the
+   * chapters themselves render under, so the effect can never fire
+   * against a page that has not built them yet.
+   */
+  useCaseChapterDeepLink(
+    Boolean(caseId) && status.kind === "loaded" && investmentCaseAnalysis.kind === "loaded",
+  );
+
   const metadataLineParts: string[] =
     investmentCaseAnalysis.kind === "loaded"
       ? [
@@ -2732,6 +2765,13 @@ export function InvestmentCasePage() {
               valuationSupportStatus,
               valuationSupportGap,
             });
+            /* Product Convergence Sprint 1: the single predicate for
+               "canonical reasoning renders below, and owns the four
+               questions". Everything the Hero and the conclusion stop
+               restating is gated on it, so a row that carries no
+               reasoning keeps its own preview and loses nothing. */
+            const hasCanonicalReasoning =
+              investmentDecisionStatus.kind === "loaded" && investmentDecisionStatus.decision.reasoning != null;
             const isValuationSupportLoadBearing =
               valuationSupportStatus !== "supported" ||
               report.recommendation.level === "entry_supported" ||
@@ -2765,21 +2805,17 @@ export function InvestmentCasePage() {
             };
 
             /** Atlas UX Phase 7A (Semantic Investment Model, Foundation
-             * Sprint) -- the seven-category bar and Case DNA, computed
-             * once here from data this IIFE already fetched/derived
-             * above (no new fetch, no new analysis) and reused by both
-             * the bar and the promoted Case DNA line. `tension` is the
-             * identical pure computation `HeroCard` runs internally
-             * from the same three inputs -- recomputed here rather than
-             * threaded through a prop, the same "cheap and pure, so
-             * just call it again" convention this codebase already
-             * uses elsewhere for shared derivations. */
-            const tension = deriveHeroTension({
-              growthStatus: heroAnalysis.growthStatus,
-              capitalAllocationStatus: heroAnalysis.capitalAllocationStatus,
-              valuationStatus: heroAnalysis.valuationStatus,
-            });
-            const caseDnaSentence = t(HERO_WHY_KEY[tension]);
+             * Sprint) -- the seven-category bar, computed once here from
+             * data this IIFE already fetched/derived above (no new
+             * fetch, no new analysis).
+             *
+             * Product Convergence Sprint 1B: the local `tension` /
+             * `caseDnaSentence` derivation that sat here is gone. It
+             * re-ran `HeroCard`'s own pure computation only so the same
+             * sentence could render a second time in a labelled "Case
+             * DNA" block; the Hero renders it inline itself again, which
+             * is what it did before Sprint 1 suppressed it. One
+             * derivation, in one place. */
             const sevenCategories: SevenCategoriesInput = {
               company: deriveCompanyRating(report.businessAnalysis.findings),
               investment: deriveInvestmentRating(report.recommendation.level),
@@ -2796,7 +2832,16 @@ export function InvestmentCasePage() {
             };
 
             return (
-              <>
+              /* Product Convergence Sprint 1 (Investment Case
+                 Hierarchy) -- CONCLUSION. The decision and the reasoning
+                 behind it, and nothing that merely explains one
+                 dimension of it. Everything an investor needs in order
+                 to know what Atlas thinks, how sure it is, what the core
+                 reason is, what supports and opposes the case, what is
+                 unresolved and what would change it, reads here without
+                 leaving the chapter. Each analytical dimension then owns
+                 its own chapter below. */
+              <CaseChapter id="conclusion" t={t}>
                 <HeroCard
                   ticker={resolvedTicker ?? t("investmentCase.header.untitled")}
                   analysis={heroAnalysis}
@@ -2820,22 +2865,52 @@ export function InvestmentCasePage() {
                   t={t}
                   locale={locale}
                   suppressLimitingFactorPreview
-                  suppressTensionSentence
+                  /* Product Convergence Sprint 1B (Investment Case
+                     Compression): the tension sentence reads inline in
+                     the Hero's narrative again and the separate "CASE
+                     DNA" block below is gone -- it was the same
+                     sentence in a labelled 94px block of its own, one
+                     of the repeated representations Sprint 1's brief
+                     named. `suppressEmptyChangeNote` keeps the normal
+                     "nothing changed" state quiet; see the prop's own
+                     docstring. */
+                  suppressEmptyChangeNote
+                  /* Product Convergence Sprint 1 (Investment Case
+                     Hierarchy): canonical reasoning renders directly
+                     below this card and answers the same four questions
+                     from the backend's own reasoning, so the Hero stops
+                     restating them -- but only when that card genuinely
+                     has reasoning to render. A row without it keeps the
+                     Hero's preview, so nothing is ever lost. See
+                     `HeroCard`'s own prop docstring for what Internal
+                     Alpha found here. */
+                  suppressReasoningPreview={hasCanonicalReasoning}
                   onRefreshPrice={refreshPrice}
                   isRefreshingPrice={priceRefreshStatus === "refreshing"}
                 />
-                {report.recommendation.level !== "insufficient_evidence" && isValuationSupportLoadBearing && (
-                  <>
-                    <Divider tone="hairline" />
-                    <ValuationSupportCard status={valuationSupportStatus} gap={valuationSupportGap} t={t} />
-                  </>
-                )}
-                {report.recommendation.level !== "insufficient_evidence" && limitingFactors.length > 0 && (
-                  <>
-                    <Divider tone="hairline" />
-                    <LimitingFactorsCard factors={limitingFactors} t={t} />
-                  </>
-                )}
+                {/* Product Convergence Sprint 1: `ValuationSupportCard`
+                    used to render here, immediately under the Hero, and
+                    the Valuation chapter had no support state at all.
+                    The conclusion names the limit; the Valuation chapter
+                    explains it. The card is unchanged and renders under
+                    the same condition, one chapter down.
+
+                    Sprint 1B: `LimitingFactorsCard` follows it off the
+                    default surface, with the same guard. On META it was
+                    266px of two rows both titled "Värdering", saying
+                    what canonical reasoning says one block below in its
+                    "Talar emot" and "Viktigaste osäkerhet" rows -- a
+                    third visual form of one judgment. It still renders
+                    inline when canonical reasoning is absent and would
+                    otherwise leave the conclusion without it. */}
+                {report.recommendation.level !== "insufficient_evidence" &&
+                  limitingFactors.length > 0 &&
+                  !hasCanonicalReasoning && (
+                    <>
+                      <Divider tone="hairline" />
+                      <LimitingFactorsCard factors={limitingFactors} t={t} />
+                    </>
+                  )}
 
                 {/* Convergence Sprint 1B (Investment Case Information
                     Architecture) -- Atlas's conclusion now opens the case.
@@ -2857,18 +2932,6 @@ export function InvestmentCasePage() {
                 loaded; a fetch failure or still-loading state never
                 blocks the rest of the page (same independent-fetch
                 pattern every other section here already uses). */}
-            {investmentCaseAnalysis.kind === "loaded" && (
-              <ExecutiveSummaryCard
-                analysis={investmentCaseAnalysis.report}
-                linkedHolding={linkedHolding}
-                alphaPortfolioStatus={alphaPortfolioStatus}
-                outstandingWorkKinds={caseOutstandingWork.map((item) => item.kind)}
-                t={t}
-              />
-            )}
-
-            <Divider tone="hairline" />
-
             {/* Convergence Sprint 1 (Investment Case Compression) --
                 this block moved here from below Portfolio Fit and the
                 Evidence Graph. `AtlasDecisionSummary` is the page's own
@@ -2913,8 +2976,50 @@ export function InvestmentCasePage() {
               <AtlasInvestmentReasoning decision={investmentDecisionStatus.decision} t={t} locale={locale} />
             )}
 
+            {/* Product Convergence Sprint 1: Executive Summary now
+                renders *after* canonical reasoning rather than above it.
+                Reasoning is the conclusion's explanation; what remains
+                in this card is the exception line -- the outstanding
+                issues and coverage limitations that qualify how the
+                conclusion should be read -- which belongs after the
+                reasoning it qualifies, not before it. Its former
+                Portfolio Impact line is gone from here: the Portfolio
+                Fit chapter below states the same four facts in full
+                (weight, largest position, concentration, cash) and is
+                now the one place that does. */}
+            {investmentCaseAnalysis.kind === "loaded" && (
+              <ExecutiveSummaryCard
+                analysis={investmentCaseAnalysis.report}
+                outstandingWorkKinds={caseOutstandingWork.map((item) => item.kind)}
+                t={t}
+              />
+            )}
+
             <ExpandableDetail summaryLabel={t("investmentCase.decisionSummary.viewFullLabel")}>
               <Stack gap="inter-section">
+                {/* Product Convergence Sprint 1B (Investment Case
+                    Compression). Four of these six ratings -- Company,
+                    Portfolio, Evidence, Risk -- are now the headline
+                    beside their own chapter's title, which is exactly
+                    where a deep link lands on them; a fifth,
+                    Investment, is the recommendation the Hero states
+                    above. Rendering the combined strip on the default
+                    surface as well was a second reading of five
+                    conclusions the page already gives.
+
+                    Not deleted: this strip is the one place showing all
+                    six side by side, including the Horizon rating no
+                    chapter headlines, so it stays with the rest of the
+                    full reasoning. */}
+                <SevenCategoriesSection ratings={sevenCategories} t={t} />
+
+                {/* Sprint 1B, see the Hero above: what limits this
+                    conclusion, kept whole, beside the reasoning it
+                    elaborates rather than stacked on top of it. */}
+                {report.recommendation.level !== "insufficient_evidence" &&
+                  limitingFactors.length > 0 &&
+                  hasCanonicalReasoning && <LimitingFactorsCard factors={limitingFactors} t={t} />}
+
                 {/* Canonical Reasoning Consolidation, Phase K. This card
                     ("Varför Atlas inte är säkrare") used to be a
                     dominant default-path block. Its message -- the
@@ -3029,43 +3134,22 @@ export function InvestmentCasePage() {
               </Stack>
             </ExpandableDetail>
 
-                {/* Atlas UX Phase 7A -- the seven-category bar and Case
-                    DNA lead the page, immediately after the Hero and
-                    its own supporting cards, per this sprint's own
-                    "Hero -> Seven Categories -> Case DNA -> ..."
-                    layout. */}
-                <Divider tone="hairline" />
-                <SevenCategoriesSection ratings={sevenCategories} t={t} />
-                <CaseDnaLine sentence={caseDnaSentence} t={t} />
-
-                {/* Outlook -> Investment Argument -> Atlas Reasoning ->
-                    Evidence -> everything else, in that order (reordered
-                    inside `InvestmentCaseCanonicalSections` itself) --
-                    moved up from its previous position after Executive
-                    Summary/the decision-recording action panel so it
-                    sits directly under Case DNA, matching this sprint's
-                    layout exactly. "Strengths"/"Concerns" are not a
-                    separate pair of sections: `InvestmentArgumentSection`
-                    already renders them together (as "Supports the
-                    Case"/"Challenges the Case") alongside Open
-                    Questions, and duplicating that content in a second,
-                    separate Strengths/Concerns block would violate this
-                    codebase's own "never repeat the same reason twice"
-                    discipline -- a disclosed, deliberate reading of the
-                    spec's own ordering, not a silent omission. */}
-                <InvestmentCaseCanonicalSections
-                  analysis={report}
-                  linkedHolding={linkedHolding}
-                  alphaPortfolioStatus={alphaPortfolioStatus}
-                  onViewMoreDetails={() => setActiveTab("moreDetails")}
-                  t={t}
-                  locale={locale}
-                />
-              </>
+              </CaseChapter>
             );
           })()}
         </Stack>
         </Surface>
+
+        {/* Product Convergence Sprint 1 (Investment Case Hierarchy) --
+            the chapter index, directly under the conclusion: having read
+            what Atlas thinks, the reader goes straight to the dimension
+            they want to understand. Plain anchors, so every chapter is
+            also a URL that can be linked, shared and reloaded -- which is
+            the same mechanism a future Portfolio row will use to open a
+            company at `#risk` or `#valuation`. */}
+        {caseId && status.kind === "loaded" && investmentCaseAnalysis.kind === "loaded" && (
+          <CaseChapterNav t={t} />
+        )}
 
         {/* Action Flow Tier 1 trigger (approved §13 Option A) -- the
             investor's own, clearly-separate action vocabulary, distinct
@@ -3629,37 +3713,32 @@ export function InvestmentCasePage() {
           </Surface>
         )}
 
+        {/* Product Convergence Sprint 1 (Investment Case Hierarchy) --
+            the analytical chapters. Portfolio Fit and the Evidence Graph
+            used to render loose here, between the conclusion and the tab
+            bar; each now sits inside the chapter that owns it. Every
+            chapter is a stable destination another Atlas surface can
+            link into (`#valuation`, `#risk`, `#portfolio-fit`, ...) --
+            see `caseChapters.ts`. */}
+        {caseId && status.kind === "loaded" && investmentCaseAnalysis.kind === "loaded" && (
+          <InvestmentCaseChapters
+            analysis={investmentCaseAnalysis.report}
+            linkedHolding={linkedHolding}
+            alphaPortfolioStatus={alphaPortfolioStatus}
+            portfolioFitStatus={portfolioFitStatus}
+            evidenceGraphStatus={evidenceGraphStatus}
+            forwardContext={
+              investmentDecisionStatus.kind === "loaded"
+                ? investmentDecisionStatus.decision.reasoning?.forwardContext
+                : undefined
+            }
+            t={t}
+            locale={locale}
+          />
+        )}
+
         {caseId && status.kind === "loaded" && (
           <>
-
-            {/* Product Sprint 4 (Portfolio Fit Engine, Deliverable 8) --
-                a new, always-visible section, the same placement tier as
-                Business/Valuation/Risk/Evidence above (not hidden behind
-                a tab click, matching Portfolio Fit's own stated product
-                priority). Independent fetch (`portfolioFitStatus`); a
-                still-loading or failed fetch never blocks the rest of
-                the page, the same pattern every section on this page
-                already follows. */}
-            {portfolioFitStatus.kind === "loaded" && <PortfolioFitSection assessment={portfolioFitStatus.assessment} />}
-            {portfolioFitStatus.kind === "loading" && (
-              <Text role="status" aria-live="polite">
-                {t("portfolioFit.section.loading")}
-              </Text>
-            )}
-            {portfolioFitStatus.kind === "error" && (
-              <Text color="tertiary" role="alert">
-                {t("portfolioFit.section.unavailable")}
-              </Text>
-            )}
-
-            {/* Atlas Intelligence Sprint 10 (Evidence Graph &
-                Dependency Understanding, Deliverable 6). Independent
-                fetch (`evidenceGraphStatus`); renders nothing at all
-                on error or when the graph is genuinely empty -- never
-                a placeholder, never blocking the rest of the page. */}
-            {evidenceGraphStatus.kind === "loaded" && <EvidenceGraphSection graph={evidenceGraphStatus.graph} t={t} />}
-
-
             <Divider tone="hairline" />
 
             {/* Figma-fidelity rebuild -- the approved screen's own
@@ -3959,27 +4038,21 @@ export function InvestmentCasePage() {
                 >
                   <Text color="secondary">{t("investmentCase.moreDetails.subheading")}</Text>
 
-                  {investmentCaseAnalysis.kind === "loaded" && (
-                    <>
-                      <CaseNarrativeDetailSection analysis={investmentCaseAnalysis.report} t={t} />
-                      <Divider tone="hairline" />
-                      <RiskSection analysis={investmentCaseAnalysis.report} t={t} />
-                      <Divider tone="hairline" />
-                      <ValuationDetailSection analysis={investmentCaseAnalysis.report} t={t} locale={locale} />
-                      {linkedHolding && (
-                        <>
-                          <Divider tone="hairline" />
-                          <PortfolioContextDetail
-                            linkedHolding={linkedHolding}
-                            alphaPortfolioStatus={alphaPortfolioStatus}
-                            t={t}
-                          />
-                        </>
-                      )}
-                      <Divider tone="hairline" />
-                      <EvidenceDetailSection analysis={investmentCaseAnalysis.report} t={t} />
-                    </>
-                  )}
+                  {/* Product Convergence Sprint 1 (Investment Case
+                      Hierarchy): the five analytical blocks that used to
+                      open this tab -- growth trend, Risk, Valuation,
+                      Portfolio Context and the Evidence record -- are
+                      the Company, Risk, Valuation, Portfolio Fit and
+                      Evidence chapters now. Putting Risk and Valuation
+                      behind a tab click was the reason neither could be
+                      deep-linked, and the reason a reader had to know
+                      they existed before they could find them. Each
+                      component is unchanged and each renders exactly
+                      once, in its chapter.
+
+                      What stays here is what genuinely belongs here:
+                      the underlying record and the engine-inspection
+                      console below -- not investor-facing analysis. */}
 
                   <Divider tone="hairline" />
 
@@ -5576,14 +5649,10 @@ const MAX_OUTSTANDING_ISSUES_SHOWN = 3;
  */
 function ExecutiveSummaryCard({
   analysis,
-  linkedHolding,
-  alphaPortfolioStatus,
   outstandingWorkKinds,
   t,
 }: {
   analysis: InvestmentCaseAnalysisView;
-  linkedHolding: AlphaHoldingView | null;
-  alphaPortfolioStatus: AlphaPortfolioStatus;
   outstandingWorkKinds: OutstandingWorkKind[];
   t: Translate;
 }) {
@@ -5591,12 +5660,20 @@ function ExecutiveSummaryCard({
   // points paragraph and priority chip that used to render here now
   // render, as one coherent narrative, in `HeroCard` above -- the same
   // Conviction/Valuation/Risk/thesis-staleness facts, never a second,
-  // divergent computation of them. This card keeps only the content
-  // `HeroCard` does not cover: Portfolio Impact and Outstanding Issues.
+  // divergent computation of them.
+  //
+  // Product Convergence Sprint 1 (Investment Case Hierarchy): Portfolio
+  // Impact is gone from here too, and with it `linkedHolding`/
+  // `alphaPortfolioStatus`. It stated the holding's weight plus one of
+  // "largest position"/concentration plus cash -- the same four facts
+  // `PortfolioContextDetail` states in full in the Portfolio Fit
+  // chapter, which is where a portfolio fact belongs and which no
+  // longer sits behind a tab. One representation, at the chapter that
+  // owns it. What is left here is the one thing that genuinely
+  // qualifies the conclusion above it: what is still outstanding.
   const evidenceGap =
     analysis.evidenceQuality !== null &&
     (analysis.evidenceQuality.coverage === "none" || analysis.evidenceQuality.coverage === "partial");
-  const hasOutstandingWork = outstandingWorkKinds.length > 0;
 
   const outstandingIssues = deriveOutstandingIssues({
     outstandingWorkKinds,
@@ -5604,71 +5681,34 @@ function ExecutiveSummaryCard({
     evidenceGap,
   });
 
-  const holdings = alphaPortfolioStatus.kind === "loaded" ? alphaPortfolioStatus.view.holdings : [];
-  const largestHolding = holdings.reduce<AlphaHoldingView | null>(
-    (max, h) => (max === null || h.weightPercent > max.weightPercent ? h : max),
-    null,
-  );
-  const isLargestPosition =
-    linkedHolding !== null && largestHolding !== null && largestHolding.ticker === linkedHolding.ticker;
-  const cashWeightPercent = alphaPortfolioStatus.kind === "loaded" ? alphaPortfolioStatus.view.cashWeightPercent : null;
-  const concentrationLevel = alphaPortfolioStatus.kind === "loaded" ? alphaPortfolioStatus.view.concentrationLevel : null;
-
-  const portfolioImpactParts: string[] = [
-    linkedHolding
-      ? t("investmentCase.executiveSummary.portfolioImpact.weight", { percent: linkedHolding.weightPercent.toFixed(1) })
-      : null,
-    // Corrective pass (compactness): "largest position" and
-    // "concentration" both describe the same concentration-relevance
-    // fact -- showing both is exactly the redundant portfolio metric
-    // this pass asks to avoid. Largest position is the more specific,
-    // more decision-relevant of the two when true; concentration is the
-    // fallback context otherwise. At most one of them renders.
-    isLargestPosition
-      ? t("investmentCase.executiveSummary.portfolioImpact.largestPosition")
-      : concentrationLevel
-        ? t("portfolio.concentration", {
-            value: CASE_CONCENTRATION_LEVEL_KEY[concentrationLevel]
-              ? t(CASE_CONCENTRATION_LEVEL_KEY[concentrationLevel]!)
-              : concentrationLevel,
-          })
-        : null,
-    cashWeightPercent !== null
-      ? t("investmentCase.executiveSummary.portfolioImpact.cash", { percent: cashWeightPercent.toFixed(1) })
-      : null,
-  ].filter((part): part is string => part !== null);
+  if (outstandingIssues.length === 0) {
+    // Normal states stay quiet: nothing outstanding is not a fact that
+    // needs a heading of its own.
+    return null;
+  }
 
   return (
     <Stack gap="metadata">
       <Label>{t("investmentCase.executiveSummary.heading")}</Label>
-
-      {portfolioImpactParts.length > 0 && (
-        <Text as="p" color="tertiary" data-trace-source="portfolioImpact">
-          {t("investmentCase.executiveSummary.portfolioImpact.heading")}: {portfolioImpactParts.join(" · ")}
-        </Text>
-      )}
-
-      {outstandingIssues.length > 0 && (
-        <Text as="p" color="tertiary" data-trace-source="outstandingIssues">
-          {t("investmentCase.executiveSummary.outstandingIssues.heading")}:{" "}
-          {/* Corrective pass (compactness): "Show at most 3 issues ...
-              show '+ N more issues'" -- full, untruncated detail remains
-              exactly where it already was, in the unchanged Outstanding
-              work section further down the page; this is a display cap
-              only, `outstandingIssues` itself is unchanged. */}
-          {outstandingIssues
-            .slice(0, MAX_OUTSTANDING_ISSUES_SHOWN)
-            .map((issue) => t(OUTSTANDING_ISSUE_KEY[issue]))
-            .join(", ")}
-          {outstandingIssues.length > MAX_OUTSTANDING_ISSUES_SHOWN &&
-            ` ${t(
-              outstandingIssues.length - MAX_OUTSTANDING_ISSUES_SHOWN === 1
-                ? "investmentCase.executiveSummary.outstandingIssues.moreCountOne"
-                : "investmentCase.executiveSummary.outstandingIssues.moreCountOther",
-              { count: outstandingIssues.length - MAX_OUTSTANDING_ISSUES_SHOWN },
-            )}`}
-        </Text>
-      )}
+      <Text as="p" color="tertiary" data-trace-source="outstandingIssues">
+        {t("investmentCase.executiveSummary.outstandingIssues.heading")}:{" "}
+        {/* Corrective pass (compactness): "Show at most 3 issues ...
+            show '+ N more issues'" -- full, untruncated detail remains
+            exactly where it already was, in the unchanged Outstanding
+            work section further down the page; this is a display cap
+            only, `outstandingIssues` itself is unchanged. */}
+        {outstandingIssues
+          .slice(0, MAX_OUTSTANDING_ISSUES_SHOWN)
+          .map((issue) => t(OUTSTANDING_ISSUE_KEY[issue]))
+          .join(", ")}
+        {outstandingIssues.length > MAX_OUTSTANDING_ISSUES_SHOWN &&
+          ` ${t(
+            outstandingIssues.length - MAX_OUTSTANDING_ISSUES_SHOWN === 1
+              ? "investmentCase.executiveSummary.outstandingIssues.moreCountOne"
+              : "investmentCase.executiveSummary.outstandingIssues.moreCountOther",
+            { count: outstandingIssues.length - MAX_OUTSTANDING_ISSUES_SHOWN },
+          )}`}
+      </Text>
     </Stack>
   );
 }
@@ -5752,18 +5792,67 @@ const COMPETITIVE_POSITION_SUMMARY_KEY: Record<AnalysisBusinessStatus, Translati
  * `AtlasOutlookSection`'s own file header and this sprint's backend-gap
  * report).
  */
-function InvestmentCaseCanonicalSections({
+/** Status shapes the chapters read, mirrored from the page's own
+ * `useState` declarations so the host takes them as ordinary props
+ * rather than reaching for page state. */
+type PortfolioFitFetchStatus =
+  | { kind: "loading" }
+  | { kind: "error" }
+  | { kind: "loaded"; assessment: PortfolioFitAssessmentView | null };
+
+type EvidenceGraphFetchStatus =
+  | { kind: "loading" }
+  | { kind: "error" }
+  | { kind: "loaded"; graph: EvidenceGraphView };
+
+/**
+ * Product Convergence Sprint 1 (Investment Case Hierarchy) -- the
+ * Investment Case's analytical chapters.
+ *
+ * Formerly `InvestmentCaseCanonicalSections`, which rendered one flat
+ * stack of fifteen panels plus three catch-all disclosures. The panels
+ * themselves are almost all unchanged; what changed is that each one
+ * now sits under the semantic chapter that owns it, and each chapter is
+ * a stable, addressable destination (`#company`, `#risk`, ...) that
+ * other Atlas surfaces can link into.
+ *
+ * Three rules govern where a panel landed:
+ *
+ * 1. **One authoritative representation per fact.** Where two panels
+ *    stated the same conclusion, the one at the right hierarchy level
+ *    keeps it and the other keeps only the detail it adds.
+ * 2. **Conclusion before machinery, inside every chapter.** A chapter
+ *    opens with what Atlas concluded about that dimension; the evidence
+ *    and the derivation are one disclosure down.
+ * 3. **The destination never disappears.** A chapter with nothing to
+ *    show says so; it does not vanish, because a link pointing at it
+ *    has to keep working.
+ *
+ * Deliberately *not* done here: no recommendation, conviction, risk,
+ * valuation, fit or coverage value is computed, re-derived, thresholded
+ * or reinterpreted. Every value below is read from the same fields the
+ * previous layout read.
+ */
+function InvestmentCaseChapters({
   analysis,
   linkedHolding,
   alphaPortfolioStatus,
-  onViewMoreDetails,
+  portfolioFitStatus,
+  evidenceGraphStatus,
+  forwardContext,
   t,
   locale,
 }: {
   analysis: InvestmentCaseAnalysisView;
   linkedHolding: AlphaHoldingView | null;
   alphaPortfolioStatus: AlphaPortfolioStatus;
-  onViewMoreDetails: () => void;
+  portfolioFitStatus: PortfolioFitFetchStatus;
+  evidenceGraphStatus: EvidenceGraphFetchStatus;
+  /** Verified forward evidence from canonical reasoning. `undefined`
+   * while the decision fetch is in flight, `null` for a case that
+   * carries no reasoning -- the Forward View chapter treats both the
+   * same honest way as "Atlas holds none". */
+  forwardContext: ForwardReasoningContextView | null | undefined;
   t: Translate;
   locale: string;
 }) {
@@ -5884,197 +5973,378 @@ function InvestmentCaseCanonicalSections({
     },
   ];
 
-  /** Atlas UX Phase 7A (Semantic Investment Model, Foundation Sprint)
-   * -- reordered so the four named-in-the-spec sections
-   * (Outlook -> Investment Argument -> Atlas Reasoning -> Evidence)
-   * render first, directly explaining the seven-category bar above
-   * them; every other panel here (deeper Coverage/Knowledge/
-   * Materiality/Explanation/Evidence-Quality/Evidence-Timeline/
-   * Management/Regulatory detail, plus Company Health, Financials,
-   * Company Overview) is real, unremoved "everything else" -- exactly
-   * the detail this sprint's own layout says exists only to explain
-   * the seven categories, now positioned as such rather than ahead of
-   * them. */
+  /* Product Convergence Sprint 1B (Investment Case Compression) -- each
+     chapter's own conclusion, read from the same engine statuses the
+     rest of the page reads. Nothing here is a new judgment: the Company
+     tier is `deriveCompanyRating`'s existing output (the same value the
+     six-dimension strip shows), Valuation is the FCF-yield finding's own
+     status, Risk is `riskProjection` -- the engine's own single
+     representative category -- and Fit is the assessment's own rating.
+     They exist so a deep link lands on an answer rather than on a
+     heading above a closed disclosure. */
+  const companyRating = deriveCompanyRating(analysis.businessAnalysis.findings);
+  const fitAssessment = portfolioFitStatus.kind === "loaded" ? portfolioFitStatus.assessment : null;
+  const forwardSummary = forwardViewSummary(forwardContext, t);
+  const valuationSupportStatus = analysis.valuationSupport.status as ValuationSupportStatus;
+
   return (
     <Stack gap="inter-section">
-      <AtlasOutlookSection outlook={analysis.outlook} latestChanges={analysis.latestChanges} t={t} locale={locale} />
+      {/* ---------- COMPANY ---------- */}
+      {/* The state of the underlying business, and nothing else.
+          Valuation, portfolio fit and forward evidence each have their
+          own chapter and are deliberately not re-read as company
+          quality here.
 
-      <Divider tone="hairline" />
-
-      {/* Canonical Reasoning Consolidation, Phases I and J. These two
-          used to render on the default path, immediately below the
-          Outlook, each producing its own version of "what supports and
-          what opposes this case":
-
-          - `InvestmentArgumentSection` states the same synthesis
-            highlights canonical reasoning already states ("Capital
-            allocation has been disciplined enough to support the case"
-            beside "Stark kapitalallokering"). What it adds is the
-            evidence drill-down behind each one, which is supporting
-            detail, not a second conclusion.
-          - `AtlasReasoningSection`'s four dimension cards (Growth,
-            Valuation, Financial Health, Business Quality) are
-            analytical *inputs*. Left on the default path they asked the
-            reader to synthesise a recommendation that
-            `AtlasInvestmentReasoning` had already synthesised above.
-
-          Both render unchanged and lose no drill-down; they move one
-          disclosure down, so the primary path carries one investment
-          explanation instead of three. */}
-      <ExpandableDetail summaryLabel={t("investmentCase.canonical.supportingAnalysisLabel")}>
-        <Stack gap="inter-section">
-          <InvestmentArgumentSection
-            strengthKinds={strengthKinds}
-            riskKinds={riskKinds}
-            openQuestionOrigins={analysis.keyOpenQuestions.map((q) => q.origin)}
-            factsForKind={factsForHighlightKind}
-            t={t}
-          />
-
-          <Divider tone="hairline" />
-
-          <AtlasReasoningSection input={reasoningInput} t={t} />
-        </Stack>
-      </ExpandableDetail>
-
-      <Divider tone="hairline" />
-
-      <EvidenceSection analysis={analysis} linkedHolding={linkedHolding} onViewMoreDetails={onViewMoreDetails} t={t} />
-
-      <Divider tone="hairline" />
-
-      {/* Convergence Sprint 1B: the evidence/audit layer. Coverage
-          percentages, knowledge-coverage domains, materiality counts,
-          evidence-quality grades and the evidence timeline are how Atlas
-          stays auditable -- they are not how an investor decides. They
-          render unchanged, one disclosure down, so the audit trail is
-          fully inspectable without standing between the reader and the
-          investment case. */}
-      <ExpandableDetail summaryLabel={t("investmentCase.canonical.evidenceAuditLabel")}>
-        <Stack gap="inter-section">
-          <CoveragePanel coverage={analysis.coverage} t={t} />
-
-          {analysis.knowledgeCoverage && (
-            <>
+          Sprint 1B: the five assessment cards moved behind the
+          chapter's disclosure. They are genuinely useful, but five
+          status cards with five summary sentences is analysis, not a
+          conclusion -- and the chapter now states its conclusion in one
+          line above them. */}
+      <Surface tier="primary">
+        <CaseChapter
+          id="company"
+          t={t}
+          status={t(RATING_TIER_LABEL_KEY[companyRating.tier])}
+          statusTone={RATING_TIER_TONE[companyRating.tier]}
+          headline={t(BUSINESS_QUALITY_SUMMARY_KEY[durability?.status ?? "not_evaluated"])}
+        >
+          <ExpandableDetail summaryLabel={t("investmentCase.chapter.showAnalysis")}>
+            <Stack gap="inter-section">
+              <CompanyHealthAssessmentSection cards={companyHealthCards} t={t} />
+              <CaseNarrativeDetailSection analysis={analysis} t={t} />
               <Divider tone="hairline" />
-              <KnowledgeCoveragePanel coverage={analysis.knowledgeCoverage} t={t} />
-            </>
+              {/* Real analytical depth, kept in full. An investor reads
+                  it when investigating a company, not to learn what
+                  Atlas concluded about it. */}
+              <ExpandableDetail summaryLabel={t("investmentCase.canonical.deepAnalysisLabel")}>
+                <Stack gap="inter-section">
+                  <ManagementIntelligencePanel
+                    regulatoryFilings={analysis.regulatoryFilings}
+                    executiveChange={analysis.executiveChangeIntelligence}
+                    trackRecord={analysis.executiveTrackRecordIntelligence}
+                    governance={analysis.governanceIntelligence}
+                    ownership={analysis.ownershipIntelligence}
+                    executiveCompensation={analysis.executiveCompensationIntelligence}
+                    insiderAlignment={analysis.insiderAlignmentIntelligence}
+                    t={t}
+                  />
+                  <Divider tone="hairline" />
+                  <InterpretedFinancialEvidenceSection financialHistory={analysis.financialHistory} t={t} locale={locale} />
+                  <Divider tone="hairline" />
+                  <CompanyOverviewSection
+                    companyProfile={analysis.companyProfile}
+                    marketSnapshot={analysis.marketSnapshot}
+                    t={t}
+                    locale={locale}
+                  />
+                </Stack>
+              </ExpandableDetail>
+            </Stack>
+          </ExpandableDetail>
+        </CaseChapter>
+      </Surface>
+
+      {/* ---------- STRATEGY ---------- */}
+      {/* Honest by construction -- see `StrategySection`'s own module
+          docstring for the repository audit behind this. Sprint 1B:
+          the status badge carries the answer and the body is one
+          tertiary line. A capability Atlas does not have must not cost
+          a card; the `#strategy` destination stays exactly as
+          linkable. */}
+      <Surface tier="primary">
+        <CaseChapter id="strategy" t={t} status={t("investmentCase.strategy.status.notAssessed")}>
+          <StrategySection t={t} />
+        </CaseChapter>
+      </Surface>
+
+      {/* ---------- FORWARD VIEW ---------- */}
+      {/* Sprint 1B: absent forward evidence is a badge and one line.
+          Present forward evidence is a one-line count -- never a
+          judgment about what management said -- with each verified
+          guidance revision and each contracted-volume observation one
+          click down. VST carries 2 guided measures and 4 volume
+          observations; rendering all of them by default was a
+          1,154px evidence wall in the middle of the page. */}
+      <Surface tier="primary">
+        <CaseChapter
+          id="forward-view"
+          t={t}
+          status={forwardSummary.status}
+          headline={forwardSummary.headline ?? t("investmentCase.forwardView.noneShort")}
+        >
+          {forwardSummary.hasEvidence && (
+            <ExpandableDetail summaryLabel={t("investmentCase.forwardView.showEvidence")}>
+              <ForwardViewSection context={forwardContext} t={t} />
+            </ExpandableDetail>
           )}
+        </CaseChapter>
+      </Surface>
 
-          {analysis.materiality && (
-            <>
-              <Divider tone="hairline" />
-              <MaterialityPanel assessment={analysis.materiality} t={t} />
-            </>
-          )}
-
-          {analysis.explanation && (
-            <>
-              <Divider tone="hairline" />
-              <ExplanationPanel explanation={analysis.explanation} t={t} />
-            </>
-          )}
-
-          {analysis.evidenceQualityReport && (
-            <>
-              <Divider tone="hairline" />
-              <EvidenceQualityPanel report={analysis.evidenceQualityReport} t={t} />
-            </>
-          )}
-
-          {analysis.evidenceTimeline && (
-            <>
-              <Divider tone="hairline" />
-              <EvidenceTimelinePanel caseId={analysis.caseId} history={analysis.evidenceTimeline} t={t} />
-            </>
-          )}
-        </Stack>
-      </ExpandableDetail>
-
-      {/* Convergence Sprint 1B: the deep-analysis layer. Management,
-          regulatory, company-health, interpreted financials and the
-          company overview are real analytical depth and are kept in
-          full -- but an investor reads them when investigating, not to
-          learn what Atlas concluded. Unchanged components, one
-          disclosure down. */}
-      <ExpandableDetail summaryLabel={t("investmentCase.canonical.deepAnalysisLabel")}>
-        <Stack gap="inter-section">
-          {/* Product Utilization Sprint 1 (Investment Case Experience
-              Activation). Two new, always-present panels (their own
-              sub-sections handle emptiness individually, the same "real
-              field, honest empty state" shape every other panel here
-              already uses) -- see each panel's own module docstring. */}
-          <Divider tone="hairline" />
-          <ManagementIntelligencePanel
-            regulatoryFilings={analysis.regulatoryFilings}
-            executiveChange={analysis.executiveChangeIntelligence}
-            trackRecord={analysis.executiveTrackRecordIntelligence}
-            governance={analysis.governanceIntelligence}
-            ownership={analysis.ownershipIntelligence}
-            executiveCompensation={analysis.executiveCompensationIntelligence}
-            insiderAlignment={analysis.insiderAlignmentIntelligence}
-            t={t}
-          />
-
-          <Divider tone="hairline" />
-          <RegulatoryIntelligencePanel
-            regulatoryFilings={analysis.regulatoryFilings}
-            riskFactor={analysis.riskFactorIntelligence}
-            legalProceedings={analysis.legalProceedingsIntelligence}
-            t={t}
-          />
-
-          {/* Atlas Intelligence Sprint 7 (Monitoring & Change Detection,
-              Deliverable 13). Deliberately one compact line, not a section
-              -- reuses Evidence Timeline/Materiality above for the full
-              picture; this only reprioritizes/frames it. `latestChangeReason`
-              is a server-generated English sentence (matching how every
-              other `daily_brief_agenda` signal reason already works, since
-              it can carry verbatim investor-authored CaseCondition
-              predicate text that cannot be translated) -- deliberately not
-              shown here, where the rest of the page is fully translated;
-              the status badge alone is enough for a compact line, and the
-              same reason already surfaces, in full, on the Daily Brief
-              agenda item. */}
-          {analysis.monitoring && (
-            <Inline gap="metadata" align="center">
-              <StatusBadge
-                label={t(MONITORING_STATUS_KEY[analysis.monitoring.status])}
-                tone={MONITORING_STATUS_TONE[analysis.monitoring.status]}
+      {/* ---------- VALUATION ---------- */}
+      {/* Sprint 1B: conclusion, current yield and support state on the
+          surface; the machinery behind them one click down. Sensitivity
+          stays inside that disclosure and inside its own -- it is
+          conditional re-rating arithmetic, not a forecast, and its range
+          can be extreme, which is exactly why it may not open the
+          chapter. Nothing about how it is computed changed. */}
+      <Surface tier="primary">
+        <CaseChapter
+          id="valuation"
+          t={t}
+          status={t(VALUATION_STATUS_KEY[valuationStatus])}
+          statusTone={VALUATION_STATUS_TONE[valuationStatus]}
+          headline={
+            fcfYield?.currentYield != null
+              ? `${t("investmentCase.analysis.valuation.currentYieldLabel")}: ${(fcfYield.currentYield * 100).toFixed(1)}%`
+              : null
+          }
+          subheading={`${t("investmentCase.chapter.valuationSupportLabel")}: ${t(
+            VALUATION_SUPPORT_LABEL_KEY[valuationSupportStatus],
+          )}`}
+        >
+          <ExpandableDetail summaryLabel={t("investmentCase.chapter.showAnalysis")}>
+            <Stack gap="inter-section">
+              <ValuationDetailSection analysis={analysis} t={t} locale={locale} />
+              <ValuationSupportCard
+                status={valuationSupportStatus}
+                gap={analysis.valuationSupport.gap as ValuationSupportGapKind | null}
+                t={t}
               />
-            </Inline>
+              <Divider tone="hairline" />
+              {/* `latestChanges` no longer travels with the sensitivity:
+                  the Outlook section's What-Changed block rendered the
+                  top five of the very same list through the very same
+                  `describeChange` as `WhatChangedSection` in the
+                  Timeline tab -- which is the richer and authoritative
+                  one. One representation, the better one; and a
+                  case-wide change feed never belonged inside
+                  Valuation. */}
+              <ExpandableDetail summaryLabel={t("investmentCase.outlook.heading")}>
+                <AtlasOutlookSection outlook={analysis.outlook} showWhatChanged={false} t={t} locale={locale} />
+              </ExpandableDetail>
+            </Stack>
+          </ExpandableDetail>
+        </CaseChapter>
+      </Surface>
+
+      {/* ---------- RISK ---------- */}
+      {/* A first-class chapter, with the engine's own semantic split
+          intact: financial, valuation, business and thesis risk each
+          keep their own status, their own evidence and their own "not
+          evaluated". Nothing is collapsed into a single risk score.
+          `riskProjection` is the engine's own single representative
+          category; it is read, not chosen here.
+
+          The scope line stays on the surface, shortened: it is the one
+          thing that stops the word "Risk" implying macro, geopolitical
+          or causal coverage that no engine computes, so it may not be
+          the thing that gets hidden. */}
+      <Surface tier="primary">
+        <CaseChapter
+          id="risk"
+          t={t}
+          status={t(RISK_STATUS_KEY[analysis.riskProjection.status])}
+          statusTone={RISK_STATUS_TONE[analysis.riskProjection.status]}
+          headline={t("investmentCase.risk.mostImportant", {
+            category: t(RISK_CATEGORY_KEY[analysis.riskProjection.category]),
+            status: t(RISK_STATUS_KEY[analysis.riskProjection.status]),
+          })}
+          subheading={t("investmentCase.risk.scopeNoteShort")}
+        >
+          <ExpandableDetail summaryLabel={t("investmentCase.risk.showAll")}>
+            <Stack gap="inter-section">
+              <RiskSection analysis={analysis} t={t} />
+              <Divider tone="hairline" />
+              {/* Filed risk factors and legal proceedings -- real risk
+                  evidence, kept where a reader investigating risk will
+                  look for it. */}
+              <ExpandableDetail summaryLabel={t("investmentCase.risk.filedEvidenceLabel")}>
+                <RegulatoryIntelligencePanel
+                  regulatoryFilings={analysis.regulatoryFilings}
+                  riskFactor={analysis.riskFactorIntelligence}
+                  legalProceedings={analysis.legalProceedingsIntelligence}
+                  t={t}
+                />
+              </ExpandableDetail>
+            </Stack>
+          </ExpandableDetail>
+        </CaseChapter>
+      </Surface>
+
+      {/* ---------- PORTFOLIO FIT ---------- */}
+      {/* Doctrine preserved literally: fit informs the decision and
+          never overrides case strength. Nothing in this chapter feeds
+          the recommendation -- it is a read of an independently-fetched
+          assessment, exactly as before.
+
+          Sprint 1B: the rating and its one-line verdict are the
+          headline; the dimension rows and the portfolio context
+          (weight, largest position, concentration, cash) are one click
+          down. */}
+      <Surface tier="primary">
+        <CaseChapter
+          id="portfolio-fit"
+          t={t}
+          status={fitAssessment ? t(FIT_RATING_KEY[fitAssessment.overall]) : undefined}
+          statusTone={fitAssessment ? FIT_RATING_TONE[fitAssessment.overall] : "neutral"}
+          headline={fitAssessment ? describeFitVerdict(fitAssessment, t) : null}
+          subheading={t("investmentCase.portfolioFit.doctrine")}
+        >
+          {portfolioFitStatus.kind === "loading" && (
+            <Text role="status" aria-live="polite">
+              {t("portfolioFit.section.loading")}
+            </Text>
           )}
-
-          {/* Atlas Intelligence Sprint 8/9 (Automated Monitoring Operations
-              / Data Ingestion & Automatic Refresh, Deliverable 15/6/7).
-              Deliberately a separate line from the Monitoring status badge
-              above -- operational freshness ("has Atlas recomputed this
-              recently, and did new data even arrive") is never mixed with
-              investment status ("what did Atlas conclude"). */}
-          {analysis.operationalFreshness && (
-            <StatusBadge
-              label={t(DATA_FRESHNESS_STATUS_KEY[analysis.operationalFreshness.dataFreshnessStatus])}
-              tone={DATA_FRESHNESS_STATUS_TONE[analysis.operationalFreshness.dataFreshnessStatus]}
-            />
+          {portfolioFitStatus.kind === "error" && (
+            <Text color="tertiary" role="alert">
+              {t("portfolioFit.section.unavailable")}
+            </Text>
           )}
+          {alphaPortfolioStatus.kind === "loaded" && !linkedHolding && (
+            <Text as="p" color="secondary">
+              {t("investmentCase.portfolioFit.notHeld")}
+            </Text>
+          )}
+          {(fitAssessment !== null || linkedHolding !== null) && (
+            <ExpandableDetail summaryLabel={t("investmentCase.portfolioFit.showAnalysis")}>
+              <Stack gap="inter-section">
+                {portfolioFitStatus.kind === "loaded" && (
+                  <PortfolioFitSection assessment={portfolioFitStatus.assessment} showHeading={false} />
+                )}
+                {linkedHolding && (
+                  <PortfolioContextDetail
+                    linkedHolding={linkedHolding}
+                    alphaPortfolioStatus={alphaPortfolioStatus}
+                    t={t}
+                  />
+                )}
+              </Stack>
+            </ExpandableDetail>
+          )}
+        </CaseChapter>
+      </Surface>
 
-          <Divider tone="hairline" />
+      {/* ---------- EVIDENCE ---------- */}
+      {/* The deepest layer, and the one the default reader never has to
+          open. Coverage is the chapter's status; everything auditable --
+          the record itself, the supporting per-dimension analysis, the
+          coverage/materiality/quality/timeline panels and the evidence
+          graph -- is one disclosure down, unchanged. */}
+      <Surface tier="primary">
+        <CaseChapter
+          id="evidence"
+          t={t}
+          status={t(CONFIDENCE_KEY[analysis.confidence])}
+          statusTone={CONFIDENCE_TONE[analysis.confidence]}
+        >
+          <EvidenceSection analysis={analysis} t={t} />
 
-          <CompanyHealthAssessmentSection cards={companyHealthCards} t={t} />
+          <ExpandableDetail summaryLabel={t("investmentCase.evidence.recordLabel")}>
+            <EvidenceDetailSection analysis={analysis} t={t} />
+          </ExpandableDetail>
 
-          <Divider tone="hairline" />
+          {/* Canonical Reasoning Consolidation, Phases I and J: these
+              two each produce their own version of "what supports and
+              what opposes this case", which canonical reasoning already
+              states once, in the Conclusion. What they add is the
+              evidence drill-down behind each highlight and each
+              analytical dimension -- supporting analysis, which is what
+              this chapter is for. Unchanged components, unchanged
+              drill-down. */}
+          <ExpandableDetail summaryLabel={t("investmentCase.canonical.supportingAnalysisLabel")}>
+            <Stack gap="inter-section">
+              <InvestmentArgumentSection
+                strengthKinds={strengthKinds}
+                riskKinds={riskKinds}
+                openQuestionOrigins={analysis.keyOpenQuestions.map((q) => q.origin)}
+                factsForKind={factsForHighlightKind}
+                t={t}
+              />
+              <Divider tone="hairline" />
+              <AtlasReasoningSection input={reasoningInput} t={t} />
+            </Stack>
+          </ExpandableDetail>
 
-          <InterpretedFinancialEvidenceSection financialHistory={analysis.financialHistory} t={t} locale={locale} />
+          <ExpandableDetail summaryLabel={t("investmentCase.canonical.evidenceAuditLabel")}>
+            <Stack gap="inter-section">
+              <CoveragePanel coverage={analysis.coverage} t={t} />
 
-          <Divider tone="hairline" />
+              {analysis.knowledgeCoverage && (
+                <>
+                  <Divider tone="hairline" />
+                  <KnowledgeCoveragePanel coverage={analysis.knowledgeCoverage} t={t} />
+                </>
+              )}
 
-          <CompanyOverviewSection companyProfile={analysis.companyProfile} marketSnapshot={analysis.marketSnapshot} t={t} locale={locale} />
-        </Stack>
-      </ExpandableDetail>
+              {analysis.materiality && (
+                <>
+                  <Divider tone="hairline" />
+                  <MaterialityPanel assessment={analysis.materiality} t={t} />
+                </>
+              )}
+
+              {analysis.explanation && (
+                <>
+                  <Divider tone="hairline" />
+                  <ExplanationPanel explanation={analysis.explanation} t={t} />
+                </>
+              )}
+
+              {analysis.evidenceQualityReport && (
+                <>
+                  <Divider tone="hairline" />
+                  <EvidenceQualityPanel report={analysis.evidenceQualityReport} t={t} />
+                </>
+              )}
+
+              {analysis.evidenceTimeline && (
+                <>
+                  <Divider tone="hairline" />
+                  <EvidenceTimelinePanel caseId={analysis.caseId} history={analysis.evidenceTimeline} t={t} />
+                </>
+              )}
+
+              {evidenceGraphStatus.kind === "loaded" && (
+                <>
+                  <Divider tone="hairline" />
+                  <EvidenceGraphSection graph={evidenceGraphStatus.graph} t={t} />
+                </>
+              )}
+
+              {/* Atlas Intelligence Sprint 7 (Monitoring & Change
+                  Detection, Deliverable 13). Deliberately one compact
+                  line, not a section. `latestChangeReason` is a
+                  server-generated English sentence and is deliberately
+                  not shown here, where the rest of the page is fully
+                  translated; the status badge alone is enough, and the
+                  same reason already surfaces, in full, on the Daily
+                  Brief agenda item. */}
+              {analysis.monitoring && (
+                <Inline gap="metadata" align="center">
+                  <StatusBadge
+                    label={t(MONITORING_STATUS_KEY[analysis.monitoring.status])}
+                    tone={MONITORING_STATUS_TONE[analysis.monitoring.status]}
+                  />
+                </Inline>
+              )}
+
+              {/* Atlas Intelligence Sprint 8/9. Deliberately a separate
+                  line from the Monitoring status badge above --
+                  operational freshness is never mixed with investment
+                  status. */}
+              {analysis.operationalFreshness && (
+                <StatusBadge
+                  label={t(DATA_FRESHNESS_STATUS_KEY[analysis.operationalFreshness.dataFreshnessStatus])}
+                  tone={DATA_FRESHNESS_STATUS_TONE[analysis.operationalFreshness.dataFreshnessStatus]}
+                />
+              )}
+            </Stack>
+          </ExpandableDetail>
+        </CaseChapter>
+      </Surface>
     </Stack>
   );
 }
-
 /**
  * Business -- Portfolio Context (new subsection: the fuller, uncapped
  * version of Executive Summary's compact Portfolio Impact facts --
@@ -6243,49 +6513,39 @@ const EVIDENCE_GAP_QUESTION_KINDS: OpenQuestionKind[] = [
  */
 function EvidenceSection({
   analysis,
-  linkedHolding,
-  onViewMoreDetails,
   t,
 }: {
   analysis: InvestmentCaseAnalysisView;
-  linkedHolding: AlphaHoldingView | null;
-  onViewMoreDetails: () => void;
   t: Translate;
 }) {
+  /* Product Convergence Sprint 1 (Investment Case Hierarchy): the
+     "View all evidence" link and its `linkedHolding` gate are gone.
+     The link jumped to the More Details tab, which is no longer where
+     the evidence record lives -- `EvidenceDetailSection` is now one
+     disclosure below this headline, inside the same Evidence chapter.
+     The gate also meant a case that was not a portfolio holding had no
+     route to its own evidence at all; now every case does. */
   const missingCount = analysis.openQuestions.filter((q) => EVIDENCE_GAP_QUESTION_KINDS.includes(q.kind)).length;
   const latest = analysis.currentThesis.latestDecisionReason ?? analysis.currentThesis.latestObservationStatement;
 
+  /* Product Convergence Sprint 1B (Investment Case Compression):
+     coverage is the Evidence chapter's own status badge now, so
+     repeating it as "Coverage: Don't know yet" directly underneath was
+     the same fact twice on two adjacent lines. What is left is the one
+     thing the badge cannot say -- how many pieces of evidence are
+     missing -- plus the investor's own latest input where there is
+     one. */
   return (
-    <Stack gap="metadata">
-      <Label>{t("investmentCase.analysis.evidence.heading")}</Label>
-      <Inline gap="inter-section" wrap style={{ justifyContent: "space-between" }}>
-        <Inline gap="row" wrap>
-          <Text as="span" color="secondary">
-            {t("investmentCase.analysis.evidence.coverageLabel")}: {t(CONFIDENCE_KEY[analysis.confidence])}
-          </Text>
-          <Text as="span" color="secondary">
-            {t("investmentCase.analysis.evidence.missingEvidenceHeading")}: {missingCount}
-          </Text>
-          {latest && (
-            <Text as="span" color="secondary">
-              {t("investmentCase.analysis.evidence.latestLabel")}: {latest}
-            </Text>
-          )}
-        </Inline>
-        {linkedHolding && (
-          <Link
-            href="#"
-            style={ACCENT_LINK_STYLE}
-            onClick={(event) => {
-              event.preventDefault();
-              onViewMoreDetails();
-            }}
-          >
-            {t("investmentCase.analysis.evidence.viewAll")}
-          </Link>
-        )}
-      </Inline>
-    </Stack>
+    <Inline gap="row" wrap>
+      <Text as="span" color="secondary">
+        {t("investmentCase.analysis.evidence.missingEvidenceHeading")}: {missingCount}
+      </Text>
+      {latest && (
+        <Text as="span" color="secondary">
+          {t("investmentCase.analysis.evidence.latestLabel")}: {latest}
+        </Text>
+      )}
+    </Inline>
   );
 }
 
@@ -6434,7 +6694,6 @@ function ValuationDetailSection({
 
   return (
     <Stack gap="metadata">
-      <Label>{t("investmentCase.analysis.valuation.heading")}</Label>
       {fcfYield && (
         <Stack gap="metadata">
           <Text as="p">
@@ -6468,36 +6727,53 @@ function ValuationDetailSection({
               {basisKey !== null && ` ${t(basisKey)}`}
             </Text>
           )}
-          {/* Everything the evidence supports, for a reader who wants it:
-              every caveat (the compact reasoning card above shows only
-              the first few) followed by the figures behind them -- the
-              prior-year yield range, how far today's yield is from
-              classifying differently, and how this period's cash flow
-              and capital intensity compare with the years it was
-              compared against. Each line appears only where the
-              statements carry the figures; nothing is imputed. */}
-          {evidenceDetails.map((line) => (
-            <Text color="secondary" as="p" key={line}>
-              {line}
-            </Text>
-          ))}
-          {/* Product Sprint 13 (Company Intelligence Excellence):
-              see `isReadableFact`'s own doc comment -- this field
-              sometimes holds raw, unresolved evidence-reference ids.
-              Product Sprint 14: `capFacts` keeps a fully-resolved,
-              many-observation finding (e.g. FCF Yield, evaluated
-              across a full price/share-count history) readable. */}
-          {capFacts(fcfYield.supportingFacts.filter(isReadableFact)).length > 0 && (
-            <Text color="secondary" as="p">
-              {t("investmentCase.analysis.business.supportingLabel")}:{" "}
-              {capFacts(fcfYield.supportingFacts.filter(isReadableFact)).join(", ")}
-            </Text>
-          )}
-          {fcfYield.missingEvidence.length > 0 && (
-            <Text color="secondary" as="p">
-              {t("investmentCase.analysis.business.missingLabel")}:{" "}
-              {fcfYield.missingEvidence.map((v) => describeGapKind(v, VALUATION_DATA_GAP_KEY, t)).join(", ")}
-            </Text>
+          {/* Product Convergence Sprint 1 (Investment Case Hierarchy):
+              these fifteen-odd lines used to render eagerly, directly
+              under the one-line valuation conclusion -- the machinery
+              ahead of the verdict, which is the exact inversion this
+              chapter exists to fix. Nothing is removed and nothing is
+              summarised away: every caveat and every figure is one
+              click down, in the same order, and the two lines that
+              genuinely qualify the conclusion (history depth, share
+              basis) stay above on the surface.
+
+              It also takes the page's largest remaining block of
+              backend-authored English prose off the default surface
+              (`supportingFacts` is server-generated: "Free cash flow
+              was 54,072,000,000 USD for the period ending
+              2024-12-31."). That is a presentation improvement, not a
+              fix -- the localization debt is unchanged and reported
+              as such. */}
+          {(evidenceDetails.length > 0 ||
+            capFacts(fcfYield.supportingFacts.filter(isReadableFact)).length > 0 ||
+            fcfYield.missingEvidence.length > 0) && (
+            <ExpandableDetail summaryLabel={t("investmentCase.analysis.valuation.evidenceLabel")}>
+              <Stack gap="metadata">
+                {evidenceDetails.map((line) => (
+                  <Text color="secondary" as="p" key={line}>
+                    {line}
+                  </Text>
+                ))}
+                {/* Product Sprint 13 (Company Intelligence Excellence):
+                    see `isReadableFact`'s own doc comment -- this field
+                    sometimes holds raw, unresolved evidence-reference ids.
+                    Product Sprint 14: `capFacts` keeps a fully-resolved,
+                    many-observation finding (e.g. FCF Yield, evaluated
+                    across a full price/share-count history) readable. */}
+                {capFacts(fcfYield.supportingFacts.filter(isReadableFact)).length > 0 && (
+                  <Text color="secondary" as="p">
+                    {t("investmentCase.analysis.business.supportingLabel")}:{" "}
+                    {capFacts(fcfYield.supportingFacts.filter(isReadableFact)).join(", ")}
+                  </Text>
+                )}
+                {fcfYield.missingEvidence.length > 0 && (
+                  <Text color="secondary" as="p">
+                    {t("investmentCase.analysis.business.missingLabel")}:{" "}
+                    {fcfYield.missingEvidence.map((v) => describeGapKind(v, VALUATION_DATA_GAP_KEY, t)).join(", ")}
+                  </Text>
+                )}
+              </Stack>
+            </ExpandableDetail>
           )}
         </Stack>
       )}
@@ -6521,10 +6797,10 @@ function ValuationDetailSection({
 function RiskSection({ analysis, t }: { analysis: InvestmentCaseAnalysisView; t: Translate }) {
   return (
     <Stack gap="metadata">
-      <Label>{t("investmentCase.analysis.risk.heading")}</Label>
-      <Text color="tertiary" as="p">
-        {t("investmentCase.analysis.risk.subheading")}
-      </Text>
+      {/* Product Convergence Sprint 1: the chapter heading and its scope
+          note carry the title and the "every category shown
+          independently" caption that used to render here; the four-
+          category vector below is unchanged. */}
       {/* Product Sprint 11 (Investment Workflow Excellence, Deliverable
           10 -- Page Density): this rendered one full-width row per
           finding regardless of viewport width, unlike its sibling
@@ -6549,21 +6825,39 @@ function RiskSection({ analysis, t }: { analysis: InvestmentCaseAnalysisView; t:
               <Text as="p">
                 {t(RISK_CATEGORY_KEY[finding.category])}: {t(RISK_STATUS_KEY[finding.status])}
               </Text>
-              {supportingFacts.length > 0 && (
-                <Text color="tertiary" as="p">
-                  {t("investmentCase.analysis.business.supportingLabel")}: {supportingFacts.join(", ")}
-                </Text>
-              )}
-              {contradictingFacts.length > 0 && (
-                <Text color="tertiary" as="p">
-                  {t("investmentCase.analysis.business.contradictingLabel")}: {contradictingFacts.join(", ")}
-                </Text>
-              )}
+              {/* What Atlas cannot evaluate for this category stays on
+                  the surface: it qualifies the status beside it, so
+                  hiding it would make an unevaluated category read as a
+                  clean one. */}
               {finding.missingEvidence.length > 0 && (
                 <Text color="tertiary" as="p">
                   {t("investmentCase.analysis.business.missingLabel")}:{" "}
                   {finding.missingEvidence.map((v) => describeGapKind(v, RISK_DATA_GAP_KEY, t)).join(", ")}
                 </Text>
+              )}
+              {/* Product Convergence Sprint 1: the evidence behind each
+                  status, one click down -- matching how every
+                  Company Health card on this page already discloses the
+                  same shape of facts. These are backend-authored English
+                  sentences ("Capital expenditure was 69,691,000,000 USD
+                  ..."), so this also takes them off the default surface
+                  of a Swedish page; the localization debt itself is
+                  unchanged and reported separately. */}
+              {(supportingFacts.length > 0 || contradictingFacts.length > 0) && (
+                <ExpandableDetail summaryLabel={t("investmentCase.companyHealth.expandLabel")}>
+                  <Stack gap="metadata">
+                    {supportingFacts.length > 0 && (
+                      <Text color="tertiary" as="p">
+                        {t("investmentCase.analysis.business.supportingLabel")}: {supportingFacts.join(", ")}
+                      </Text>
+                    )}
+                    {contradictingFacts.length > 0 && (
+                      <Text color="tertiary" as="p">
+                        {t("investmentCase.analysis.business.contradictingLabel")}: {contradictingFacts.join(", ")}
+                      </Text>
+                    )}
+                  </Stack>
+                </ExpandableDetail>
               )}
             </Stack>
           );
@@ -6590,8 +6884,6 @@ function EvidenceDetailSection({ analysis, t }: { analysis: InvestmentCaseAnalys
 
   return (
       <Stack gap="intra-section">
-        <Label>{t("investmentCase.analysis.evidence.heading")}</Label>
-
         {/* Current Thesis -- investor-provided only; Atlas never
             fabricates a thesis narrative of its own. */}
         <Stack gap="intra-section">

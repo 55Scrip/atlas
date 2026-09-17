@@ -559,6 +559,7 @@ export const en = {
   "investmentCase.analysis.business.largestPositionLabel": "Largest position: {{ticker}} ({{percent}}%)",
   "investmentCase.analysis.business.otherCategoriesHeading": "Other Dimensions",
   "investmentCase.analysis.valuation.heading": "Valuation",
+  "investmentCase.analysis.valuation.evidenceLabel": "Show the evidence behind this valuation",
   "investmentCase.analysis.valuation.method.fcf_yield_relative": "FCF Yield (Relative)",
   "investmentCase.analysis.valuation.currentYieldLabel": "Current FCF Yield",
   "investmentCase.analysis.valuation.gap.missingMarketPrice": "Market price is missing.",
@@ -627,7 +628,6 @@ export const en = {
   "investmentCase.analysis.evidence.coverageLabel": "Evidence depth",
   "investmentCase.analysis.evidence.qualityHeading": "Evidence Quality",
   "investmentCase.analysis.evidence.missingEvidenceHeading": "Missing Evidence",
-  "investmentCase.analysis.evidence.viewAll": "View all evidence",
   "investmentCase.analysis.evidence.latestLabel": "Latest",
   "investmentCase.analysis.evidence.noneRecorded": "No Evidence recorded for this Case yet.",
   "investmentCase.analysis.valuationScenarios.heading": "Valuation Scenarios",
@@ -1008,11 +1008,19 @@ export const en = {
   "investmentCase.forwardView.observationsNote":
     "One observation per source statement — the same agreement can appear in more than one, so these are listed, never added up.",
   // Risk -- first-class, and explicit about what it does not cover.
+  "investmentCase.risk.mostImportant": "Most important risk right now: {{category}} — {{status}}.",
+  "investmentCase.risk.filedEvidenceLabel": "Filed risk factors and legal proceedings",
   // Portfolio fit -- doctrine stated where it applies.
+  "investmentCase.portfolioFit.doctrine":
+    "Portfolio fit informs the decision. It never overrides the strength of the case itself.",
+  "investmentCase.portfolioFit.notHeld": "This company is not currently a holding in your portfolio.",
   // Evidence -- the record behind the case.
+  "investmentCase.evidence.recordLabel": "The record behind this case",
   // Sprint 1B (Investment Case Compression) -- chapter headlines and
   // the consistent "show more" ladder. A chapter states its conclusion
   // beside its title; the analysis is one click down.
+  "investmentCase.chapter.showAnalysis": "Show analysis",
+  "investmentCase.chapter.valuationSupportLabel": "Valuation support",
   "investmentCase.strategy.status.notAssessed": "Not yet assessed",
   "investmentCase.strategy.unavailableShort": "Atlas does not yet model how this company creates value.",
   "investmentCase.forwardView.status.none": "None yet",
@@ -1023,6 +1031,9 @@ export const en = {
   "investmentCase.forwardView.count.guidanceOther": "{{count}} guided measures",
   "investmentCase.forwardView.count.volumeOne": "{{count}} contracted-volume observation",
   "investmentCase.forwardView.count.volumeOther": "{{count}} contracted-volume observations",
+  "investmentCase.risk.scopeNoteShort": "Four categories, each assessed on its own. Macro, geopolitical and sector risk are not assessed.",
+  "investmentCase.risk.showAll": "Show all risks",
+  "investmentCase.portfolioFit.showAnalysis": "Show portfolio analysis",
   "investmentCase.actions.recordManuallyLabel": "Record a decision manually",
   "investmentCase.actions.notLinkedNote":
     "Decision actions become available once this case is linked to a portfolio holding.",
