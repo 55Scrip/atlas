@@ -22,6 +22,7 @@ import { StatusBadge } from "../foundation";
 import { dimensionLabel } from "../changeIntelligence/describeChange";
 import type { Translate } from "../changeIntelligence/describeChange";
 import styles from "./WatchlistPage.module.css";
+import { partitionMissingInformation } from "../stance/partitionMissingInformation";
 
 /**
  * Watchlist Doctrine (2026-08-27) -- Watchlist's own, locked question:
@@ -478,10 +479,37 @@ function WatchlistEmptyState({ onAdd, t }: { onAdd: () => void; t: (key: Transla
  * genuinely has what it needs) and is stated as such, never left
  * blank -- monitoring status is always-present, primary content
  * (Phase 9), not a conditional one. */
-function waitingForLine(stance: StanceView, t: Translate): string {
-  if (stance.missingInformation.length === 0) return t("watchlist.table.waitingForNothing");
-  const labels = stance.missingInformation.map((dimension) => dimensionLabel(dimension, t));
-  return t("watchlist.table.waitingForLabel", { items: labels.join(", ") });
+function waitingForLines(stance: StanceView, t: Translate): string[] {
+  if (stance.missingInformation.length === 0) return [t("watchlist.table.waitingForNothing")];
+  // Watchlist Expectation Truth: "waiting for X" is a promise that X can
+  // arrive. MU's only gap was Thesis Risk, which Atlas does not evaluate
+  // for any company -- so the column promised evidence that cannot come,
+  // while MU's own Investment Case said so plainly two clicks away.
+  //
+  // `partitionMissingInformation` is the one place that knows which
+  // dimensions have no evaluator, and Investment Case's own hero already
+  // reads it. Reused here rather than restated: a second copy of that list
+  // would drift, and the two surfaces would start disagreeing again.
+  const { companySpecific, engineUnsupported } = partitionMissingInformation(stance.missingInformation);
+  const lines: string[] = [];
+  if (companySpecific.length > 0) {
+    lines.push(
+      t("watchlist.table.waitingForLabel", {
+        items: companySpecific.map((dimension) => dimensionLabel(dimension, t)).join(", "),
+      }),
+    );
+  }
+  if (engineUnsupported.length > 0) {
+    // Kept even when something waitable exists: the waitable gap explains
+    // what can change next, and this explains what will not, which is the
+    // half the investor cannot find out any other way.
+    lines.push(
+      t("watchlist.table.notYetEvaluatedLabel", {
+        items: engineUnsupported.map((dimension) => dimensionLabel(dimension, t)).join(", "),
+      }),
+    );
+  }
+  return lines;
 }
 
 /** Convergence Sprint 3, Phase J. One honest em dash for every unknown
@@ -708,9 +736,13 @@ function WatchlistTableRow({
       <td style={cellStyle}>{fit ? <FitBadge rating={fit.overall} /> : <UnknownCell t={t} />}</td>
       <td style={{ ...cellStyle, fontFamily: "var(--type-family-prose)", maxWidth: "260px" }}>
         {stance ? (
-          <Text as="span" color="secondary">
-            {waitingForLine(stance, t)}
-          </Text>
+          <Stack gap="metadata">
+            {waitingForLines(stance, t).map((line) => (
+              <Text as="span" color="secondary" key={line}>
+                {line}
+              </Text>
+            ))}
+          </Stack>
         ) : (
           <UnknownCell t={t} />
         )}

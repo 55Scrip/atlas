@@ -1715,6 +1715,7 @@ export const en = {
   "watchlist.table.monitoringSince": "Since {{date}}",
   "watchlist.table.waitingForNothing": "Atlas has what it needs to evaluate this.",
   "watchlist.table.waitingForLabel": "Waiting for: {{items}}",
+  "watchlist.table.notYetEvaluatedLabel": "Atlas does not evaluate this yet: {{items}}",
   "watchlist.table.alsoHeld": "Also in your Portfolio",
   "watchlist.table.rowAriaLabel": "Open Investment Case for {{ticker}}",
   "watchlist.table.notAvailable": "—",

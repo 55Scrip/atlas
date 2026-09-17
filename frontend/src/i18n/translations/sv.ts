@@ -1703,6 +1703,7 @@ export const sv: Record<TranslationKey, string> = {
   "watchlist.table.monitoringSince": "Sedan {{date}}",
   "watchlist.table.waitingForNothing": "Atlas har det som behövs för att utvärdera det här.",
   "watchlist.table.waitingForLabel": "Väntar på: {{items}}",
+  "watchlist.table.notYetEvaluatedLabel": "Atlas utvärderar ännu inte: {{items}}",
   "watchlist.table.alsoHeld": "Även i din portfölj",
   "watchlist.table.rowAriaLabel": "Öppna investeringscase för {{ticker}}",
   "watchlist.table.notAvailable": "—",

@@ -114,7 +114,11 @@ describe("WatchlistPage (Watchlist Doctrine, 2026-08-27 -- Monitoring Workspace)
   });
 
   it("surfaces a real, already-computed missing-information gap as a 'Waiting for' line -- Phase 4", async () => {
-    mockFetch({ stance: stance({ missingInformation: ["thesis_risk"] }) });
+    // `financial_risk` is genuinely waitable: Atlas evaluates it, and this
+    // company's evidence simply has not arrived. `thesis_risk` used to be
+    // the fixture here and is not waitable at all -- see the Expectation
+    // Truth block below.
+    mockFetch({ stance: stance({ missingInformation: ["financial_risk"] }) });
     renderWithProviders(<WatchlistPage />, { route: "/watchlist" });
     await waitFor(() => expect(screen.getByText(/Väntar på:/)).toBeInTheDocument());
   });
@@ -388,5 +392,56 @@ describe("WatchlistPage (Watchlist Doctrine, 2026-08-27 -- Monitoring Workspace)
     await waitFor(() => expect(screen.getAllByText(/^(AAPL|NVDA)$/).length).toBe(2));
     const tickerCells = screen.getAllByText(/^(AAPL|NVDA)$/);
     expect(tickerCells.map((el) => el.textContent)).toEqual(["AAPL", "NVDA"]);
+  });
+});
+
+
+/**
+ * Watchlist Expectation Truth. MU's only gap is Thesis Risk, which Atlas
+ * does not evaluate for any company -- `DIMENSIONS_ATLAS_CANNOT_YET_EVALUATE`
+ * has said so since Data Coverage & Decision Honesty. The column promised
+ * evidence that cannot arrive, while MU's own Investment Case said exactly
+ * the opposite two clicks away.
+ */
+describe("WatchlistPage -- waiting means it can still arrive", () => {
+  it("does not say it is waiting for something Atlas cannot evaluate", async () => {
+    mockFetch({ stance: stance({ missingInformation: ["thesis_risk"] }) });
+    renderWithProviders(<WatchlistPage />, { route: "/watchlist" });
+    await waitFor(() =>
+      expect(screen.getByText(/Atlas utvärderar ännu inte: Tesrisk/)).toBeInTheDocument(),
+    );
+    expect(screen.queryByText(/Väntar på:/)).not.toBeInTheDocument();
+  });
+
+  it("says both when one gap can arrive and another cannot", async () => {
+    mockFetch({ stance: stance({ missingInformation: ["financial_risk", "thesis_risk"] }) });
+    renderWithProviders(<WatchlistPage />, { route: "/watchlist" });
+    await waitFor(() => expect(screen.getByText(/Väntar på:/)).toBeInTheDocument());
+    // The waitable gap explains what can change next; the capability line
+    // explains what will not, and the investor cannot learn that anywhere
+    // else on this page.
+    expect(screen.getByText(/Atlas utvärderar ännu inte:/)).toBeInTheDocument();
+  });
+
+  it("never names an unevaluable dimension as something being waited for", async () => {
+    mockFetch({ stance: stance({ missingInformation: ["financial_risk", "thesis_risk"] }) });
+    renderWithProviders(<WatchlistPage />, { route: "/watchlist" });
+    await waitFor(() => expect(screen.getByText(/Väntar på:/)).toBeInTheDocument());
+    expect(screen.getByText(/Väntar på:/).textContent).not.toContain("Tesrisk");
+  });
+
+  it("never prints a raw dimension code", async () => {
+    const { container } = renderWithProviders(<WatchlistPage />, { route: "/watchlist" });
+    mockFetch({ stance: stance({ missingInformation: ["thesis_risk"] }) });
+    await waitFor(() => expect(container.textContent).not.toContain("thesis_risk"));
+  });
+
+  it("keeps the calm confirmation when nothing is missing at all", async () => {
+    mockFetch({ stance: stance({ missingInformation: [] }) });
+    renderWithProviders(<WatchlistPage />, { route: "/watchlist" });
+    await waitFor(() =>
+      expect(screen.getByText("Atlas har det som behövs för att utvärdera det här.")).toBeInTheDocument(),
+    );
+    expect(screen.queryByText(/Atlas utvärderar ännu inte:/)).not.toBeInTheDocument();
   });
 });
