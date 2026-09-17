@@ -1000,12 +1000,29 @@ export const en = {
   // Strategy -- honestly unavailable. Atlas has no company-strategy
   // representation; see `StrategySection`'s own module docstring.
   // Forward view -- verified forward evidence only.
+  "investmentCase.forwardView.caption":
+    "Statements management has made about the future, verified against their own sources. Not a forecast, and not a reason for or against the recommendation.",
+  "investmentCase.forwardView.guidanceLabel": "Management guidance",
+  "investmentCase.forwardView.contractedVolumeLabel": "Contracted customer volume",
+  "investmentCase.forwardView.statedIn": "Stated in {{period}}",
+  "investmentCase.forwardView.observationsNote":
+    "One observation per source statement — the same agreement can appear in more than one, so these are listed, never added up.",
   // Risk -- first-class, and explicit about what it does not cover.
   // Portfolio fit -- doctrine stated where it applies.
   // Evidence -- the record behind the case.
   // Sprint 1B (Investment Case Compression) -- chapter headlines and
   // the consistent "show more" ladder. A chapter states its conclusion
   // beside its title; the analysis is one click down.
+  "investmentCase.strategy.status.notAssessed": "Not yet assessed",
+  "investmentCase.strategy.unavailableShort": "Atlas does not yet model how this company creates value.",
+  "investmentCase.forwardView.status.none": "None yet",
+  "investmentCase.forwardView.status.present": "Verified",
+  "investmentCase.forwardView.noneShort": "No verified guidance or contracted volume from this company's filings or calls.",
+  "investmentCase.forwardView.showEvidence": "Show forward evidence",
+  "investmentCase.forwardView.count.guidanceOne": "{{count}} guided measure",
+  "investmentCase.forwardView.count.guidanceOther": "{{count}} guided measures",
+  "investmentCase.forwardView.count.volumeOne": "{{count}} contracted-volume observation",
+  "investmentCase.forwardView.count.volumeOther": "{{count}} contracted-volume observations",
   "investmentCase.actions.recordManuallyLabel": "Record a decision manually",
   "investmentCase.actions.notLinkedNote":
     "Decision actions become available once this case is linked to a portfolio holding.",

@@ -982,7 +982,24 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.chapter.portfolioFit": "Portföljpassform",
   "investmentCase.chapter.evidence": "Underlag",
   "investmentCase.chapterNav.label": "Kapitel i det här caset",
+  "investmentCase.forwardView.caption":
+    "Uttalanden ledningen gjort om framtiden, verifierade mot sina egna källor. Inte en prognos, och inget skäl för eller emot rekommendationen.",
+  "investmentCase.forwardView.guidanceLabel": "Ledningens guidning",
+  "investmentCase.forwardView.contractedVolumeLabel": "Kontrakterad kundvolym",
+  "investmentCase.forwardView.statedIn": "Uttalat {{period}}",
+  "investmentCase.forwardView.observationsNote":
+    "En observation per källuttalande — samma avtal kan förekomma i flera, så de listas och summeras aldrig.",
   // Sprint 1B (Investment Case Compression)
+  "investmentCase.strategy.status.notAssessed": "Inte bedömd än",
+  "investmentCase.strategy.unavailableShort": "Atlas modellerar ännu inte hur bolaget skapar värde.",
+  "investmentCase.forwardView.status.none": "Saknas än",
+  "investmentCase.forwardView.status.present": "Verifierat",
+  "investmentCase.forwardView.noneShort": "Ingen verifierad guidning eller kontrakterad volym ur bolagets rapporter eller samtal.",
+  "investmentCase.forwardView.showEvidence": "Visa framåtblickande underlag",
+  "investmentCase.forwardView.count.guidanceOne": "{{count}} guidat mått",
+  "investmentCase.forwardView.count.guidanceOther": "{{count}} guidade mått",
+  "investmentCase.forwardView.count.volumeOne": "{{count}} observation av kontrakterad volym",
+  "investmentCase.forwardView.count.volumeOther": "{{count}} observationer av kontrakterad volym",
   "investmentCase.actions.recordManuallyLabel": "Registrera ett beslut manuellt",
   "investmentCase.actions.notLinkedNote":
     "Beslutsåtgärder blir tillgängliga när det här caset kopplas till ett portföljinnehav.",
