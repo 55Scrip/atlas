@@ -46,6 +46,7 @@ import { invalidateAlphaPortfolio, setAlphaPortfolioData, useAlphaPortfolio } fr
 import { fetchMonitoringStatus, type MonitoringOperationalStatusView } from "../monitoring/monitoringApi";
 import { sortHoldings, type HoldingSortKey } from "../portfolio/sortHoldings";
 import styles from "./PortfolioPage.module.css";
+import { selectOpportunity } from "../portfolio/opportunityEligibility";
 
 /** Alpha Integration Fix (One Product Pass): Portfolio no longer treats
  * the shared `/api/daily-brief-agenda` fetch (filtered to
@@ -592,7 +593,23 @@ export function PortfolioPage() {
    * evaluated, or the single evaluated holding would have to serve as
    * both its own biggest risk and biggest opportunity. */
   const fitEvaluated = fitAssessments.filter((a) => a.overall !== "unavailable");
-  const biggestOpportunity = fitEvaluated[0] ?? null;
+  /** Portfolio Opportunity / Action Consistency: the opportunity headline
+   * used to be `fitEvaluated[0]` -- the best Portfolio Fit and nothing
+   * else -- which announced ASSA-B as "today's biggest opportunity" while
+   * its own Case said there was nothing to act on. Fit says how well a
+   * holding suits the portfolio; only the Decision Layer says whether
+   * Atlas supports doing anything. Eligibility now reads that, and fit
+   * only orders the holdings that pass. Risk selection is unchanged. */
+  const decisionSupportForHeadline = new Map<string, DecisionSupportLevel>();
+  if (cockpit.kind === "loaded") {
+    for (const holding of cockpit.report.holdings) {
+      if (holding.decisionSupport) {
+        decisionSupportForHeadline.set(holding.ticker, holding.decisionSupport.level);
+      }
+    }
+  }
+  const opportunity = selectOpportunity(fitEvaluated, decisionSupportForHeadline);
+  const biggestOpportunity = opportunity.holding;
   const biggestRisk = fitEvaluated.length > 1 ? fitEvaluated[fitEvaluated.length - 1]! : null;
   const hasDistinctRiskAndOpportunity =
     biggestOpportunity !== null && biggestRisk !== null && biggestOpportunity.ticker !== biggestRisk.ticker;
@@ -788,6 +805,7 @@ export function PortfolioPage() {
                 You Were Here and the top limiting factor on Investment
                 Case. No new fetch, no new fit computation. */}
             <TodaysBiggestRiskOpportunity
+              opportunityKind={opportunity.kind}
               biggestOpportunity={hasDistinctRiskAndOpportunity ? biggestOpportunity : null}
               biggestRisk={hasDistinctRiskAndOpportunity ? biggestRisk : null}
               agendaItemByTicker={agendaItemByTicker}
@@ -1411,12 +1429,18 @@ function TodaysRiskOpportunityCard({
 }
 
 function TodaysBiggestRiskOpportunity({
+  opportunityKind,
   biggestOpportunity,
   biggestRisk,
   agendaItemByTicker,
   onOpenCase,
   t,
 }: {
+  /** Whether Atlas supports adding to the named holding, or whether it is
+   * merely the strongest-fitting one. The card's own label depends on it:
+   * "opportunity" is a claim about action, and must not be made when the
+   * Decision Layer has not made it. */
+  opportunityKind: "supported_action" | "strongest_setup";
   biggestOpportunity: PortfolioFitAssessmentView | null;
   biggestRisk: PortfolioFitAssessmentView | null;
   agendaItemByTicker: Map<string, AgendaItemView>;
@@ -1434,7 +1458,11 @@ function TodaysBiggestRiskOpportunity({
       }}
     >
       <TodaysRiskOpportunityCard
-        label={t("portfolio.todaysFocus.biggestOpportunityLabel")}
+        label={t(
+          opportunityKind === "supported_action"
+            ? "portfolio.todaysFocus.biggestOpportunityLabel"
+            : "portfolio.todaysFocus.strongestSetupLabel",
+        )}
         tone="opportunity"
         assessment={biggestOpportunity}
         agendaItem={agendaItemByTicker.get(biggestOpportunity.ticker)}

@@ -229,6 +229,7 @@ export const en = {
 
   // ---------- Redesign From Zero Sprint V2 ----------
   "portfolio.todaysFocus.biggestOpportunityLabel": "Today's biggest opportunity",
+  "portfolio.todaysFocus.strongestSetupLabel": "Strongest underlying setup — no new action supported today",
   "portfolio.todaysFocus.biggestRiskLabel": "Today's biggest risk",
   "portfolio.todaysFocus.whatChangedLabel": "What changed",
 

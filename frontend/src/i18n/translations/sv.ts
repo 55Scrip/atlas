@@ -233,6 +233,7 @@ export const sv: Record<TranslationKey, string> = {
 
   // ---------- Redesign From Zero Sprint V2 ----------
   "portfolio.todaysFocus.biggestOpportunityLabel": "Dagens största möjlighet",
+  "portfolio.todaysFocus.strongestSetupLabel": "Starkast underliggande förutsättningar — ingen ny åtgärd stöds idag",
   "portfolio.todaysFocus.biggestRiskLabel": "Dagens största risk",
   "portfolio.todaysFocus.whatChangedLabel": "Vad som ändrats",
 

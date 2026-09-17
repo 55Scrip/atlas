@@ -558,3 +558,54 @@ describe("PortfolioPage -- Daily Brief Agenda loading reliability (Reliability F
     expect(screen.getAllByText(/Inga betydande förändringar/).length).toBeGreaterThan(0);
   });
 });
+
+
+/**
+ * Portfolio Opportunity / Action Consistency. The headline used to be the
+ * best Portfolio Fit and nothing else, so it announced ASSA-B as "today's
+ * biggest opportunity" while ASSA-B's own Case said there was nothing to
+ * act on. Fit describes suitability; only the Decision Layer describes
+ * whether Atlas supports doing anything.
+ */
+describe("PortfolioPage -- opportunity means a supported action", () => {
+  /** ASSA-B fits best and is withheld; MA fits next and is the one Atlas
+   * supports adding to -- the real shape that produced the contradiction. */
+  const withheldBestFit = {
+    cockpitHoldings: [
+      cockpitHolding({ ticker: "ASSA-B", caseId: "case-assa", weightPercent: 3, decisionSupport: { level: "insufficient_evidence", badgeLabel: "", statement: "" } }),
+      cockpitHolding({ ticker: "MA", caseId: "case-ma", weightPercent: 3, decisionSupport: { level: "increase_supported", badgeLabel: "", statement: "" } }),
+      cockpitHolding({ ticker: "VST", caseId: "case-vst", weightPercent: 3, decisionSupport: { level: "reduction_supported", badgeLabel: "", statement: "" } }),
+    ],
+    fitAssessments: [
+      fitAssessment({ ticker: "ASSA-B", caseId: "case-assa", overall: "excellent", currentWeightPercent: 3 }),
+      fitAssessment({ ticker: "MA", caseId: "case-ma", overall: "excellent", currentWeightPercent: 3 }),
+      fitAssessment({ ticker: "VST", caseId: "case-vst", overall: "poor", currentWeightPercent: 3 }),
+    ],
+  };
+
+  it("names the holding Atlas supports adding to, not the best-fitting withheld one", async () => {
+    mockFetch(withheldBestFit);
+    renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
+    await waitFor(() => expect(screen.getByText("Dagens största möjlighet")).toBeInTheDocument());
+    // "MA" also appears in the holdings table, so the assertion is scoped
+    // to the card the label belongs to.
+    const card = screen.getByText("Dagens största möjlighet").closest("div");
+    expect(card?.textContent).toContain("MA");
+    expect(card?.textContent).not.toContain("ASSA-B");
+  });
+
+  it("does not call it an opportunity when no holding has a supported action", async () => {
+    mockFetch({
+      cockpitHoldings: [
+        cockpitHolding({ ticker: "ASSA-B", caseId: "case-assa", weightPercent: 3, decisionSupport: { level: "insufficient_evidence", badgeLabel: "", statement: "" } }),
+        cockpitHolding({ ticker: "VST", caseId: "case-vst", weightPercent: 3, decisionSupport: { level: "reduction_supported", badgeLabel: "", statement: "" } }),
+      ],
+      fitAssessments: withheldBestFit.fitAssessments.filter((f) => f.ticker !== "MA"),
+    });
+    renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
+    await waitFor(() =>
+      expect(screen.getByText(/Starkast underliggande förutsättningar/)).toBeInTheDocument(),
+    );
+    expect(screen.queryByText("Dagens största möjlighet")).not.toBeInTheDocument();
+  });
+});
