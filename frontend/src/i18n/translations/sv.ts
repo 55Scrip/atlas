@@ -230,6 +230,8 @@ export const sv: Record<TranslationKey, string> = {
   "portfolio.pulse.largestPositionLabel": "Största position",
   "portfolio.pulse.largestPositionValue": "{{ticker}} ({{percent}}%)",
   "portfolio.pulse.concentrationLabel": "Koncentration",
+  "portfolio.reductionExposure.summary": "Atlas stöder minskad exponering i {{count}} innehav — {{percent}} % av portföljvärdet: {{holdings}}",
+  "portfolio.reductionExposure.notASellTarget": "Det är hur stor del av portföljen som ligger i de positionerna, inte ett belopp Atlas föreslår att sälja.",
 
   // ---------- Redesign From Zero Sprint V2 ----------
   "portfolio.todaysFocus.biggestOpportunityLabel": "Dagens största möjlighet",

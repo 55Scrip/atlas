@@ -226,6 +226,8 @@ export const en = {
   "portfolio.pulse.largestPositionLabel": "Largest Position",
   "portfolio.pulse.largestPositionValue": "{{ticker}} ({{percent}}%)",
   "portfolio.pulse.concentrationLabel": "Concentration",
+  "portfolio.reductionExposure.summary": "Atlas supports reducing exposure in {{count}} holdings — {{percent}}% of portfolio value: {{holdings}}",
+  "portfolio.reductionExposure.notASellTarget": "That is how much of the portfolio sits in those positions, not an amount Atlas suggests selling.",
 
   // ---------- Redesign From Zero Sprint V2 ----------
   "portfolio.todaysFocus.biggestOpportunityLabel": "Today's biggest opportunity",

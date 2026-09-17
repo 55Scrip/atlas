@@ -47,6 +47,7 @@ import { fetchMonitoringStatus, type MonitoringOperationalStatusView } from "../
 import { sortHoldings, type HoldingSortKey } from "../portfolio/sortHoldings";
 import styles from "./PortfolioPage.module.css";
 import { selectOpportunity } from "../portfolio/opportunityEligibility";
+import { reductionExposure, type ReductionExposure } from "../portfolio/reductionExposure";
 
 /** Alpha Integration Fix (One Product Pass): Portfolio no longer treats
  * the shared `/api/daily-brief-agenda` fetch (filtered to
@@ -609,6 +610,12 @@ export function PortfolioPage() {
     }
   }
   const opportunity = selectOpportunity(fitEvaluated, decisionSupportForHeadline);
+  /** Portfolio Reduction-Exposure Aggregation: each row already says
+   * "Reduction supported" and each Case agrees, but the share of the
+   * portfolio they add up to was never stated, so reading it meant
+   * scanning for one enum and adding weights by hand. Counts what the
+   * Decision Layer already published; decides nothing. */
+  const reduction = reductionExposure(cockpit.kind === "loaded" ? cockpit.report.holdings : []);
   const biggestOpportunity = opportunity.holding;
   const biggestRisk = fitEvaluated.length > 1 ? fitEvaluated[fitEvaluated.length - 1]! : null;
   const hasDistinctRiskAndOpportunity =
@@ -804,6 +811,7 @@ export function PortfolioPage() {
                 right after" shape this codebase already uses for Since
                 You Were Here and the top limiting factor on Investment
                 Case. No new fetch, no new fit computation. */}
+            <ReductionExposureNote exposure={reduction} t={t} />
             <TodaysBiggestRiskOpportunity
               opportunityKind={opportunity.kind}
               biggestOpportunity={hasDistinctRiskAndOpportunity ? biggestOpportunity : null}
@@ -1425,6 +1433,43 @@ function TodaysRiskOpportunityCard({
         </div>
       </Stack>
     </Surface>
+  );
+}
+
+/**
+ * One line of portfolio-level truth: how much of the portfolio currently
+ * sits in holdings Atlas supports reducing.
+ *
+ * Quiet when there is nothing to say -- a portfolio with no supported
+ * reductions renders nothing here rather than a reassuring "0%", which
+ * would be a claim of its own.
+ *
+ * The second sentence is not decoration. "21% of the portfolio is held in
+ * positions Atlas supports reducing" and "Atlas recommends selling 21% of
+ * the portfolio" are different statements, and the first is the only one
+ * Atlas can make -- it does not size trades anywhere.
+ */
+function ReductionExposureNote({
+  exposure,
+  t,
+}: {
+  exposure: ReductionExposure;
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
+}) {
+  if (exposure.count === 0) return null;
+  return (
+    <Stack gap="metadata">
+      <Text as="p">
+        {t("portfolio.reductionExposure.summary", {
+          percent: exposure.weightPercent.toFixed(1),
+          count: exposure.count,
+          holdings: exposure.tickers.join(" · "),
+        })}
+      </Text>
+      <Text as="p" color="tertiary">
+        {t("portfolio.reductionExposure.notASellTarget")}
+      </Text>
+    </Stack>
   );
 }
 

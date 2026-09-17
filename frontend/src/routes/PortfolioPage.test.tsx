@@ -609,3 +609,57 @@ describe("PortfolioPage -- opportunity means a supported action", () => {
     expect(screen.queryByText("Dagens största möjlighet")).not.toBeInTheDocument();
   });
 });
+
+
+/**
+ * Portfolio Reduction-Exposure Aggregation. Each row already said
+ * "Reduction supported" and each Case agreed; the share of the portfolio
+ * they add up to was never stated anywhere.
+ */
+describe("PortfolioPage -- reduction-supported exposure", () => {
+  const reducing = (ticker: string, weightPercent: number) =>
+    cockpitHolding({
+      ticker,
+      caseId: `case-${ticker}`,
+      weightPercent,
+      decisionSupport: { level: "reduction_supported", badgeLabel: "", statement: "" },
+    });
+
+  it("states the total, the count and the holdings without manual arithmetic", async () => {
+    mockFetch({
+      cockpitHoldings: [
+        reducing("AMZN", 6.6163),
+        reducing("GOOG", 5.181),
+        cockpitHolding({ ticker: "MSFT", caseId: "case-msft", weightPercent: 7.5636, decisionSupport: { level: "thesis_intact", badgeLabel: "", statement: "" } }),
+      ],
+    });
+    renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
+    await waitFor(() => expect(screen.getByText(/minskad exponering/)).toBeInTheDocument());
+    const line = screen.getByText(/minskad exponering/).textContent ?? "";
+    expect(line).toContain("11.8");   // 6.6163 + 5.181, MSFT excluded
+    expect(line).toContain("AMZN");
+    expect(line).toContain("GOOG");
+    expect(line).not.toContain("MSFT");
+  });
+
+  it("says plainly that it is not an amount to sell", async () => {
+    mockFetch({ cockpitHoldings: [reducing("AMZN", 6.6163)] });
+    renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
+    await waitFor(() =>
+      expect(screen.getByText(/inte ett belopp Atlas föreslår att sälja/)).toBeInTheDocument(),
+    );
+  });
+
+  it("stays quiet when no holding has a supported reduction", async () => {
+    mockFetch({
+      cockpitHoldings: [
+        cockpitHolding({ ticker: "MSFT", caseId: "case-msft", weightPercent: 50, decisionSupport: { level: "thesis_intact", badgeLabel: "", statement: "" } }),
+      ],
+    });
+    renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
+    // "Innehav" appears in more than one place; wait on something unique
+    // to a rendered page instead.
+    await waitFor(() => expect(screen.getByText("Totalt portföljvärde")).toBeInTheDocument());
+    expect(screen.queryByText(/minskad exponering/)).not.toBeInTheDocument();
+  });
+});
