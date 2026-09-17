@@ -259,6 +259,41 @@ export const en = {
   // save, and calling it unsaved would imply these edits are expected
   // to become real. Nothing here is a trade, and none of this wording
   // may suggest one was made.
+  // ---------- Portfolio Assessment v1 ----------
+  // Describes portfolio properties; never recommends. "Valuation risk
+  // improved" is a property. "Therefore buy MA" would be a Decision
+  // Layer output, and nothing here is qualified to add one.
+  "portfolio.assessment.heading": "Portfolio assessment",
+  "portfolio.assessment.caption":
+    "Properties of the portfolio as a whole, weighted by position size. Not a recommendation.",
+  "portfolio.assessment.method":
+    "Concentration uses Atlas's own thresholds. Risk exposures are reported as the share of portfolio value involved, with the share Atlas could not assess beside it — Atlas sets no standard for how much is too much.",
+  "portfolio.assessment.factorHeader": "Factor",
+  "portfolio.assessment.currentHeader": "Current",
+  "portfolio.assessment.afterHeader": "After change",
+  "portfolio.assessment.effectHeader": "Effect",
+  "portfolio.assessment.atlasSeesHeader": "What Atlas sees",
+  "portfolio.assessment.dimension.concentration": "Concentration",
+  "portfolio.assessment.dimension.valuationRisk": "Valuation-risk exposure",
+  "portfolio.assessment.dimension.financialRisk": "Financial-risk exposure",
+  "portfolio.assessment.status.low": "Low",
+  "portfolio.assessment.status.moderate": "Moderate",
+  "portfolio.assessment.status.elevated": "Elevated",
+  "portfolio.assessment.status.high": "High",
+  "portfolio.assessment.status.not_assessed": "Not assessed",
+  // Spelled out, never colour or an arrow alone.
+  "portfolio.assessment.effect.improved": "Improved",
+  "portfolio.assessment.effect.worsened": "Worsened",
+  "portfolio.assessment.effect.unchanged": "Unchanged",
+  "portfolio.assessment.effect.notComparable": "Not comparable",
+  "portfolio.assessment.concentration.evidence": "Largest {{ticker}} {{largest}}, top five {{topFive}}",
+  "portfolio.assessment.risk.evidence": "{{high}} of portfolio rated high",
+  "portfolio.assessment.coverage": "{{unassessed}} not assessed",
+  // Arithmetic attribution only -- the edited position that moved most.
+  // Never a causal claim; Atlas has no causal model.
+  "portfolio.assessment.drivenBy": "mainly {{ticker}} {{from}} → {{to}}",
+  "portfolio.assessment.notAssessedNote":
+    "Sector and geographic diversification, expected return, volatility and thematic exposures are not assessed: Atlas has no sector data, country data covers 58% of portfolio value, and no return-series or causal model exists.",
   "portfolio.simulation.active": "Hypothetical",
   "portfolio.simulation.changeCountOne": "{{count}} change explored",
   "portfolio.simulation.changeCountOther": "{{count}} changes explored",

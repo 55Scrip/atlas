@@ -35,7 +35,14 @@ const VIEW = {
   awaitingReconciliation: false,
 };
 
-function cockpitHolding(ticker: string, caseId: string, weightPercent: number, level: string) {
+function cockpitHolding(
+  ticker: string,
+  caseId: string,
+  weightPercent: number,
+  level: string,
+  valuationRisk = "high",
+  financialRisk = "low",
+) {
   return {
     ticker,
     caseId,
@@ -56,7 +63,12 @@ function cockpitHolding(ticker: string, caseId: string, weightPercent: number, l
     ],
     forwardEvidence: null,
     riskProjection: { category: "valuation_risk", status: "high" },
-    riskFindings: [],
+    riskFindings: [
+      { category: "valuation_risk", status: valuationRisk },
+      { category: "financial_risk", status: financialRisk },
+      { category: "business_risk", status: "moderate" },
+      { category: "thesis_risk", status: "insufficient_input" },
+    ],
     confidence: "not_applicable",
     isThesisStale: false,
     attention: { priority: "standard_review", reasons: [] },
@@ -69,9 +81,13 @@ function cockpitHolding(ticker: string, caseId: string, weightPercent: number, l
 }
 
 const COCKPIT = [
-  cockpitHolding("META", "case-meta", 40, "reduction_supported"),
-  cockpitHolding("MA", "case-ma", 35, "increase_supported"),
-  cockpitHolding("MSFT", "case-msft", 25, "thesis_intact"),
+  // META: high valuation risk, low financial risk -- the position whose
+  // removal should visibly move valuation-risk exposure.
+  cockpitHolding("META", "case-meta", 40, "reduction_supported", "high", "low"),
+  cockpitHolding("MA", "case-ma", 35, "increase_supported", "low", "low"),
+  // MSFT: Atlas could not evaluate its valuation risk. The honesty
+  // control -- this weight must never count as low.
+  cockpitHolding("MSFT", "case-msft", 25, "thesis_intact", "insufficient_input", "low"),
 ];
 
 let fetchMock: ReturnType<typeof vi.fn>;
@@ -404,6 +420,129 @@ describe("simulation -- one canonical state", () => {
     // Total value is conserved throughout: value moved, it did not
     // disappear.
     expect(page()).toContain("$1,000,000");
+  });
+});
+
+describe("portfolio assessment", () => {
+  /** The assessment row for a factor, by its visible name. */
+  function factor(name: string) {
+    const cell = [...document.querySelectorAll("td")].find((td) => td.textContent?.trim() === name);
+    return (cell!.closest("tr") as HTMLTableRowElement).textContent ?? "";
+  }
+
+  it("states the current portfolio's properties before any edit", async () => {
+    renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
+    await screen.findByRole("button", { name: "Öppna METAs vy" });
+
+    expect(screen.getByText("Portföljbedömning")).toBeInTheDocument();
+    // META is 40% -- past Atlas's own canonical 35% "high" line, the
+    // one dimension whose label comes from existing doctrine.
+    expect(factor("Koncentration")).toContain("Hög");
+    expect(factor("Koncentration")).toContain("META 40.0%");
+    // META alone carries high valuation risk, reported numerically.
+    expect(factor("Exponering mot värderingsrisk")).toContain("40.0% av portföljen bedömd som hög");
+    // MSFT's 25% could not be evaluated, and says so rather than
+    // counting as low.
+    expect(factor("Exponering mot värderingsrisk")).toContain("25.0% inte bedömd");
+    // No "After change" column until something is explored.
+    expect(screen.queryByText("Efter ändring")).not.toBeInTheDocument();
+  });
+
+  it("shows current, after and effect once a change is explored", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
+    await screen.findByRole("button", { name: "Öppna METAs vy" });
+
+    await reduce(user, "META", 2); // 40% -> 32%
+    expect(screen.getByText("Efter ändring")).toBeInTheDocument();
+
+    // Valuation-risk exposure falls and says so in words, not by colour
+    // or an arrow alone.
+    const valuation = factor("Exponering mot värderingsrisk");
+    expect(valuation).toContain("40.0% av portföljen bedömd som hög → 32.0%");
+    expect(valuation).toContain("Förbättrad");
+    // Attribution names the position that moved, with its real weights.
+    expect(valuation).toContain("främst META 40.0% → 32.0%");
+
+    // Concentration improves too: the largest position is now 35% MA.
+    const concentration = factor("Koncentration");
+    expect(concentration).toContain("MA 35.0%");
+    expect(concentration).toContain("Förbättrad");
+  });
+
+  it("states the exposure as a number, never as an invented band", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
+    await screen.findByRole("button", { name: "Öppna METAs vy" });
+
+    // Concentration carries a word because Atlas's own 35/25/75 ladder
+    // is existing doctrine. The exposures carry numbers, because Atlas
+    // has never set a standard for how much high-rated exposure is too
+    // much -- a band here would have invented one.
+    expect(factor("Koncentration")).toContain("Hög");
+    const before = factor("Exponering mot värderingsrisk");
+    expect(before).toContain("40.0%");
+    expect(before).not.toMatch(/Förhöjd|Måttlig|Inte bedömd/);
+
+    await reduce(user, "META", 10);
+    const after = factor("Exponering mot värderingsrisk");
+    // Thin coverage is disclosed beside the numbers rather than
+    // blocking them: 25% of the portfolio has no valuation-risk verdict
+    // and the row says so, while still reporting what it did measure.
+    expect(after).toContain("40.0%");
+    expect(after).toContain("0.0%");
+    expect(after).toContain("Förbättrad");
+    expect(after).toContain("25.0% inte bedömd");
+  });
+
+  it("does not let a removed holding keep contributing", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
+    await screen.findByRole("button", { name: "Öppna METAs vy" });
+    await reduce(user, "META", 10);
+    // The mutation this kills: a position at zero still counted in the
+    // exposure it no longer creates.
+    expect(factor("Exponering mot värderingsrisk")).toContain("→ 0.0%");
+    // And out of concentration: MA becomes the largest position.
+    expect(factor("Koncentration")).toContain("MA 35.0%");
+  });
+
+  it("treats a small reduction proportionally, not as a dramatic swing", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
+    await screen.findByRole("button", { name: "Öppna METAs vy" });
+    await reduce(user, "META", 1); // 40% -> 36%
+    const valuation = factor("Exponering mot värderingsrisk");
+    expect(valuation).toContain("40.0% av portföljen bedömd som hög → 36.0%");
+    // A real 4-point move, so it is reported -- but the band is
+    // unchanged, and the row says both.
+    expect(valuation).toContain("Förbättrad");
+    expect(factor("Koncentration")).toContain("Hög");
+  });
+
+  it("returns exactly to the current assessment on reset", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
+    await screen.findByRole("button", { name: "Öppna METAs vy" });
+    const before = factor("Exponering mot värderingsrisk");
+    await reduce(user, "META", 4);
+    await user.click(screen.getByRole("button", { name: "Återställ till nuvarande portfölj" }));
+    // No stale "After change" column, no stale comparison.
+    expect(screen.queryByText("Efter ändring")).not.toBeInTheDocument();
+    expect(factor("Exponering mot värderingsrisk")).toBe(before);
+  });
+
+  it("assesses no dimension Atlas has no data for", async () => {
+    renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
+    await screen.findByRole("button", { name: "Öppna METAs vy" });
+    const page = document.body.textContent ?? "";
+    // No fabricated expected return, volatility, thematic exposure or
+    // single overall score -- and the page says why they are absent.
+    expect(page).not.toMatch(/Förväntad avkastning|Volatilitet|AI-beroende|Ränte känslighet|Portföljbetyg/);
+    expect(page).toContain("bedöms inte");
+    // Sector and geography are named as unassessed rather than shown as
+    // rows promising a dimension Atlas has no path to.
+    expect(page).toMatch(/Sektor- och geografisk spridning/);
   });
 });
 

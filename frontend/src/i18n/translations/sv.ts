@@ -255,6 +255,35 @@ export const sv: Record<TranslationKey, string> = {
   // ---------- holdings table (Portfolio Workspace v1) ----------
   // ---------- Portfolio Holdings Cockpit v1 ----------
   // ---------- Portfolio Editing & Simulation Layer v1 ----------
+  // ---------- Portfolio Assessment v1 ----------
+  "portfolio.assessment.heading": "Portföljbedömning",
+  "portfolio.assessment.caption":
+    "Egenskaper hos portföljen som helhet, viktade efter positionsstorlek. Ingen rekommendation.",
+  "portfolio.assessment.method":
+    "Koncentration använder Atlas egna tröskelvärden. Riskexponeringar redovisas som den andel av portföljvärdet som berörs, med den andel Atlas inte kunnat bedöma bredvid — Atlas sätter ingen gräns för vad som är för mycket.",
+  "portfolio.assessment.factorHeader": "Faktor",
+  "portfolio.assessment.currentHeader": "Nuvarande",
+  "portfolio.assessment.afterHeader": "Efter ändring",
+  "portfolio.assessment.effectHeader": "Effekt",
+  "portfolio.assessment.atlasSeesHeader": "Vad Atlas ser",
+  "portfolio.assessment.dimension.concentration": "Koncentration",
+  "portfolio.assessment.dimension.valuationRisk": "Exponering mot värderingsrisk",
+  "portfolio.assessment.dimension.financialRisk": "Exponering mot finansiell risk",
+  "portfolio.assessment.status.low": "Låg",
+  "portfolio.assessment.status.moderate": "Måttlig",
+  "portfolio.assessment.status.elevated": "Förhöjd",
+  "portfolio.assessment.status.high": "Hög",
+  "portfolio.assessment.status.not_assessed": "Inte bedömd",
+  "portfolio.assessment.effect.improved": "Förbättrad",
+  "portfolio.assessment.effect.worsened": "Försämrad",
+  "portfolio.assessment.effect.unchanged": "Oförändrad",
+  "portfolio.assessment.effect.notComparable": "Går inte att jämföra",
+  "portfolio.assessment.concentration.evidence": "Störst {{ticker}} {{largest}}, topp fem {{topFive}}",
+  "portfolio.assessment.risk.evidence": "{{high}} av portföljen bedömd som hög",
+  "portfolio.assessment.coverage": "{{unassessed}} inte bedömd",
+  "portfolio.assessment.drivenBy": "främst {{ticker}} {{from}} → {{to}}",
+  "portfolio.assessment.notAssessedNote":
+    "Sektor- och geografisk spridning, förväntad avkastning, volatilitet och tematiska exponeringar bedöms inte: Atlas saknar sektordata, landdata täcker 58 % av portföljvärdet, och det finns ingen avkastningshistorik eller kausal modell.",
   "portfolio.simulation.active": "Hypotetiskt",
   "portfolio.simulation.changeCountOne": "{{count}} förändring utforskad",
   "portfolio.simulation.changeCountOther": "{{count}} förändringar utforskade",

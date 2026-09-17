@@ -77,6 +77,20 @@ import { reductionExposure, type ReductionExposure } from "../portfolio/reductio
  * from the same `hypothetical`, so none of them can disagree about what
  * the investor is currently exploring. See `simulationModel.ts` for the
  * economic model and the audit that chose it. */
+/** Portfolio Assessment v1 -- the feedback half of portfolio
+ * exploration. One pure assessment function, applied to the current and
+ * the hypothetical portfolio, then compared. See `assessmentModel.ts`
+ * for which dimensions are supported and why the others are absent. */
+import {
+  assessPortfolio,
+  comparePortfolioAssessments,
+  mainContributor,
+  type AssessmentDimension,
+  type AssessmentEvidence,
+  type ChangeDirection,
+  type PortfolioAssessmentComparison,
+  type RiskLevel,
+} from "../portfolioAssessment/assessmentModel";
 import {
   applyPortfolioEdits,
   availableCapital,
@@ -273,6 +287,13 @@ interface PortfolioCockpitHoldingView {
    * never polarity, never a forecast. */
   forwardEvidence?: { guidanceCount: number; contractedVolumeCount: number } | null;
   riskProjection: CockpitRiskProjectionView;
+  /** Portfolio Assessment v1 -- the full four-category risk vector the
+   * backend has always sent. `riskProjection` above is only the single
+   * highest-severity category; a weighted portfolio exposure needs each
+   * category's own verdict, including the `insufficient_input` ones it
+   * must never treat as low. Optional so a payload written before this
+   * read is a legacy payload rather than a crash. */
+  riskFindings?: { category: CockpitRiskCategory; status: CockpitRiskStatus }[];
   confidence: EvidenceCoverageLevel;
   isThesisStale: boolean;
   attention: CockpitAttentionView;
@@ -641,6 +662,26 @@ export function PortfolioPage() {
   const hypothetical = applyPortfolioEdits(simulationBase, edits);
   const hypotheticalByKey = new Map(hypothetical.holdings.map((h) => [h.key, h]));
 
+  /* Portfolio Assessment v1. The current portfolio is the hypothetical
+     one with no edits, so both sides go through the same function and
+     cannot drift apart. Evidence is the risk verdicts the cockpit
+     report already carries -- nothing is fetched and no risk level is
+     re-derived here. */
+  const assessmentEvidence: AssessmentEvidence = {
+    riskByTicker: new Map(
+      (cockpit.kind === "loaded" ? cockpit.report.holdings : []).map((holding) => {
+        const levelOf = (category: CockpitRiskCategory): RiskLevel =>
+          ((holding.riskFindings ?? []).find((f) => f.category === category)?.status as RiskLevel | undefined) ??
+          "not_evaluated";
+        return [holding.ticker, { valuation: levelOf("valuation_risk"), financial: levelOf("financial_risk") }];
+      }),
+    ),
+  };
+  const assessmentComparison = comparePortfolioAssessments(
+    assessPortfolio(applyPortfolioEdits(simulationBase, {}), assessmentEvidence),
+    assessPortfolio(hypothetical, assessmentEvidence),
+  );
+
   /* One canonical state, read by everything that participates in the
      simulation. `holdings` below is the *hypothetical* holdings list,
      so largest position, the concentration summary and the allocation
@@ -991,6 +1032,22 @@ export function PortfolioPage() {
                   onResetSimulation={() => setEdits(resetSimulation())}
                   t={t}
                 />
+
+                {/* Portfolio Assessment v1 -- directly beneath the
+                    cockpit, following the page's own hierarchy: summary
+                    and action area, then the holdings, then what those
+                    holdings add up to. Secondary to the cockpit by
+                    design, but the row that changed is easy to find
+                    when a simulation is active. */}
+                {cockpit.kind === "loaded" && (
+                  <PortfolioAssessmentSection
+                    comparison={assessmentComparison}
+                    hypothetical={hypothetical}
+                    evidence={assessmentEvidence}
+                    isDirty={hypothetical.isDirty}
+                    t={t}
+                  />
+                )}
               </div>
               {/* Deliverable 2, step 4: Allocation / Concentration --
                   paired beside Holdings rather than stacked below it, so
@@ -2610,6 +2667,228 @@ function SimulationButton({
     </button>
   );
 }
+
+
+/**
+ * Portfolio Assessment v1 -- a compact matrix beneath the Holdings
+ * Cockpit.
+ *
+ * With no edits it states the portfolio's current properties. With
+ * edits it states Current, After change and the Effect, so a
+ * hypothetical edit immediately answers "what changed in my portfolio
+ * because of this?".
+ *
+ * It describes; it never recommends. "Valuation risk improved" is a
+ * property of the portfolio. "Therefore buy MA" would be a Decision
+ * Layer output, and nothing here is qualified to add one.
+ *
+ * Sector and geographic diversification are deliberately absent rather
+ * than shown as "Not assessed" rows: no sector column exists anywhere
+ * in the database, and country covers 58% of weight with the missing
+ * 42% being precisely the non-US holdings. A row promising a dimension
+ * Atlas has no path to is a worse answer than no row.
+ */
+function PortfolioAssessmentSection({
+  comparison,
+  hypothetical,
+  evidence,
+  isDirty,
+  t,
+}: {
+  comparison: PortfolioAssessmentComparison;
+  hypothetical: HypotheticalPortfolio;
+  evidence: AssessmentEvidence;
+  isDirty: boolean;
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
+}) {
+  const cellStyle: CSSProperties = {
+    padding: "4px 6px",
+    textAlign: "left",
+    borderBottom: `var(--width-border-hairline) solid var(--color-border-hairline)`,
+    fontFamily: "var(--type-family-metadata)",
+    fontVariantNumeric: "tabular-nums",
+    fontSize: "13px",
+    lineHeight: 1.25,
+    verticalAlign: "top",
+  };
+  const headerCellStyle: CSSProperties = {
+    ...cellStyle,
+    color: "var(--color-text-tertiary)",
+    fontWeight: 500,
+    fontSize: "11px",
+    letterSpacing: "0.04em",
+    textTransform: "uppercase",
+    borderBottom: `var(--width-border-standard) solid var(--color-border-standard)`,
+  };
+  const pct = (value: number) => `${value.toFixed(1)}%`;
+  /** Concentration's band only -- the one dimension with existing Atlas
+   * doctrine behind its thresholds. */
+  const statusLabel = (value: string) => t(ASSESSMENT_STATUS_KEY[value] ?? "portfolio.assessment.status.not_assessed");
+
+  const rows: {
+    dimension: AssessmentDimension;
+    labelKey: TranslationKey;
+    /** What the Current / After cells show. Concentration shows its
+     * qualitative band, because Atlas has real doctrine behind it. The
+     * risk exposures show the number itself -- Atlas has never set a
+     * standard for how much high-rated exposure is too much, and a band
+     * invented here would have implied one. */
+    now: string;
+    after: string;
+    evidenceNow: string;
+    evidenceAfter: string;
+    coverage: string | null;
+  }[] = [
+    {
+      dimension: "concentration",
+      labelKey: "portfolio.assessment.dimension.concentration",
+      now: statusLabel(comparison.current.concentration.level),
+      after: statusLabel(comparison.hypothetical.concentration.level),
+      evidenceNow: t("portfolio.assessment.concentration.evidence", {
+        ticker: comparison.current.concentration.largestTicker ?? "—",
+        largest: pct(comparison.current.concentration.largestWeightPercent),
+        topFive: pct(comparison.current.concentration.topFiveWeightPercent),
+      }),
+      evidenceAfter: t("portfolio.assessment.concentration.evidence", {
+        ticker: comparison.hypothetical.concentration.largestTicker ?? "—",
+        largest: pct(comparison.hypothetical.concentration.largestWeightPercent),
+        topFive: pct(comparison.hypothetical.concentration.topFiveWeightPercent),
+      }),
+      coverage: null,
+    },
+    {
+      dimension: "valuationRisk",
+      labelKey: "portfolio.assessment.dimension.valuationRisk",
+      now: pct(comparison.current.valuationRisk.highWeightPercent),
+      after: pct(comparison.hypothetical.valuationRisk.highWeightPercent),
+      evidenceNow: t("portfolio.assessment.risk.evidence", {
+        high: pct(comparison.current.valuationRisk.highWeightPercent),
+      }),
+      evidenceAfter: t("portfolio.assessment.risk.evidence", {
+        high: pct(comparison.hypothetical.valuationRisk.highWeightPercent),
+      }),
+      coverage:
+        comparison.hypothetical.valuationRisk.unassessedWeightPercent > 0
+          ? t("portfolio.assessment.coverage", {
+              unassessed: pct(comparison.hypothetical.valuationRisk.unassessedWeightPercent),
+            })
+          : null,
+    },
+    {
+      dimension: "financialRisk",
+      labelKey: "portfolio.assessment.dimension.financialRisk",
+      now: pct(comparison.current.financialRisk.highWeightPercent),
+      after: pct(comparison.hypothetical.financialRisk.highWeightPercent),
+      evidenceNow: t("portfolio.assessment.risk.evidence", {
+        high: pct(comparison.current.financialRisk.highWeightPercent),
+      }),
+      evidenceAfter: t("portfolio.assessment.risk.evidence", {
+        high: pct(comparison.hypothetical.financialRisk.highWeightPercent),
+      }),
+      coverage:
+        comparison.hypothetical.financialRisk.unassessedWeightPercent > 0
+          ? t("portfolio.assessment.coverage", {
+              unassessed: pct(comparison.hypothetical.financialRisk.unassessedWeightPercent),
+            })
+          : null,
+    },
+  ];
+
+  return (
+    <Stack gap="metadata">
+      <Label>{t("portfolio.assessment.heading")}</Label>
+      <Text as="p" color="tertiary" style={{ fontSize: "11px" }}>
+        {t("portfolio.assessment.caption")}
+      </Text>
+      <div style={{ overflowX: "auto", minWidth: 0 }}>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr>
+              <th style={headerCellStyle}>{t("portfolio.assessment.factorHeader")}</th>
+              <th style={headerCellStyle}>{t("portfolio.assessment.currentHeader")}</th>
+              {isDirty && <th style={headerCellStyle}>{t("portfolio.assessment.afterHeader")}</th>}
+              {isDirty && <th style={headerCellStyle}>{t("portfolio.assessment.effectHeader")}</th>}
+              <th style={headerCellStyle}>{t("portfolio.assessment.atlasSeesHeader")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => {
+              const change = comparison.changes.find((c) => c.dimension === row.dimension)!;
+              const contributor = isDirty ? mainContributor(hypothetical, row.dimension, evidence) : null;
+              return (
+                <tr key={row.dimension}>
+                  <td style={cellStyle}>{t(row.labelKey)}</td>
+                  <td style={cellStyle}>{row.now}</td>
+                  {isDirty && <td style={cellStyle}>{row.after}</td>}
+                  {isDirty && (
+                    <td style={cellStyle}>
+                      {/* Never colour or an arrow alone: the effect is
+                          spelled out, because "improved" and "worsened"
+                          are the whole point of the column. */}
+                      <Text as="span" color={change.direction === "unchanged" ? "tertiary" : "primary"}>
+                        {t(CHANGE_DIRECTION_KEY[change.direction])}
+                      </Text>
+                    </td>
+                  )}
+                  <td style={cellStyle}>
+                    <Text as="span" color="tertiary" style={{ fontSize: "11px" }}>
+                      {/* Only show both sides when they actually
+                          differ. An unchanged factor was rendering its
+                          evidence twice, verbatim, either side of an
+                          arrow -- noise that made the rows that did
+                          change harder to find. */}
+                      {isDirty && row.evidenceAfter !== row.evidenceNow
+                        ? `${row.evidenceNow} → ${row.evidenceAfter}`
+                        : row.evidenceAfter}
+                      {row.coverage ? ` · ${row.coverage}` : ""}
+                      {/* Arithmetic attribution only: the edited
+                          position whose weight moved most and which the
+                          engine had already rated high for this risk.
+                          Never a causal claim -- Atlas has no causal
+                          model, and this must not imply one. */}
+                      {contributor && change.direction !== "unchanged"
+                        ? ` · ${t("portfolio.assessment.drivenBy", {
+                            ticker: contributor.ticker,
+                            from: pct(contributor.baseWeightPercent),
+                            to: pct(contributor.hypotheticalWeightPercent),
+                          })}`
+                        : ""}
+                    </Text>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <Text as="p" color="tertiary" style={{ fontSize: "11px" }}>
+        {t("portfolio.assessment.method")}
+      </Text>
+      <Text as="p" color="tertiary" style={{ fontSize: "11px" }}>
+        {t("portfolio.assessment.notAssessedNote")}
+      </Text>
+    </Stack>
+  );
+}
+
+/** Assessment bands share one small vocabulary. Concentration and the
+ * risk exposures are semantically different scales that happen to use
+ * the same words, which is why each dimension's own model decides its
+ * band and this only translates the result. */
+const ASSESSMENT_STATUS_KEY: Record<string, TranslationKey> = {
+  low: "portfolio.assessment.status.low",
+  moderate: "portfolio.assessment.status.moderate",
+  elevated: "portfolio.assessment.status.elevated",
+  high: "portfolio.assessment.status.high",
+  not_assessed: "portfolio.assessment.status.not_assessed",
+};
+
+const CHANGE_DIRECTION_KEY: Record<ChangeDirection, TranslationKey> = {
+  improved: "portfolio.assessment.effect.improved",
+  worsened: "portfolio.assessment.effect.worsened",
+  unchanged: "portfolio.assessment.effect.unchanged",
+  not_comparable: "portfolio.assessment.effect.notComparable",
+};
 
 /** The quiet em-dash. Used where Atlas holds nothing at all for a
  * dimension -- distinct from `NotAssessedCell`, which says Atlas looked
