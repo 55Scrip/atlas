@@ -294,6 +294,23 @@ export const en = {
   "portfolio.assessment.drivenBy": "mainly {{ticker}} {{from}} → {{to}}",
   "portfolio.assessment.notAssessedNote":
     "Sector and geographic diversification, expected return, volatility and thematic exposures are not assessed: Atlas has no sector data, country data covers 58% of portfolio value, and no return-series or causal model exists.",
+  // ---------- Position Editor v1 ----------
+  // Exploration, never a trade: no "buy", "sell", "order" or "execute"
+  // anywhere in this vocabulary.
+  "portfolio.editor.open": "Edit position",
+  "portfolio.editor.title": "{{ticker}} — hypothetical position",
+  "portfolio.editor.currentPosition": "Current position",
+  "portfolio.editor.activeHypothetical": "Hypothetical position",
+  "portfolio.editor.targetValue": "Target position value",
+  "portfolio.editor.targetValueAria": "Target position value for {{ticker}}",
+  "portfolio.editor.setToZero": "Remove from simulation",
+  "portfolio.editor.restore": "Restore current position",
+  "portfolio.editor.impactHeading": "Portfolio impact",
+  "portfolio.editor.positionValue": "Position value",
+  "portfolio.editor.weight": "Portfolio weight",
+  "portfolio.editor.unallocated": "Unallocated capital",
+  "portfolio.editor.capitalLimit": "Limited by available unallocated capital ({{available}}).",
+  "portfolio.editor.apply": "Apply to simulation",
   // Portfolio Fit, restricted to what is genuinely about the portfolio.
   "portfolio.fit.positionSizeOnly": "position size only",
   "portfolio.simulation.active": "Hypothetical",

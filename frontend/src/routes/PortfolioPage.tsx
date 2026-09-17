@@ -1024,10 +1024,12 @@ export function PortfolioPage() {
                   onOpenEditPortfolio={openReplaceForm}
                   hypothetical={hypothetical}
                   simulationUsesValue={simulationUsesValue}
+                  simulationBase={simulationBase}
+                  edits={edits}
+                  assessmentEvidence={assessmentEvidence}
                   onEditPosition={(key, value, baseValue) =>
                     setEdits((current) => setPosition(current, key, value, baseValue))
                   }
-                  onResetPosition={(key) => setEdits((current) => resetPosition(current, key))}
                   onResetSimulation={() => setEdits(resetSimulation())}
                   t={t}
                 />
@@ -1898,8 +1900,10 @@ function HoldingsTable({
   onOpenEditPortfolio,
   hypothetical,
   simulationUsesValue,
+  simulationBase,
+  edits,
+  assessmentEvidence,
   onEditPosition,
-  onResetPosition,
   onResetSimulation,
   t,
 }: {
@@ -1916,8 +1920,10 @@ function HoldingsTable({
   /** Whether the editable quantum is money or weight -- see the page's
    * own derivation. Decides only which unit the row renders. */
   simulationUsesValue: boolean;
+  simulationBase: PortfolioSimulationBase;
+  edits: PortfolioEdits;
+  assessmentEvidence: AssessmentEvidence;
   onEditPosition: (key: string, value: number, baseValue: number) => void;
-  onResetPosition: (key: string) => void;
   onResetSimulation: () => void;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
@@ -1963,6 +1969,10 @@ function HoldingsTable({
    * other keys remain cheap client-side re-sorts over data already on
    * the page, no new fetch. */
   const [sortKey, setSortKey] = useState<HoldingSortKey>("weight");
+  /** At most one Position Editor open at a time, keyed by holding
+   * identity. Local to the table: a draft that survives closing the
+   * popover would be a change the investor did not make. */
+  const [openEditorKey, setOpenEditorKey] = useState<string | null>(null);
   /* Position Editor v1 / semantic cleanup: the cockpit reads the
      *allocation* dimension, not the overall verdict.
      
@@ -2188,9 +2198,13 @@ function HoldingsTable({
                     openInvestmentCase={openInvestmentCase}
                     simulated={hypothetical.holdings.find((h) => h.key === holdingKey(holding))}
                     simulationUsesValue={simulationUsesValue}
-                    availableToInvest={availableCapital(hypothetical)}
+                    simulationBase={simulationBase}
+                    edits={edits}
+                    assessmentEvidence={assessmentEvidence}
+                    isEditorOpen={openEditorKey === holdingKey(holding)}
+                    onOpenEditor={() => setOpenEditorKey(holdingKey(holding))}
+                    onCloseEditor={() => setOpenEditorKey(null)}
                     onEditPosition={onEditPosition}
-                    onResetPosition={onResetPosition}
                     cellStyle={cellStyle}
                     t={t}
                   />
@@ -2311,9 +2325,13 @@ function HoldingsTableRow({
   openInvestmentCase,
   simulated,
   simulationUsesValue,
-  availableToInvest,
+  simulationBase,
+  edits,
+  assessmentEvidence,
+  isEditorOpen,
+  onOpenEditor,
+  onCloseEditor,
   onEditPosition,
-  onResetPosition,
   cellStyle,
   t,
 }: {
@@ -2338,9 +2356,16 @@ function HoldingsTableRow({
   /** Unallocated capital available to fund an increase right now. The
    * `+` control disables at zero rather than letting the model silently
    * clamp an edit the investor asked for. */
-  availableToInvest: number;
+  /** Inputs the editor's preview needs: the base portfolio and the
+   * whole active edit set, so a preview starts from the portfolio as it
+   * currently stands rather than from the persisted baseline. */
+  simulationBase: PortfolioSimulationBase;
+  edits: PortfolioEdits;
+  assessmentEvidence: AssessmentEvidence;
+  isEditorOpen: boolean;
+  onOpenEditor: () => void;
+  onCloseEditor: () => void;
   onEditPosition: (key: string, value: number, baseValue: number) => void;
-  onResetPosition: (key: string) => void;
   cellStyle: CSSProperties;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
@@ -2611,57 +2636,278 @@ function HoldingsTableRow({
         </LinkedCell>
       </td>
 
-      {/* Simulation controls. Hypothetical only: none of these calls a
-          portfolio endpoint, records a trade or writes Decision Memory.
-          `stopPropagation` keeps a control from also opening the
-          Investment Case the row itself links to. */}
-      <td style={cellStyle} onClick={(event) => event.stopPropagation()}>
+      {/* One compact action, replacing the pair of steppers that used
+          to sit in every row. The editor is where a position is
+          explored; the row stays a scanning surface. Hypothetical only:
+          nothing here calls a portfolio endpoint, records a trade or
+          writes Decision Memory. */}
+      <td
+        style={{ ...cellStyle, position: "relative" }}
+        onClick={(event) => event.stopPropagation()}
+      >
         {simulated && (
-          <Inline gap="metadata" style={{ gap: "2px" }} align="center">
-            {/* The unit is on the control, not only in its accessible
-                name. A bare "−" reads as "one share" -- and Atlas holds
-                no share counts for any of these holdings, so that would
-                be the one interpretation the data cannot support.
-                "−10%" says what the click actually does: move the
-                position by a tenth of its *persisted* size. */}
-            <SimulationButton
-              label={t("portfolio.simulation.stepDown")}
-              title={t("portfolio.simulation.reduceLabel", { ticker: holding.ticker })}
-              disabled={simulated.hypotheticalValue <= 0}
-              onClick={() =>
-                onEditPosition(
-                  simulated.key,
-                  simulated.hypotheticalValue - editStep(simulated.baseValue),
-                  simulated.baseValue,
-                )
-              }
-            />
-            <SimulationButton
-              label={t("portfolio.simulation.stepUp")}
-              title={t("portfolio.simulation.increaseLabel", { ticker: holding.ticker })}
-              /* Fully invested means nothing to invest with until
-                 something is reduced. Disabling says so plainly rather
-                 than accepting the click and quietly clamping it. */
-              disabled={availableToInvest <= 0}
-              onClick={() =>
-                onEditPosition(
-                  simulated.key,
-                  simulated.hypotheticalValue + editStep(simulated.baseValue),
-                  simulated.baseValue,
-                )
-              }
-            />
-            {simulated.isChanged && (
-              <SimulationButton
-                label={t("portfolio.simulation.restoreGlyph")}
-                title={t("portfolio.simulation.restoreLabel", { ticker: holding.ticker })}
-                onClick={() => onResetPosition(simulated.key)}
+          <>
+            <Button variant="tertiary" onClick={onOpenEditor} aria-expanded={isEditorOpen}>
+              {t("portfolio.editor.open")}
+            </Button>
+            {isEditorOpen && (
+              <PositionEditor
+                holding={holding}
+                simulated={simulated}
+                base={simulationBase}
+                edits={edits}
+                evidence={assessmentEvidence}
+                onApply={(value) => {
+                  onEditPosition(simulated.key, value, simulated.baseValue);
+                  onCloseEditor();
+                }}
+                onClose={onCloseEditor}
+                t={t}
               />
             )}
-          </Inline>
+          </>
         )}
       </td>
     </tr>
+  );
+}
+
+
+/**
+ * Position Editor v1 -- a compact popover for exploring one position.
+ *
+ * Replaces the persistent `−10%` / `+10%` buttons that sat in every
+ * row. Those proved the simulation architecture but made the cockpit
+ * noisier the more it could do, and a pair of bare steppers is a poor
+ * way to say "set this position to 90,000".
+ *
+ * Three properties this has to keep, and a test pins each:
+ *
+ * 1. **Opening edits nothing.** The draft lives here; the simulation is
+ *    untouched until Apply. Cancel and Escape discard it.
+ * 2. **The preview starts from the portfolio as it currently stands.**
+ *    `applyPortfolioEdits(base, {...edits, [key]: draft})` -- the whole
+ *    active simulation plus this draft, so editing VST after removing
+ *    META previews against a portfolio without META.
+ * 3. **It is exploration, never a trade.** No persistence, no order, no
+ *    execution vocabulary anywhere in its copy.
+ *
+ * The unit is the position's value, because `quantity` and `price` are
+ * null for every holding in the real portfolio -- the editor has a
+ * target-value field and ±10% convenience steps, both denominated in
+ * money the portfolio actually states. The architecture takes the
+ * target as a number, so a share mode can be added later wherever real
+ * quantities exist without changing the model beneath it.
+ */
+function PositionEditor({
+  holding,
+  simulated,
+  base,
+  edits,
+  evidence,
+  onApply,
+  onClose,
+  t,
+}: {
+  holding: HoldingView;
+  simulated: HypotheticalHolding;
+  base: PortfolioSimulationBase;
+  edits: PortfolioEdits;
+  evidence: AssessmentEvidence;
+  onApply: (value: number) => void;
+  onClose: () => void;
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
+}) {
+  /** The draft target, as typed. Held as a string so a half-typed value
+   * does not snap under the cursor; parsed for the preview. */
+  const [draft, setDraft] = useState(() => String(Math.round(simulated.hypotheticalValue)));
+  const parsed = Number.parseFloat(draft.replace(/\s/g, "").replace(",", "."));
+  const target = Number.isFinite(parsed) ? Math.max(0, parsed) : simulated.hypotheticalValue;
+
+  /* The preview: the whole active simulation, plus this draft, run
+     through the same pure functions the page itself uses. Nothing is
+     mutated -- `applyPortfolioEdits` takes the edit set by value, so
+     this cannot reach the live simulation before Apply. */
+  const previewEdits = setPosition(edits, simulated.key, target, simulated.baseValue);
+  const preview = applyPortfolioEdits(base, previewEdits);
+  const previewHolding = preview.holdings.find((h) => h.key === simulated.key)!;
+  const comparison = comparePortfolioAssessments(
+    assessPortfolio(applyPortfolioEdits(base, edits), evidence),
+    assessPortfolio(preview, evidence),
+  );
+
+  const current = applyPortfolioEdits(base, edits);
+  const headroom = availableCapital(current);
+  const step = editStep(simulated.baseValue);
+  const money = (value: number) => formatCurrency(value);
+  const pct = (value: number) => `${value.toFixed(1)}%`;
+
+  function impactRow(label: string, now: string, after: string) {
+    return (
+      <Inline key={label} gap="row" align="baseline" style={{ justifyContent: "space-between" }}>
+        <Text as="span" color="tertiary" style={{ fontSize: "11px" }}>
+          {label}
+        </Text>
+        <Text as="span" style={{ fontSize: "11px", fontVariantNumeric: "tabular-nums" }}>
+          {now === after ? now : `${now} → ${after}`}
+        </Text>
+      </Inline>
+    );
+  }
+
+  const valuation = comparison.changes.find((c) => c.dimension === "valuationRisk")!;
+  const financial = comparison.changes.find((c) => c.dimension === "financialRisk")!;
+
+  return (
+    <div
+      role="dialog"
+      aria-label={t("portfolio.editor.title", { ticker: holding.ticker })}
+      onClick={(event) => event.stopPropagation()}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.stopPropagation();
+          onClose();
+        }
+      }}
+      style={{
+        position: "absolute",
+        right: 0,
+        zIndex: 20,
+        width: "min(320px, calc(100vw - 32px))",
+        background: "var(--surface-panel)",
+        border: `var(--width-border-hairline) solid var(--color-border-standard)`,
+        borderRadius: "var(--radius-card)",
+        boxShadow: "var(--elevation-card-shadow)",
+        padding: "var(--space-row)",
+        textAlign: "left",
+        cursor: "default",
+      }}
+    >
+      <Stack gap="metadata">
+        <Text as="p" style={{ fontWeight: 600 }}>
+          {t("portfolio.editor.title", { ticker: holding.ticker })}
+        </Text>
+
+        {/* What is really held, always visible, so the draft has an
+            anchor. When a hypothetical position is already active it is
+            shown beside it -- editing further edits the hypothetical,
+            never the record. */}
+        {impactRow(t("portfolio.editor.currentPosition"), money(simulated.baseValue), money(simulated.baseValue))}
+        {simulated.isChanged &&
+          impactRow(
+            t("portfolio.editor.activeHypothetical"),
+            money(simulated.hypotheticalValue),
+            money(simulated.hypotheticalValue),
+          )}
+
+        <label style={{ display: "grid", gap: "2px" }}>
+          <Text as="span" color="tertiary" style={{ fontSize: "11px" }}>
+            {t("portfolio.editor.targetValue")}
+          </Text>
+          <input
+            type="number"
+            min={0}
+            step={100}
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            aria-label={t("portfolio.editor.targetValueAria", { ticker: holding.ticker })}
+            style={{
+              font: "inherit",
+              fontSize: "13px",
+              fontVariantNumeric: "tabular-nums",
+              padding: "4px 6px",
+              border: `var(--width-border-hairline) solid var(--color-border-hairline)`,
+              borderRadius: "var(--radius-card)",
+              background: "var(--surface-primary)",
+              color: "var(--color-text-primary)",
+            }}
+          />
+        </label>
+
+        {/* Convenience steps. Still a tenth of the *persisted* position,
+            never compounding against the draft -- the label can say so
+            plainly now that the editor names the position and its
+            value. */}
+        <Inline gap="metadata" align="center" wrap>
+          <Button variant="tertiary" onClick={() => setDraft(String(Math.max(0, target - step)))}>
+            {t("portfolio.simulation.stepDown")}
+          </Button>
+          <Button
+            variant="tertiary"
+            disabled={headroom <= 0 && target >= simulated.hypotheticalValue}
+            onClick={() => setDraft(String(target + step))}
+          >
+            {t("portfolio.simulation.stepUp")}
+          </Button>
+          <Button variant="tertiary" onClick={() => setDraft("0")}>
+            {t("portfolio.editor.setToZero")}
+          </Button>
+          {simulated.isChanged && (
+            <Button variant="tertiary" onClick={() => setDraft(String(Math.round(simulated.baseValue)))}>
+              {t("portfolio.editor.restore")}
+            </Button>
+          )}
+        </Inline>
+
+        <Divider tone="hairline" />
+
+        {/* Portfolio impact, from the same assessment the page shows.
+            Only the supported dimensions: no expected return, no
+            volatility, no sector or thematic exposure. */}
+        <Label>{t("portfolio.editor.impactHeading")}</Label>
+        {impactRow(
+          t("portfolio.editor.positionValue"),
+          money(simulated.hypotheticalValue),
+          money(previewHolding.hypotheticalValue),
+        )}
+        {impactRow(
+          t("portfolio.editor.weight"),
+          pct(simulated.hypotheticalWeightPercent),
+          pct(previewHolding.hypotheticalWeightPercent),
+        )}
+        {impactRow(
+          t("portfolio.editor.unallocated"),
+          pct(current.unallocatedWeightPercent),
+          pct(preview.unallocatedWeightPercent),
+        )}
+        {impactRow(
+          t("portfolio.assessment.dimension.concentration"),
+          t(ASSESSMENT_STATUS_KEY[comparison.current.concentration.level] ?? "portfolio.assessment.status.not_assessed"),
+          t(
+            ASSESSMENT_STATUS_KEY[comparison.hypothetical.concentration.level] ??
+              "portfolio.assessment.status.not_assessed",
+          ),
+        )}
+        {impactRow(
+          t("portfolio.assessment.dimension.valuationRisk"),
+          pct(valuation.currentMeasure),
+          pct(valuation.afterMeasure),
+        )}
+        {impactRow(
+          t("portfolio.assessment.dimension.financialRisk"),
+          pct(financial.currentMeasure),
+          pct(financial.afterMeasure),
+        )}
+
+        {/* Honest about the ceiling rather than silently clamping: an
+            increase can only draw on capital the simulation actually
+            has. */}
+        {target > simulated.hypotheticalValue + headroom && (
+          <Text as="p" color="tertiary" style={{ fontSize: "11px" }}>
+            {t("portfolio.editor.capitalLimit", { available: money(headroom) })}
+          </Text>
+        )}
+
+        <Inline gap="metadata" align="center" wrap>
+          <Button variant="primary" onClick={() => onApply(target)}>
+            {t("portfolio.editor.apply")}
+          </Button>
+          <Button variant="tertiary" onClick={onClose}>
+            {t("common.cancel")}
+          </Button>
+        </Inline>
+      </Stack>
+    </div>
   );
 }
 

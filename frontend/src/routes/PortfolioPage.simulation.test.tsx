@@ -173,10 +173,28 @@ function cellText(ticker: string, cell: keyof typeof CELL): string {
   return rowEl(ticker).querySelectorAll("td")[CELL[cell]]!.textContent ?? "";
 }
 
+/** Open a holding's Position Editor. */
+async function openEditor(user: ReturnType<typeof userEvent.setup>, ticker: string) {
+  await user.click(row(ticker).getByRole("button", { name: "Ändra position" }));
+  return within(screen.getByRole("dialog", { name: new RegExp(`^${ticker} —`) }));
+}
+
+/** Press `−10%` inside the editor `times` times, then apply. */
 async function reduce(user: ReturnType<typeof userEvent.setup>, ticker: string, times = 1) {
+  const editor = await openEditor(user, ticker);
   for (let i = 0; i < times; i += 1) {
-    await user.click(row(ticker).getByRole("button", { name: new RegExp(`Minska ${ticker}`) }));
+    await user.click(editor.getByRole("button", { name: "−10%" }));
   }
+  await user.click(editor.getByRole("button", { name: "Tillämpa i simuleringen" }));
+}
+
+/** Set a holding's hypothetical position to an exact value. */
+async function setTarget(user: ReturnType<typeof userEvent.setup>, ticker: string, value: number) {
+  const editor = await openEditor(user, ticker);
+  const input = editor.getByRole("spinbutton", { name: new RegExp(`Målvärde.*${ticker}`) });
+  await user.clear(input);
+  await user.type(input, String(value));
+  await user.click(editor.getByRole("button", { name: "Tillämpa i simuleringen" }));
 }
 
 beforeEach(() => {
@@ -272,7 +290,8 @@ describe("simulation -- editing", () => {
     expect(cellText("META", "position")).toContain("→ 0.0%");
     // Still a row, still restorable -- removal is a value of zero, never
     // a deletion.
-    expect(row("META").getByRole("button", { name: /Återställ META/ })).toBeInTheDocument();
+    const editor = await openEditor(user, "META");
+    expect(editor.getByRole("button", { name: "Återställ nuvarande position" })).toBeInTheDocument();
   });
 
   it("restores one position exactly, leaving the rest explored", async () => {
@@ -281,7 +300,9 @@ describe("simulation -- editing", () => {
     await screen.findByRole("button", { name: "Öppna METAs vy" });
     await reduce(user, "META");
     await reduce(user, "MSFT");
-    await user.click(row("META").getByRole("button", { name: /Återställ META/ }));
+    const editor = await openEditor(user, "META");
+    await user.click(editor.getByRole("button", { name: "Återställ nuvarande position" }));
+    await user.click(editor.getByRole("button", { name: "Tillämpa i simuleringen" }));
     expect(row("META").getByText("40.0%")).toBeInTheDocument();
     expect(row("META").queryByText(/→/)).not.toBeInTheDocument();
     expect(screen.getByText("Hypotetiskt")).toBeInTheDocument();
@@ -307,11 +328,16 @@ describe("simulation -- editing", () => {
     await screen.findByRole("button", { name: "Öppna METAs vy" });
     // Nothing unallocated: the control says so by being disabled rather
     // than accepting the click and silently clamping it.
-    expect(row("MA").getByRole("button", { name: /Öka MA/ })).toBeDisabled();
+    let editor = await openEditor(user, "MA");
+    expect(editor.getByRole("button", { name: "+10%" })).toBeDisabled();
+    await user.click(editor.getByRole("button", { name: "Avbryt" }));
+
     await reduce(user, "META");
-    expect(row("MA").getByRole("button", { name: /Öka MA/ })).toBeEnabled();
-    await user.click(row("MA").getByRole("button", { name: /Öka MA/ }));
-    expect(row("MA").getByText(/38\.5%/)).toBeInTheDocument();
+    editor = await openEditor(user, "MA");
+    expect(editor.getByRole("button", { name: "+10%" })).toBeEnabled();
+    await user.click(editor.getByRole("button", { name: "+10%" }));
+    await user.click(editor.getByRole("button", { name: "Tillämpa i simuleringen" }));
+    expect(cellText("MA", "position")).toContain("38.5%");
   });
 });
 
@@ -323,24 +349,28 @@ describe("simulation -- the edit unit is explicit", () => {
     // Atlas holds no share quantities for any holding, so a bare "−"
     // would read as "one share" -- the single interpretation the data
     // cannot support. The control states its own unit.
-    const down = row("META").getByRole("button", { name: /Minska META/ });
-    const up = row("META").getByRole("button", { name: /Öka META/ });
-    expect(down.textContent).toBe("−10%");
-    expect(up.textContent).toBe("+10%");
-    expect(down.textContent).not.toBe("−");
-    expect(up.textContent).not.toBe("+");
+    // The row now carries one compact action; the steps live inside the
+    // editor, where the position and its value are named.
+    expect(row("META").getByRole("button", { name: "Ändra position" })).toBeInTheDocument();
+    expect(rowEl("META").textContent).not.toContain("−10%");
+
+    const user = userEvent.setup();
+    const editor = await openEditor(user, "META");
+    expect(editor.getByRole("button", { name: "−10%" }).textContent).toBe("−10%");
+    expect(editor.getByRole("button", { name: "+10%" }).textContent).toBe("+10%");
   });
 
   it("names the unit, and never a share, in its accessible label", async () => {
     renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
     await screen.findByRole("button", { name: "Öppna METAs vy" });
-    const down = row("META").getByRole("button", { name: /Minska META/ });
-    expect(down.getAttribute("aria-label")).toBe("Minska META med 10 % av nuvarande position");
-    // No share/quantity vocabulary anywhere in the controls.
-    const controls = rowEl("META").querySelectorAll("button");
-    for (const control of controls) {
-      expect(control.getAttribute("aria-label") ?? "").not.toMatch(/aktie|andel|st\b|share/i);
-    }
+    const user = userEvent.setup();
+    await openEditor(user, "META");
+    // The dialog names the holding; the unit is money, never shares.
+    expect(screen.getByRole("dialog", { name: "META — hypotetisk position" })).toBeInTheDocument();
+    const text = screen.getByRole("dialog").textContent ?? "";
+    expect(text).not.toMatch(/aktier|share/i);
+    // And nothing that reads as a real trade.
+    expect(text).not.toMatch(/köp|sälj|order|verkställ/i);
   });
 
   it("steps against the persisted position, not the latest hypothetical one", async () => {
@@ -367,9 +397,10 @@ describe("simulation -- the edit unit is explicit", () => {
     await reduce(user, "META", 10);
     expect(cellText("META", "position")).toContain("→ $0");
     expect(cellText("META", "position")).toContain("→ 0.0%");
-    // And cannot be pushed below it: the control disables at zero
-    // rather than accepting a click that would mean a short position.
-    expect(row("META").getByRole("button", { name: /Minska META/ })).toBeDisabled();
+    // And cannot be pushed below it: a further reduction floors at zero
+    // rather than creating a short position.
+    await reduce(user, "META", 2);
+    expect(cellText("META", "position")).toContain("→ $0");
   });
 });
 
@@ -445,6 +476,129 @@ describe("simulation -- one canonical state", () => {
     // Total value is conserved throughout: value moved, it did not
     // disappear.
     expect(page()).toContain("$1,000,000");
+  });
+});
+
+describe("position editor", () => {
+  function impact(dialog: HTMLElement, label: string): string {
+    const row = [...dialog.querySelectorAll("div")].find((d) => (d.textContent ?? "").startsWith(label));
+    return row?.textContent ?? "";
+  }
+
+  it("opens without touching the simulation", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
+    await screen.findByRole("button", { name: "Öppna METAs vy" });
+
+    await openEditor(user, "META");
+    // Opening is not an edit: no banner, no changed value.
+    expect(screen.queryByText("Hypotetiskt")).not.toBeInTheDocument();
+    expect(cellText("META", "position")).not.toContain("→");
+  });
+
+  it("discards the draft on Cancel", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
+    await screen.findByRole("button", { name: "Öppna METAs vy" });
+
+    const editor = await openEditor(user, "META");
+    await user.click(editor.getByRole("button", { name: "−10%" }));
+    await user.click(editor.getByRole("button", { name: "−10%" }));
+    await user.click(editor.getByRole("button", { name: "Avbryt" }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.queryByText("Hypotetiskt")).not.toBeInTheDocument();
+    expect(cellText("META", "position")).not.toContain("→");
+  });
+
+  it("closes on Escape without applying", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
+    await screen.findByRole("button", { name: "Öppna METAs vy" });
+    const editor = await openEditor(user, "META");
+    await user.click(editor.getByRole("button", { name: "−10%" }));
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(cellText("META", "position")).not.toContain("→");
+  });
+
+  it("accepts a typed target value", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
+    await screen.findByRole("button", { name: "Öppna METAs vy" });
+    await setTarget(user, "META", 300000);
+    // 300,000 of a 1,000,000 portfolio.
+    expect(cellText("META", "position")).toContain("→ 30.0%");
+    expect(cellText("META", "position")).toContain("$300,000");
+  });
+
+  it("previews the portfolio impact before anything is applied", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
+    await screen.findByRole("button", { name: "Öppna METAs vy" });
+
+    const editor = await openEditor(user, "META");
+    await user.click(editor.getByRole("button", { name: "−10%" }));
+    const dialog = screen.getByRole("dialog");
+
+    // Position, weight and freed capital.
+    expect(impact(dialog, "Positionens värde")).toContain("$360,000");
+    expect(impact(dialog, "Portföljandel")).toContain("36.0%");
+    expect(impact(dialog, "Oallokerat kapital")).toContain("4.0%");
+    // The supported assessment dimensions, and only those.
+    expect(impact(dialog, "Koncentration")).toContain("Hög");
+    expect(impact(dialog, "Exponering mot värderingsrisk")).toContain("36.0%");
+    expect(impact(dialog, "Exponering mot finansiell risk")).toBeTruthy();
+    expect(dialog.textContent).not.toMatch(/Förväntad avkastning|Volatilitet|Sektor|AI-beroende/);
+
+    // And none of it has touched the live simulation yet.
+    expect(screen.queryByText("Hypotetiskt")).not.toBeInTheDocument();
+    expect(cellText("META", "position")).not.toContain("→");
+  });
+
+  it("previews against the portfolio as it already stands, not the persisted baseline", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
+    await screen.findByRole("button", { name: "Öppna METAs vy" });
+
+    // Remove META first, then open MSFT: its weight preview must be
+    // computed against a portfolio that no longer holds META.
+    await reduce(user, "META", 10);
+    const editor = await openEditor(user, "MSFT");
+    await user.click(editor.getByRole("button", { name: "−10%" }));
+    const dialog = screen.getByRole("dialog");
+    // MSFT 250,000 -> 225,000 of an unchanged 1,000,000 total.
+    expect(impact(dialog, "Positionens värde")).toContain("$225,000");
+    // Unallocated already holds META's 40%, and gains MSFT's 2.5%.
+    expect(impact(dialog, "Oallokerat kapital")).toContain("40.0% → 42.5%");
+  });
+
+  it("will not spend capital the simulation does not have", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
+    await screen.findByRole("button", { name: "Öppna METAs vy" });
+    // Fully invested: a target above the current position cannot be
+    // funded, and the editor says so rather than silently clamping.
+    const editor = await openEditor(user, "MA");
+    const input = editor.getByRole("spinbutton", { name: /Målvärde/ });
+    await user.clear(input);
+    await user.type(input, "500000");
+    expect(screen.getByRole("dialog").textContent).toMatch(/Begränsas av tillgängligt oallokerat kapital/);
+    await user.click(editor.getByRole("button", { name: "Tillämpa i simuleringen" }));
+    // The model floors it at what was fundable -- nothing was created.
+    expect(cellText("MA", "position")).toContain("35.0%");
+  });
+
+  it("steps by a tenth of the persisted position, never compounding the draft", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
+    await screen.findByRole("button", { name: "Öppna METAs vy" });
+    const editor = await openEditor(user, "META");
+    await user.click(editor.getByRole("button", { name: "−10%" }));
+    await user.click(editor.getByRole("button", { name: "−10%" }));
+    await user.click(editor.getByRole("button", { name: "−10%" }));
+    // 400,000 - 3 x 40,000. Compounding would give 291,600.
+    expect(impact(screen.getByRole("dialog"), "Positionens värde")).toContain("$280,000");
   });
 });
 
@@ -580,8 +734,10 @@ describe("simulation -- persistence firewall", () => {
 
     await reduce(user, "META", 10);
     await reduce(user, "MSFT", 4);
-    await user.click(row("MA").getByRole("button", { name: /Öka MA/ }));
-    await user.click(row("META").getByRole("button", { name: /Återställ META/ }));
+    await setTarget(user, "MA", 360000);
+    const editor = await openEditor(user, "META");
+    await user.click(editor.getByRole("button", { name: "Återställ nuvarande position" }));
+    await user.click(editor.getByRole("button", { name: "Tillämpa i simuleringen" }));
     await user.click(screen.getByRole("button", { name: "Återställ till nuvarande portfölj" }));
 
     // No POST/PUT/PATCH/DELETE anywhere: not to the portfolio, not to
