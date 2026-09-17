@@ -627,8 +627,8 @@ export const en = {
   "investmentCase.analysis.evidence.coverageLabel": "Evidence depth",
   "investmentCase.analysis.evidence.qualityHeading": "Evidence Quality",
   "investmentCase.analysis.evidence.missingEvidenceHeading": "Missing Evidence",
-  "investmentCase.analysis.evidence.latestLabel": "Latest",
   "investmentCase.analysis.evidence.viewAll": "View all evidence",
+  "investmentCase.analysis.evidence.latestLabel": "Latest",
   "investmentCase.analysis.evidence.noneRecorded": "No Evidence recorded for this Case yet.",
   "investmentCase.analysis.valuationScenarios.heading": "Valuation Scenarios",
   "investmentCase.analysis.valuationScenarios.notYet": "Not yet supported",
@@ -984,6 +984,28 @@ export const en = {
   "investmentCase.canonical.deepAnalysisLabel": "Deep analysis — business, financials and leadership",
   "investmentCase.canonical.evidenceAuditLabel": "Evidence, coverage and data quality",
   "investmentCase.canonical.supportingAnalysisLabel": "Show supporting analysis",
+
+  // ---------- investment case: semantic chapters (Product Convergence Sprint 1) ----------
+  // The Investment Case's stable chapter titles. Structured keys, never
+  // backend prose -- see `investmentCase/caseChapters.ts`.
+  "investmentCase.chapter.conclusion": "Atlas's conclusion",
+  "investmentCase.chapter.company": "Company",
+  "investmentCase.chapter.strategy": "Strategy",
+  "investmentCase.chapter.forwardView": "Forward view",
+  "investmentCase.chapter.valuation": "Valuation",
+  "investmentCase.chapter.risk": "Risk",
+  "investmentCase.chapter.portfolioFit": "Portfolio fit",
+  "investmentCase.chapter.evidence": "Evidence",
+  "investmentCase.chapterNav.label": "Chapters in this case",
+  // Strategy -- honestly unavailable. Atlas has no company-strategy
+  // representation; see `StrategySection`'s own module docstring.
+  // Forward view -- verified forward evidence only.
+  // Risk -- first-class, and explicit about what it does not cover.
+  // Portfolio fit -- doctrine stated where it applies.
+  // Evidence -- the record behind the case.
+  // Sprint 1B (Investment Case Compression) -- chapter headlines and
+  // the consistent "show more" ladder. A chapter states its conclusion
+  // beside its title; the analysis is one click down.
   "investmentCase.actions.recordManuallyLabel": "Record a decision manually",
   "investmentCase.actions.notLinkedNote":
     "Decision actions become available once this case is linked to a portfolio holding.",

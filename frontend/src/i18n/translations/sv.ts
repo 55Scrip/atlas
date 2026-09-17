@@ -629,8 +629,8 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.analysis.evidence.coverageLabel": "Underlagsdjup",
   "investmentCase.analysis.evidence.qualityHeading": "Underlagets kvalitet",
   "investmentCase.analysis.evidence.missingEvidenceHeading": "Saknat underlag",
-  "investmentCase.analysis.evidence.latestLabel": "Senaste",
   "investmentCase.analysis.evidence.viewAll": "Visa allt underlag",
+  "investmentCase.analysis.evidence.latestLabel": "Senaste",
   "investmentCase.analysis.evidence.noneRecorded": "Inget underlag registrerat för det här caset ännu.",
   "investmentCase.analysis.valuationScenarios.heading": "Värderingsscenarier",
   "investmentCase.analysis.valuationScenarios.notYet": "Stöds inte ännu",
@@ -971,6 +971,18 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.canonical.deepAnalysisLabel": "Djupanalys — verksamhet, finanser och ledning",
   "investmentCase.canonical.evidenceAuditLabel": "Underlag, täckning och datakvalitet",
   "investmentCase.canonical.supportingAnalysisLabel": "Visa underbyggande analys",
+
+  // ---------- investment case: semantiska kapitel (Product Convergence Sprint 1) ----------
+  "investmentCase.chapter.conclusion": "Atlas slutsats",
+  "investmentCase.chapter.company": "Bolaget",
+  "investmentCase.chapter.strategy": "Strategi",
+  "investmentCase.chapter.forwardView": "Framåtblick",
+  "investmentCase.chapter.valuation": "Värdering",
+  "investmentCase.chapter.risk": "Risk",
+  "investmentCase.chapter.portfolioFit": "Portföljpassform",
+  "investmentCase.chapter.evidence": "Underlag",
+  "investmentCase.chapterNav.label": "Kapitel i det här caset",
+  // Sprint 1B (Investment Case Compression)
   "investmentCase.actions.recordManuallyLabel": "Registrera ett beslut manuellt",
   "investmentCase.actions.notLinkedNote":
     "Beslutsåtgärder blir tillgängliga när det här caset kopplas till ett portföljinnehav.",
