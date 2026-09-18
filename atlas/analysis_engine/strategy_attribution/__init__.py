@@ -26,6 +26,7 @@ from atlas.analysis_engine.strategy_attribution.models import (
     EvidenceRef,
     LinkingFact,
 )
+from atlas.analysis_engine.strategy_attribution.render import render_attribution
 
 __all__ = [
     "ATTRIBUTOR_VERSION",
@@ -43,4 +44,5 @@ __all__ = [
     "UNAVAILABLE_CHANNELS",
     "company_attribution",
     "extract_linking_facts",
+    "render_attribution",
 ]
