@@ -63,6 +63,13 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from enum import Enum
 
+from atlas.business_data_providers.xbrl_instance import (  # the plumbing moved, the names did not
+    XBRLDI as _XBRLDI,
+    XBRLI as _XBRLI,
+    Context as _Context,
+    parse_day as _day,
+    read_instance as _read_instance,
+)
 from atlas.business_data_providers.errors import MalformedProviderResponse
 from atlas.business_data_providers.http import JsonFetcher, TextFetcher, fetch_text
 from atlas.business_data_providers.sec_edgar_identity import SecEdgarIdentity
@@ -100,8 +107,6 @@ PARSER_VERSION = "share_class_links_v1"
 #: The cover-page share-count reading's own identity (a separate evidence type).
 COVER_PARSER_VERSION = "cover_share_counts_v1"
 
-_XBRLI = "http://www.xbrl.org/2003/instance"
-_XBRLDI = "http://xbrl.org/2006/xbrldi"
 _US_GAAP_PREFIX = "http://fasb.org/us-gaap/"
 _DEI_PREFIX = "http://xbrl.sec.gov/dei/"
 
@@ -202,21 +207,8 @@ class ShareClassFiling:
 # -- parsing --------------------------------------------------------------------------------------------
 
 
-@dataclass(frozen=True)
-class _Context:
-    id: str
-    instant: date | None
-    start: date | None
-    end: date | None
-    explicit: tuple[tuple[str, str], ...]  # (dimension, member), normalised
-    typed: int
 
 
-def _day(text: str | None) -> date | None:
-    try:
-        return date.fromisoformat(text.strip()[:10]) if text else None
-    except ValueError:
-        return None
 
 
 def _family(uri: str) -> str | None:
@@ -227,95 +219,16 @@ def _family(uri: str) -> str | None:
     return None
 
 
-class _Names:
-    """QName normalisation. Standard taxonomies are named by family
-    (`us-gaap:`, `dei:`) because their namespace URI carries a year; a
-    company extension keeps the prefix the filing itself declares."""
-
-    def __init__(self, prefixes: dict[str, str]) -> None:
-        self._prefixes = prefixes
-        self._uri_to_prefix = {uri: prefix for prefix, uri in prefixes.items()}
-
-    def of_tag(self, tag: str) -> str:
-        if not tag.startswith("{"):
-            return tag
-        uri, local = tag[1:].split("}", 1)
-        family = _family(uri)
-        return f"{family or self._uri_to_prefix.get(uri, uri)}:{local}"
-
-    def of_qname(self, text: str) -> str:
-        text = (text or "").strip()
-        if ":" not in text:
-            return text
-        prefix, local = text.split(":", 1)
-        uri = self._prefixes.get(prefix)
-        family = _family(uri) if uri else None
-        return f"{family or prefix}:{local}"
 
 
-def _prefixes(instance_xml: str) -> dict[str, str]:
-    prefixes: dict[str, str] = {}
-    for _, (prefix, uri) in ElementTree.iterparse(io.StringIO(instance_xml), events=("start-ns",)):
-        prefixes.setdefault(prefix, uri)
-    return prefixes
 
 
-def _contexts(root, names: _Names) -> dict[str, _Context]:
-    out: dict[str, _Context] = {}
-    for element in root.iter(f"{{{_XBRLI}}}context"):
-        period = element.find(f"{{{_XBRLI}}}period")
-        explicit, typed = [], 0
-        for holder in (f"{{{_XBRLI}}}entity/{{{_XBRLI}}}segment", f"{{{_XBRLI}}}scenario"):
-            container = element.find(holder)
-            if container is None:
-                continue
-            for member in container:
-                if member.tag == f"{{{_XBRLDI}}}explicitMember":
-                    explicit.append((names.of_qname(member.get("dimension", "")), names.of_qname(member.text or "")))
-                else:
-                    typed += 1
-        out[element.get("id", "")] = _Context(
-            id=element.get("id", ""),
-            instant=_day(period.findtext(f"{{{_XBRLI}}}instant")) if period is not None else None,
-            start=_day(period.findtext(f"{{{_XBRLI}}}startDate")) if period is not None else None,
-            end=_day(period.findtext(f"{{{_XBRLI}}}endDate")) if period is not None else None,
-            explicit=tuple(sorted(explicit)),
-            typed=typed,
-        )
-    return out
 
 
-def _units(root) -> dict[str, str | None]:
-    """Unit id -> its single measure's local name (`xbrli:shares` ->
-    `shares`); a divide or multi-measure unit -> `None`."""
-    out: dict[str, str | None] = {}
-    for element in root.iter(f"{{{_XBRLI}}}unit"):
-        measures = [m.text for m in element.findall(f"{{{_XBRLI}}}measure")]
-        out[element.get("id", "")] = measures[0].strip().split(":")[-1] if len(measures) == 1 and measures[0] else None
-    return out
 
 
-def _is_nil(element) -> bool:
-    return element.get("{http://www.w3.org/2001/XMLSchema-instance}nil") in ("true", "1")
 
 
-def _read_instance(instance_xml: str) -> tuple[tuple[_Context, ...], list[tuple[str, _Context, str | None, str, str | None]]]:
-    """(every context, every non-nil fact as (concept, context, unit, text, decimals))."""
-    try:
-        root = ElementTree.fromstring(instance_xml)
-        names = _Names(_prefixes(instance_xml))
-    except ElementTree.ParseError as exc:
-        raise MalformedProviderResponse(f"XBRL instance did not parse: {exc}") from exc
-    contexts = _contexts(root, names)
-    units = _units(root)
-    facts: list[tuple[str, _Context, str | None, str, str | None]] = []
-    for element in root:
-        ref = element.get("contextRef")
-        if ref is None or _is_nil(element) or ref not in contexts:
-            continue
-        facts.append((names.of_tag(element.tag), contexts[ref], units.get(element.get("unitRef", "")),
-                      (element.text or "").strip(), element.get("decimals")))
-    return tuple(contexts.values()), facts
 
 
 def _entity_wide(facts, concept: str) -> str | None:
