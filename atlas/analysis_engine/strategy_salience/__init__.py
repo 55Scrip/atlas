@@ -25,6 +25,7 @@ from atlas.analysis_engine.strategy_salience.models import (
     SalienceEvidence,
     SpeakerMention,
 )
+from atlas.analysis_engine.strategy_salience.render import render_salience
 
 __all__ = [
     "AnalystAttention",
@@ -40,5 +41,6 @@ __all__ = [
     "SpeakerRole",
     "classify_role",
     "company_salience",
+    "render_salience",
     "speaker_identity",
 ]
