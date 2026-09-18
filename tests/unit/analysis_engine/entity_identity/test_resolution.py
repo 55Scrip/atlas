@@ -165,6 +165,67 @@ def test_no_candidate_signal_is_ever_an_identity_basis():
     assert not (set(s.value for s in CandidateSignal) & set(b.value for b in IdentityBasis))
 
 
+# ------------------- the label edge, against real SEC label evidence
+# VST declares this member with this exact label. The strategy graph
+# holds the short name management used.
+VST_LABELS = {"vistra:ComanchePeakNuclearPowerPlantMember": "Comanche Peak Nuclear Power Plant",
+              "vistra:TexasSegmentMember": "Texas Segment",
+              "vistra:PJMMidAtlanticMember": "PJM (Mid-Atlantic)"}
+
+
+def test_a_label_that_merely_begins_with_the_other_name_is_not_that_name():
+    # The single most dangerous false positive available: the filer's
+    # label is "Comanche Peak Nuclear Power Plant" and the short form is
+    # a prefix of it. A prefix is not a declaration.
+    claim = resolve_identity(
+        EntityReference(kind=ReferenceKind.DIMENSIONAL_MEMBER,
+                        value="vistra:ComanchePeakNuclearPowerPlantMember", issuer="VST"),
+        EntityReference(kind=ReferenceKind.TAXONOMY_LABEL, value="Comanche Peak", issuer="VST"),
+        declared_labels=VST_LABELS)
+    assert claim.status is IdentityStatus.NOT_SAME
+    assert "is a different name" in claim.reason
+
+
+def test_a_member_matches_only_the_label_the_filer_gave_it():
+    exact = resolve_identity(
+        EntityReference(kind=ReferenceKind.DIMENSIONAL_MEMBER,
+                        value="vistra:ComanchePeakNuclearPowerPlantMember", issuer="VST"),
+        EntityReference(kind=ReferenceKind.TAXONOMY_LABEL,
+                        value="Comanche Peak Nuclear Power Plant", issuer="VST"),
+        declared_labels=VST_LABELS)
+    assert exact.status is IdentityStatus.SAME
+    assert exact.basis is IdentityBasis.TAXONOMY_LABEL
+
+
+def test_a_taxonomy_label_never_proves_a_strategy_mention_even_when_identical():
+    # GOOGL's terse label for GoogleCloudMember is exactly "Google
+    # Cloud", and management says exactly "Google Cloud". Identical
+    # strings, and still no evidence that the management phrase refers
+    # to the filer's element -- that is a second edge nothing has
+    # established.
+    claim = resolve_identity(
+        EntityReference(kind=ReferenceKind.STRATEGY_MENTION, value="Google Cloud", issuer="GOOGL"),
+        EntityReference(kind=ReferenceKind.TAXONOMY_LABEL, value="Google Cloud", issuer="GOOGL"),
+        declared_labels={"goog:GoogleCloudMember": "Google Cloud"})
+    assert CandidateSignal.EXACT_STRING in claim.signals
+    assert claim.status is IdentityStatus.UNRESOLVED
+    assert claim.basis is None
+
+
+def test_the_comanche_peak_chain_stops_at_the_mention_edge():
+    member = EntityReference(kind=ReferenceKind.DIMENSIONAL_MEMBER,
+                             value="vistra:ComanchePeakNuclearPowerPlantMember", issuer="VST")
+    label = EntityReference(kind=ReferenceKind.TAXONOMY_LABEL,
+                            value="Comanche Peak Nuclear Power Plant", issuer="VST")
+    mention_ref = EntityReference(kind=ReferenceKind.STRATEGY_MENTION,
+                                  value="Comanche Peak", issuer="VST")
+    assert resolve_identity(member, label, declared_labels=VST_LABELS).status is IdentityStatus.SAME
+    assert resolve_identity(mention_ref, label, declared_labels=VST_LABELS).status is \
+        IdentityStatus.UNRESOLVED
+    assert resolve_identity(mention_ref, member, declared_labels=VST_LABELS).status is \
+        IdentityStatus.UNRESOLVED
+
+
 # ------------------------------------------------ scope and separation
 def test_identity_is_issuer_scoped():
     a = EntityReference(kind=ReferenceKind.STRATEGY_MENTION, value="US", issuer="MA")
