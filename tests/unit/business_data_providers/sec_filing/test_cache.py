@@ -6,6 +6,7 @@ from atlas.business_data_providers.sec_filing.cache import (
     CorruptCachedFiling,
     SecFilingCache,
     validate_instance,
+    validate_label_linkbase,
     validate_primary_document,
 )
 
@@ -126,3 +127,70 @@ def test_a_corrupt_body_that_refetches_corrupt_raises_for_that_filing(tmp_path):
     c, _, _ = cache(tmp_path, Recorder(b"<xbrl>truncated"))
     with pytest.raises(CorruptCachedFiling):
         c.fetch(INSTANCE_URL, validate=validate_instance)
+
+
+# ------------------------------------------------- label linkbase
+GOOD_LABELS = (b'<?xml version="1.0"?><link:linkbase xmlns:link="http://www.xbrl.org/2003/linkbase">'
+               + b"<link:labelLink>" + b"<!-- " + b"x" * 4000 + b" -->"
+               + b'<link:loc xlink:href="a.xsd#a_Member" xlink:label="a"/>'
+               + b'<link:label xlink:label="l">Name</link:label>'
+               + b'<link:labelArc xlink:from="a" xlink:to="l"/>'
+               + b"</link:labelLink></link:linkbase>")
+BARE_LABELS = GOOD_LABELS.replace(b"link:", b"")
+
+
+def test_a_good_label_linkbase_passes_in_either_serialisation():
+    validate_label_linkbase(GOOD_LABELS)
+    validate_label_linkbase(BARE_LABELS)
+
+
+def test_a_truncated_label_linkbase_is_rejected():
+    # The failure that matters: a half-written linkbase still parses,
+    # into fewer arcs, and the labels it drops are silently the ones a
+    # later identity claim would have rested on. Cut just the closing
+    # tag, so the arcs survive and only the completeness check can
+    # catch it.
+    with pytest.raises(CorruptCachedFiling, match="does not close"):
+        validate_label_linkbase(GOOD_LABELS[: -len(b"</link:labelLink></link:linkbase>")])
+
+
+def test_a_linkbase_truncated_before_its_arcs_is_also_rejected():
+    with pytest.raises(CorruptCachedFiling):
+        validate_label_linkbase(GOOD_LABELS[: len(GOOD_LABELS) // 2])
+
+
+def test_an_empty_label_linkbase_is_rejected():
+    with pytest.raises(CorruptCachedFiling):
+        validate_label_linkbase(b"")
+
+
+def test_a_well_formed_but_implausibly_small_linkbase_is_rejected():
+    # Structurally complete and far too small to be a real filing's
+    # labels -- only the size check catches this one.
+    tiny = b'<?xml version="1.0"?><linkbase><labelArc/></linkbase>'
+    with pytest.raises(CorruptCachedFiling, match="bytes"):
+        validate_label_linkbase(tiny)
+
+
+def test_a_body_that_is_not_xml_is_rejected_however_large():
+    # Large, mentions labelarc, ends in linkbase> -- and is not XML.
+    # Only the XML check stands between this and the parser.
+    junk = b"server error: retry later " * 400 + b" labelarc ... linkbase>"
+    with pytest.raises(CorruptCachedFiling, match="not XML"):
+        validate_label_linkbase(junk)
+
+
+def test_a_linkbase_with_no_arcs_is_not_a_label_linkbase():
+    with pytest.raises(CorruptCachedFiling, match="label arcs"):
+        validate_label_linkbase(GOOD_LABELS.replace(b"labelArc", b"presentationArc"))
+
+
+def test_a_corrupt_cached_label_linkbase_is_discarded_and_refetched(tmp_path):
+    fetcher = Recorder(GOOD_LABELS)
+    c, _, _ = cache(tmp_path, fetcher)
+    url = ARCHIVE + "vistra-20251231_lab.xml"
+    c.fetch(url, validate=validate_label_linkbase)
+    c.path_for(url).write_bytes(GOOD_LABELS[:300])
+    assert c.fetch(url, validate=validate_label_linkbase) == GOOD_LABELS
+    assert len(fetcher.calls) == 2
+    assert c.read(url) == GOOD_LABELS

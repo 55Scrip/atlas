@@ -45,6 +45,7 @@ __all__ = [
     "CorruptCachedFiling",
     "SecFilingCache",
     "validate_instance",
+    "validate_label_linkbase",
     "validate_primary_document",
 ]
 
@@ -55,6 +56,10 @@ SEC_ARCHIVE_PREFIX = "https://www.sec.gov/Archives/edgar/data/"
 #: there is nothing to gain by crowding the limit and an installation-
 #: wide block to lose.
 MIN_REQUEST_INTERVAL_SECONDS = 0.35
+
+#: Smaller than any real label linkbase in this corpus; the smallest of
+#: the four benchmark files is just under a megabyte.
+_MIN_PLAUSIBLE_LINKBASE_BYTES = 2_000
 
 #: Smaller than any real 10-K primary document or extracted instance.
 #: The four benchmark filings run 2.2-5.6 MB; a truncation that leaves
@@ -89,6 +94,33 @@ def validate_instance(body: bytes) -> None:
     # that the download finished.
     if b"</xbrl>" not in tail and b":xbrl>" not in tail:
         raise CorruptCachedFiling("instance does not close its xbrl root; truncated")
+
+
+def validate_label_linkbase(body: bytes) -> None:
+    """A label linkbase, before it is believed.
+
+    The failure that matters is the same one an instance has: a
+    truncated linkbase still parses, into fewer label arcs, and the
+    labels it drops are silently the ones a later identity claim would
+    have rested on. So the close tag is the evidence the download
+    finished.
+
+    Checked by local name rather than by a prefix: real linkbases in
+    this corpus serialise `<loc>`, `<label>` and `<labelArc>` both bare
+    and `link:`-prefixed, and a check that insisted on one spelling
+    would reject half of them.
+    """
+    if len(body) < _MIN_PLAUSIBLE_LINKBASE_BYTES:
+        raise CorruptCachedFiling(f"label linkbase is {len(body)} bytes; truncated or empty")
+    head = body[:4096].lower()
+    if b"<?xml" not in head and b"linkbase" not in head:
+        raise CorruptCachedFiling("label linkbase is not XML")
+    lowered = body.lower()
+    if b"labelarc" not in lowered:
+        raise CorruptCachedFiling("no label arcs: this is not a label linkbase")
+    tail = body.rstrip()[-256:].lower()
+    if b"linkbase>" not in tail:
+        raise CorruptCachedFiling("label linkbase does not close its root; truncated")
 
 
 @dataclass
