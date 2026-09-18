@@ -8,11 +8,19 @@ Atlas's recommendation a channel through which a company could talk its
 way to a better rating -- the precise failure `forward_claims` was
 firewalled against, arriving through a different door.
 
-So this package is inert. Nothing in `atlas/` imports it, and unlike
-`forward_claims` it has **no sanctioned seam at all**: there is no
-strategy equivalent of `forward_context`, because the sprint that built
-this layer was decision-shadow only. If one is ever added it will be a
-deliberate edit to this file, with an argument attached.
+So this package is inert. Unlike `forward_claims` it has **no sanctioned
+seam at all**: there is no strategy equivalent of `forward_context`,
+because the sprint that built this layer was decision-shadow only.
+
+One *consumer* is sanctioned, and this is the deliberate edit its
+absence called for. `atlas.analysis_engine.strategy_salience` reads this
+graph to say which parts of it a company's calls appear to be organised
+around. It is allowed because it is not a seam: it decides nothing, and
+it is itself inert under its own firewall. The exemption is narrowed by
+`test_the_sanctioned_consumer_is_itself_inert` below, which asserts that
+nothing in production imports the consumer either -- otherwise it would
+be a route rather than a reader, and this rule would have been softened
+rather than extended.
 
 Scanned over `atlas/` only, deliberately: this asks a question about
 production source, and the repository root also contains unrelated
@@ -28,6 +36,10 @@ _REPO_ROOT = Path(__file__).resolve().parents[4]
 _PRODUCTION_ROOT = _REPO_ROOT / "atlas"
 _PACKAGE_DIR = _PRODUCTION_ROOT / "analysis_engine" / "strategy"
 _TARGET = "atlas.analysis_engine.strategy"
+
+#: The one sanctioned consumer -- a reader, never a seam.
+_SANCTIONED_CONSUMER = "atlas/analysis_engine/strategy_salience"
+_SANCTIONED_CONSUMER_MODULE = "atlas.analysis_engine.strategy_salience"
 
 
 def _is_or_is_under(module: str, prefix: str) -> bool:
@@ -58,10 +70,35 @@ def test_no_production_module_imports_strategy_intelligence():
         str(path.relative_to(_REPO_ROOT))
         for path in _production_files_outside_the_package()
         if any(_is_or_is_under(module, _TARGET) for module in _imported_modules(path))
+        and not str(path.relative_to(_REPO_ROOT)).startswith(_SANCTIONED_CONSUMER)
     ]
     assert offenders == [], (
         "Strategy Intelligence is decision-shadow only. A production importer means "
         f"management's stated intentions can now reach something in Atlas: {offenders}"
+    )
+
+
+def test_the_sanctioned_consumer_is_itself_inert():
+    """Strategic Salience may read the strategy graph. Nothing may read
+    Strategic Salience.
+
+    This is what keeps the exemption above an extension of the rule
+    rather than a hole in it: a deciding module that could import
+    salience would reach the strategy graph through it, and the firewall
+    would have been satisfied on a technicality."""
+    offenders = [
+        str(path.relative_to(_REPO_ROOT))
+        for path in _PRODUCTION_ROOT.rglob("*.py")
+        if "__pycache__" not in path.parts
+        and not str(path.relative_to(_REPO_ROOT)).startswith(_SANCTIONED_CONSUMER)
+        and any(
+            _is_or_is_under(module, _SANCTIONED_CONSUMER_MODULE)
+            for module in _imported_modules(path)
+        )
+    ]
+    assert offenders == [], (
+        "Strategic Salience is a reader of the strategy graph, not a route into it: "
+        f"{offenders}"
     )
 
 
