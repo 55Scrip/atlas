@@ -12,19 +12,23 @@ So this package is inert. Unlike `forward_claims` it has **no sanctioned
 seam at all**: there is no strategy equivalent of `forward_context`,
 because the sprint that built this layer was decision-shadow only.
 
-Two *consumers* are sanctioned, each added by a deliberate edit here:
+Three *consumers* are sanctioned, each added by a deliberate edit here:
 
 - `strategy_salience` reads this graph to say which parts of it a
   company's calls appear to be organised around;
 - `strategy_corroboration` reads it to ask what the company's reported
-  figures did about those parts.
+  figures did about those parts;
+- `strategy_attribution` reads it to ask whether any evidence ties an
+  action to one part rather than to the company as a whole.
 
-Both are allowed because neither is a seam: they decide nothing, and
+All three are allowed because none is a seam: they decide nothing, and
 each is inert under its own firewall. The shape is deliberately a fan,
-not a chain -- corroboration consumes the strategy graph directly and
-does *not* consume salience, so a node does not have to be emphasised
-before Atlas will look for evidence about it. Emphasis is management's to
-control; eligibility for corroboration must not be.
+not a chain. Corroboration does not consume salience, so a node need not
+be emphasised before Atlas looks for evidence about it; attribution
+consumes neither, because whether an action *happened* and what it was
+*for* are separate questions and making one a precondition of the other
+would answer neither. Emphasis is management's to control; eligibility
+for the other two must not be.
 
 The exemption is narrowed by `test_the_sanctioned_consumers_are_inert`
 below, which asserts that nothing in production imports either consumer.
@@ -51,10 +55,12 @@ _TARGET = "atlas.analysis_engine.strategy"
 _SANCTIONED_CONSUMERS = (
     "atlas/analysis_engine/strategy_salience",
     "atlas/analysis_engine/strategy_corroboration",
+    "atlas/analysis_engine/strategy_attribution",
 )
 _SANCTIONED_CONSUMER_MODULES = (
     "atlas.analysis_engine.strategy_salience",
     "atlas.analysis_engine.strategy_corroboration",
+    "atlas.analysis_engine.strategy_attribution",
 )
 
 
@@ -113,6 +119,27 @@ def test_the_sanctioned_consumers_are_inert():
         assert offenders == [], (
             f"{module_name} is a reader of the strategy graph, not a route into it: {offenders}"
         )
+
+
+def test_attribution_depends_on_neither_salience_nor_corroboration():
+    """Attribution reads the strategy graph and the records, and nothing
+    else in this family.
+
+    Whether an action happened and what it was for are separate
+    questions. Making corroboration a precondition would mean Atlas only
+    asks what spending was for once it has already seen spending move --
+    and the most useful attribution in the corpus, a stated intent to
+    invest in a named facility, has no observed action behind it at
+    all."""
+    attribution = _PRODUCTION_ROOT / "analysis_engine" / "strategy_attribution"
+    for path in sorted(attribution.rglob("*.py")):
+        if "__pycache__" in path.parts:
+            continue
+        for sibling in ("atlas.analysis_engine.strategy_salience",
+                        "atlas.analysis_engine.strategy_corroboration"):
+            assert not any(
+                _is_or_is_under(module, sibling) for module in _imported_modules(path)
+            ), f"{path.name} imports {sibling}"
 
 
 def test_corroboration_does_not_depend_on_salience():
