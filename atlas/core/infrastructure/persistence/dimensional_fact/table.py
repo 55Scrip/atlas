@@ -1,5 +1,25 @@
 """SQL schema for dimensional evidence.
 
+**The names carry no provider.** These tables were born as
+`esef_dimensional_fact` and `esef_dimensional_fact_axis`, when ESEF was
+the only source that had them. SEC Inline XBRL now stores the same
+shape through the same contract, so the source belongs in
+`source_locator` and `reader_version` -- which record exactly which
+report and which reader produced a row -- and not in the table name. A
+name that says ESEF over rows that are half SEC is a lie the schema
+tells every reader of it.
+
+Plural, and a child table named for its parent -- the convention
+`business_records` and
+`canonical_securities`/`canonical_security_identifiers` already set
+here. Hence `dimensional_facts` and `dimensional_fact_axes`.
+
+Axes rather than dimensions, because the columns are `axis_qname` and
+`member_qname` and the distinction Sprint 11 exists to protect is about
+axes: `SegmentConsolidationItemsAxis` is an axis that is not a segment,
+and naming the table for the generic word would blur the one thing it
+is there to keep sharp.
+
 Own `MetaData`, no foreign keys into any existing table -- the same
 convention every other bounded context here follows, and for a stronger
 reason than usual: nothing that already exists may acquire a
@@ -12,8 +32,8 @@ sprint is not making.
 6,177 in the cached corpus do -- and the obvious shortcut of one row per
 (fact, axis) pair would repeat the *value* once per axis. Anything that
 later summed a column would double-count a figure for the crime of being
-precisely described. So the value lives once, in `esef_dimensional_fact`,
-and its axes hang off it in `esef_dimensional_fact_axis`.
+precisely described. So the value lives once, in `dimensional_facts`,
+and its axes hang off it in `dimensional_fact_axes`.
 
 `fact_key` is the semantic identity -- concept, entity, period, unit and
 the sorted dimension set -- so re-ingesting a report replaces rather than
@@ -30,7 +50,7 @@ from atlas.core.infrastructure.persistence.shared.schema_sync import sync_table_
 metadata = MetaData()
 
 dimensional_fact_table = Table(
-    "esef_dimensional_fact",
+    "dimensional_facts",
     metadata,
     Column("fact_key", String, primary_key=True),
     Column("entity", String, nullable=False, index=True),
@@ -40,6 +60,19 @@ dimensional_fact_table = Table(
     # than left to the reader, so a consumer reading only this table
     # cannot mistake a transform-error sentinel for an observation.
     Column("value_status", String, nullable=False),
+    # Size and digest of the value AS FILED. A US-GAAP `*TextBlock` fact
+    # carries an entire disclosure note as embedded HTML -- 190 of the
+    # 7,915 facts in four SEC filings are 91.3% of all their value bytes,
+    # the largest 291 KB. Storing those inline would grow this database
+    # by 15.5 MB for four filings and roughly a gigabyte for the corpus,
+    # to hold bytes nothing queries. Above `VALUE_INLINE_LIMIT` the body
+    # stays in the content-addressed filing cache and `value_text` holds
+    # an explicit elision marker instead -- never a silent truncation.
+    # These two columns make the elision checkable: the digest is of the
+    # full original, so a body recovered from the cache can be proved to
+    # be the one that was filed.
+    Column("value_bytes", Integer, nullable=True),
+    Column("value_digest", String, nullable=True),
     Column("decimals", Integer, nullable=True),
     Column("unit", String, nullable=True),
     Column("period_raw", String, nullable=False),
@@ -52,7 +85,7 @@ dimensional_fact_table = Table(
 )
 
 dimensional_fact_axis_table = Table(
-    "esef_dimensional_fact_axis",
+    "dimensional_fact_axes",
     metadata,
     Column("fact_key", String, primary_key=True),
     Column("axis_qname", String, primary_key=True),

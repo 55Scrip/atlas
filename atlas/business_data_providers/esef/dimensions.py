@@ -26,11 +26,17 @@ across things that do not belong together.
 """
 from __future__ import annotations
 
-import hashlib
-from dataclasses import dataclass
-from decimal import Decimal
 from datetime import date, timedelta
-from enum import Enum
+
+from atlas.business_data_providers.dimensional_evidence import (
+    INTRINSIC_DIMENSIONS,
+    AxisClass,
+    Dimension,
+    DimensionalFact,
+    PeriodKind,
+    ValueStatus,
+    classify_value,
+)
 
 __all__ = [
     "DIMENSION_READER_VERSION",
@@ -47,58 +53,7 @@ __all__ = [
 
 DIMENSION_READER_VERSION = "esef-dimensions-1"
 
-#: What xbrl-json puts in `dimensions` that is not an axis. These
-#: describe the fact itself; everything else is a real axis/member pair.
-INTRINSIC_DIMENSIONS = frozenset({"concept", "entity", "period", "unit", "language"})
 
-
-class AxisClass(str, Enum):
-    """What an axis partitions.
-
-    Six members, one per behaviour actually observed in the cached
-    corpus plus UNKNOWN. Nothing here is aspirational: an axis class
-    with no facts behind it would be a claim about data Atlas does not
-    have."""
-
-    BUSINESS_SEGMENT = "business_segment"
-    """IFRS 8 operating segments -- the reportable parts of a business.
-    Only `SegmentsAxis` qualifies, and only because that is the axis IFRS
-    defines for it."""
-
-    CONSOLIDATION_SCOPE = "consolidation_scope"
-    """Which part of the consolidation a figure belongs to: eliminations,
-    entity totals, continuing versus discontinued operations.
-
-    `SegmentConsolidationItemsAxis` is classified here rather than as a
-    segment axis, and the distinction matters. Its standard members are
-    `EliminationOfIntersegmentAmountsMember`, `OperatingSegmentsMember`
-    and `EntitysTotalForSegmentConsolidationItemsMember` -- a
-    consolidation vocabulary, not a list of businesses. Volvo also hangs
-    its own segment members from it, which is exactly why the axis
-    cannot be read as segments: the same axis carries both a business
-    unit and the elimination that cancels part of it, and summing them
-    as peers would be wrong."""
-
-    EQUITY_COMPONENT = "equity_component"
-    """Issued capital, retained earnings, reserves, non-controlling
-    interests. The biggest axis in the corpus and the clearest example
-    of a dimension that is not a business."""
-
-    RESTATEMENT_BASIS = "restatement_basis"
-    """Previously stated versus corrected figures. Two values for one
-    period that must never be compared with each other as a change."""
-
-    OTHER_ACCOUNTING_AXIS = "other_accounting_axis"
-    """Recognised, and none of the above."""
-
-    UNKNOWN = "unknown"
-    """Not recognised. Preserved in full, classified as nothing."""
-
-
-#: Exact axis QName to class. A dict rather than a pattern, because
-#: `SegmentConsolidationItemsAxis` contains the substring "Segment" and
-#: is not a segment axis -- a substring rule would get the single most
-#: important distinction in this module backwards.
 _AXIS_CLASS: dict[str, AxisClass] = {
     "ifrs-full:SegmentsAxis": AxisClass.BUSINESS_SEGMENT,
     "ifrs-full:SegmentConsolidationItemsAxis": AxisClass.CONSOLIDATION_SCOPE,
@@ -118,143 +73,6 @@ def classify_axis(axis_qname: str) -> AxisClass:
     `noteId` key that is a document artefact rather than an axis -- and
     an ingestion that guessed at it would be inventing a dimension."""
     return _AXIS_CLASS.get(axis_qname, AxisClass.UNKNOWN)
-
-
-class PeriodKind(str, Enum):
-    INSTANT = "instant"
-    DURATION = "duration"
-    UNKNOWN = "unknown"
-
-
-@dataclass(frozen=True)
-class Dimension:
-    """One axis/member pair, with both identities kept raw.
-
-    Nothing is rewritten. Volvo's 2022 taxonomy declares
-    `abvolvo:FinancialServciesMember` and
-    `abvolvo:FinancialServicesMember` as two separate elements, with the
-    misspelling reproduced in the issuer's own label ("Financial Servcies
-    (member)"). Correcting it here would overwrite what the filing
-    actually says."""
-
-    axis_qname: str
-    member_qname: str
-    axis_class: AxisClass
-
-    @property
-    def axis_namespace(self) -> str:
-        return self.axis_qname.split(":", 1)[0] if ":" in self.axis_qname else ""
-
-    @property
-    def member_namespace(self) -> str:
-        return self.member_qname.split(":", 1)[0] if ":" in self.member_qname else ""
-
-    @property
-    def member_is_issuer_extension(self) -> bool:
-        """A member the issuer defined rather than took from IFRS. Where
-        the identity problems live."""
-        return self.member_namespace not in {"ifrs-full", ""}
-
-
-class ValueStatus(Enum):
-    """Whether a filed value is usable as a number.
-
-    A report sometimes carries a transform-error sentinel where a
-    figure should be -- `(ixTransformValueError)` appears 19 times in
-    the present corpus, always because the issuer's own inline-XBRL
-    transform failed. That is source evidence and is preserved
-    verbatim, but it is not an observation of a quantity, and a
-    consumer must not be able to mistake it for one by reading
-    `value_text` alone."""
-
-    NUMERIC = "numeric"
-    UNPARSABLE = "unparsable"
-
-
-def classify_value(value_text: str) -> ValueStatus:
-    """Numeric or not, decided only by whether it parses.
-
-    No allow-list of known sentinels: a sentinel this reader has never
-    seen must land in UNPARSABLE rather than be taken for a number."""
-    try:
-        Decimal(value_text)
-    except (ArithmeticError, TypeError, ValueError):
-        return ValueStatus.UNPARSABLE
-    return ValueStatus.NUMERIC
-
-
-@dataclass(frozen=True)
-class DimensionalFact:
-    """One reported figure that is *not* the consolidated one."""
-
-    fact_id: str
-    """The report's own identifier for the fact (`fact-151`)."""
-    entity: str
-    """The filer, as the report states it -- an LEI scheme string."""
-    concept: str
-    value_text: str
-    """Kept as text. `decimals` describes the precision the issuer
-    claimed, and parsing to float here would discard it silently."""
-    decimals: int | None
-    unit: str | None
-    period_raw: str
-    period_kind: PeriodKind
-    period_end: str | None
-    """The date the figure belongs to, with XBRL's following-midnight
-    convention already undone -- the same correction the consolidated
-    reader makes, so the two agree about what year a fact is in."""
-    dimensions: tuple[Dimension, ...]
-    source_locator: str
-    """Which cached report this came from."""
-
-    @property
-    def value_status(self) -> ValueStatus:
-        """Whether `value_text` is a number. Derived, never stored on
-        the instance, so it cannot drift from the value it describes."""
-        return classify_value(self.value_text)
-
-    @property
-    def axis_classes(self) -> frozenset[AxisClass]:
-        return frozenset(d.axis_class for d in self.dimensions)
-
-    @property
-    def is_business_segment(self) -> bool:
-        return AxisClass.BUSINESS_SEGMENT in self.axis_classes
-
-    @property
-    def semantic_key(self) -> str:
-        """What makes two facts the same fact.
-
-        The source report, then concept, entity, period, unit and the
-        full dimension set. Unit is in the key because the same concept
-        for the same period in SEK and in EUR are two facts, and period
-        is in it because an instant and a duration ending on one date
-        are not the same measurement. The dimension set is sorted so
-        that a report listing two axes in a different order does not
-        produce a second row.
-
-        **The report is part of the identity.** An annual report
-        restates the prior year alongside the current one, so the same
-        coordinates recur across consecutive filings -- and 25 times in
-        the present corpus the two filings disagree: equity restated,
-        a share-based-payment tax entry that changes sign, provisions
-        restated by 12.7%. Keying without the report made whichever
-        filing happened to be ingested last overwrite the other, so
-        Atlas could not see that a figure had been restated at all.
-        A restatement is evidence; which figure to prefer is a
-        consumer's decision, and this layer must not make it silently
-        by dropping one of them.
-
-        The caller is therefore required to pass a `source_locator`
-        that identifies the source document -- correctness of the key
-        rests on it. Facts carrying an empty locator fall back to
-        collapsing across reports, which is why the repository refuses
-        them."""
-        parts = [self.source_locator, self.concept, self.entity,
-                 self.period_raw, self.unit or ""]
-        parts += sorted(f"{d.axis_qname}={d.member_qname}" for d in self.dimensions)
-        return hashlib.sha256("|".join(parts).encode()).hexdigest()
-
 
 def _period(period_raw: str) -> tuple[PeriodKind, str | None]:
     """Instant or duration, and the date the figure belongs to.

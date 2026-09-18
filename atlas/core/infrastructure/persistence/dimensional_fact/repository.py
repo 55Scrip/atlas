@@ -15,13 +15,14 @@ from typing import Iterable, Sequence
 from sqlalchemy import and_, delete, select
 from sqlalchemy.engine import Engine
 
-from atlas.business_data_providers.esef.dimensions import (
-    DIMENSION_READER_VERSION,
+from atlas.business_data_providers.dimensional_evidence import (
     AxisClass,
     Dimension,
     DimensionalFact,
     PeriodKind,
+    elide_value,
 )
+from atlas.business_data_providers.esef.dimensions import DIMENSION_READER_VERSION
 from atlas.core.infrastructure.persistence.dimensional_fact.table import (
     create_dimensional_fact_tables,
     dimensional_fact_axis_table,
@@ -42,6 +43,10 @@ class StoredDimensionalFact:
     issuer's own transform failed to produce is kept verbatim, not
     dropped and not coerced to zero -- but it is marked, so it can
     never be read as a quantity."""
+    value_bytes: int | None
+    """Size of the value as filed. Differs from `len(value_text)` exactly
+    when the value was elided into the filing cache."""
+    value_digest: str | None
     decimals: int | None
     unit: str | None
     period_raw: str
@@ -63,13 +68,20 @@ class DimensionalFactRepository:
         self._engine = engine
         create_dimensional_fact_tables(engine)
 
-    def store(self, facts: Iterable[DimensionalFact], *, observed_at: datetime) -> int:
+    def store(self, facts: Iterable[DimensionalFact], *, observed_at: datetime,
+              reader_version: str = DIMENSION_READER_VERSION) -> int:
         """Write facts, replacing any already held under the same
         semantic key.
 
         Delete-then-insert per key rather than an upsert: a fact's axis
         rows are part of its identity, and leaving a stale axis behind
         would silently change what a stored fact claims.
+
+        `reader_version` records which reader produced these facts. It
+        defaults to the ESEF reader, which was the only one when this
+        store was written; the SEC Inline XBRL reader passes its own.
+        Storing SEC facts under the ESEF reader's version would be a
+        false provenance claim about evidence Atlas cannot re-derive.
 
         Refuses a fact with no `source_locator`. The report is part of
         the semantic key (see `DimensionalFact.semantic_key`), so an
@@ -108,13 +120,16 @@ class DimensionalFactRepository:
                 if key in seen:
                     continue  # the same fact twice in one payload is one fact
                 seen.add(key)
+                stored_text, value_bytes, value_digest = elide_value(fact.value_text)
                 rows.append(
                     {
                         "fact_key": key,
                         "entity": fact.entity,
                         "concept": fact.concept,
-                        "value_text": fact.value_text,
+                        "value_text": stored_text,
                         "value_status": fact.value_status.value,
+                        "value_bytes": value_bytes,
+                        "value_digest": value_digest,
                         "decimals": fact.decimals,
                         "unit": fact.unit,
                         "period_raw": fact.period_raw,
@@ -122,7 +137,7 @@ class DimensionalFactRepository:
                         "period_end": fact.period_end,
                         "report_fact_id": fact.fact_id,
                         "source_locator": fact.source_locator,
-                        "reader_version": DIMENSION_READER_VERSION,
+                        "reader_version": reader_version,
                         "observed_at": stamp,
                     }
                 )
@@ -229,6 +244,8 @@ class DimensionalFactRepository:
                 concept=row["concept"],
                 value_text=row["value_text"],
                 value_status=row["value_status"],
+                value_bytes=row["value_bytes"],
+                value_digest=row["value_digest"],
                 decimals=row["decimals"],
                 unit=row["unit"],
                 period_raw=row["period_raw"],

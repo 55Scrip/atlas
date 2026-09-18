@@ -112,8 +112,8 @@ def test_a_multi_axis_fact_stores_its_value_once(repository):
     repo, engine = repository
     ingest(repository, MULTI)
     with engine.begin() as connection:
-        facts = connection.exec_driver_sql("select count(*) from esef_dimensional_fact").scalar()
-        axes = connection.exec_driver_sql("select count(*) from esef_dimensional_fact_axis").scalar()
+        facts = connection.exec_driver_sql("select count(*) from dimensional_facts").scalar()
+        axes = connection.exec_driver_sql("select count(*) from dimensional_fact_axes").scalar()
     assert (facts, axes) == (1, 2)
 
 
@@ -125,10 +125,10 @@ def test_re_ingesting_the_same_report_adds_nothing(repository):
     assert first == second == 3
     with engine.begin() as connection:
         assert connection.exec_driver_sql(
-            "select count(*) from esef_dimensional_fact").scalar() == 3
+            "select count(*) from dimensional_facts").scalar() == 3
         # SEGMENT_RND carries two axes, EQUITY one, MULTI two.
         assert connection.exec_driver_sql(
-            "select count(*) from esef_dimensional_fact_axis").scalar() == 5
+            "select count(*) from dimensional_fact_axes").scalar() == 5
 
 
 def test_re_storing_one_fact_leaves_no_stale_axis_behind(repository):
@@ -145,7 +145,7 @@ def test_re_storing_one_fact_leaves_no_stale_axis_behind(repository):
     assert len(stored[0].dimensions) == 2
     with engine.begin() as connection:
         assert connection.exec_driver_sql(
-            "select count(*) from esef_dimensional_fact_axis").scalar() == 2
+            "select count(*) from dimensional_fact_axes").scalar() == 2
 
 
 # ------------------------------------------------------------------- 20
@@ -158,7 +158,7 @@ def test_one_payload_listing_a_fact_twice_stores_it_once(repository):
     assert stored == 1
     with engine.begin() as connection:
         assert connection.exec_driver_sql(
-            "select count(*) from esef_dimensional_fact").scalar() == 1
+            "select count(*) from dimensional_facts").scalar() == 1
 
 
 def test_storage_is_order_independent(repository, tmp_path):
@@ -203,7 +203,7 @@ def test_a_consolidated_fact_is_never_stored_here(repository):
 def test_the_new_tables_do_not_touch_any_existing_table(repository):
     _, engine = repository
     names = set(inspect(engine).get_table_names())
-    assert names == {"esef_dimensional_fact", "esef_dimensional_fact_axis"}
+    assert names == {"dimensional_facts", "dimensional_fact_axes"}
 
 
 def test_creating_the_tables_twice_is_safe(tmp_path):
