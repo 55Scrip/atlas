@@ -12,15 +12,24 @@ So this package is inert. Unlike `forward_claims` it has **no sanctioned
 seam at all**: there is no strategy equivalent of `forward_context`,
 because the sprint that built this layer was decision-shadow only.
 
-One *consumer* is sanctioned, and this is the deliberate edit its
-absence called for. `atlas.analysis_engine.strategy_salience` reads this
-graph to say which parts of it a company's calls appear to be organised
-around. It is allowed because it is not a seam: it decides nothing, and
-it is itself inert under its own firewall. The exemption is narrowed by
-`test_the_sanctioned_consumer_is_itself_inert` below, which asserts that
-nothing in production imports the consumer either -- otherwise it would
-be a route rather than a reader, and this rule would have been softened
-rather than extended.
+Two *consumers* are sanctioned, each added by a deliberate edit here:
+
+- `strategy_salience` reads this graph to say which parts of it a
+  company's calls appear to be organised around;
+- `strategy_corroboration` reads it to ask what the company's reported
+  figures did about those parts.
+
+Both are allowed because neither is a seam: they decide nothing, and
+each is inert under its own firewall. The shape is deliberately a fan,
+not a chain -- corroboration consumes the strategy graph directly and
+does *not* consume salience, so a node does not have to be emphasised
+before Atlas will look for evidence about it. Emphasis is management's to
+control; eligibility for corroboration must not be.
+
+The exemption is narrowed by `test_the_sanctioned_consumers_are_inert`
+below, which asserts that nothing in production imports either consumer.
+Without it they would be routes rather than readers, and this rule would
+have been softened rather than extended.
 
 Scanned over `atlas/` only, deliberately: this asks a question about
 production source, and the repository root also contains unrelated
@@ -37,9 +46,16 @@ _PRODUCTION_ROOT = _REPO_ROOT / "atlas"
 _PACKAGE_DIR = _PRODUCTION_ROOT / "analysis_engine" / "strategy"
 _TARGET = "atlas.analysis_engine.strategy"
 
-#: The one sanctioned consumer -- a reader, never a seam.
-_SANCTIONED_CONSUMER = "atlas/analysis_engine/strategy_salience"
-_SANCTIONED_CONSUMER_MODULE = "atlas.analysis_engine.strategy_salience"
+#: The sanctioned consumers -- readers, never seams. Each decides
+#: nothing and each is itself inert; see the module docstring.
+_SANCTIONED_CONSUMERS = (
+    "atlas/analysis_engine/strategy_salience",
+    "atlas/analysis_engine/strategy_corroboration",
+)
+_SANCTIONED_CONSUMER_MODULES = (
+    "atlas.analysis_engine.strategy_salience",
+    "atlas.analysis_engine.strategy_corroboration",
+)
 
 
 def _is_or_is_under(module: str, prefix: str) -> bool:
@@ -70,7 +86,7 @@ def test_no_production_module_imports_strategy_intelligence():
         str(path.relative_to(_REPO_ROOT))
         for path in _production_files_outside_the_package()
         if any(_is_or_is_under(module, _TARGET) for module in _imported_modules(path))
-        and not str(path.relative_to(_REPO_ROOT)).startswith(_SANCTIONED_CONSUMER)
+        and not str(path.relative_to(_REPO_ROOT)).startswith(_SANCTIONED_CONSUMERS)
     ]
     assert offenders == [], (
         "Strategy Intelligence is decision-shadow only. A production importer means "
@@ -78,28 +94,44 @@ def test_no_production_module_imports_strategy_intelligence():
     )
 
 
-def test_the_sanctioned_consumer_is_itself_inert():
-    """Strategic Salience may read the strategy graph. Nothing may read
-    Strategic Salience.
+def test_the_sanctioned_consumers_are_inert():
+    """The sanctioned consumers may read the strategy graph. Nothing may
+    read them.
 
-    This is what keeps the exemption above an extension of the rule
-    rather than a hole in it: a deciding module that could import
-    salience would reach the strategy graph through it, and the firewall
+    This is what keeps the exemptions above extensions of the rule
+    rather than holes in it: a deciding module able to import either
+    consumer would reach the strategy graph through it, and the firewall
     would have been satisfied on a technicality."""
-    offenders = [
-        str(path.relative_to(_REPO_ROOT))
-        for path in _PRODUCTION_ROOT.rglob("*.py")
-        if "__pycache__" not in path.parts
-        and not str(path.relative_to(_REPO_ROOT)).startswith(_SANCTIONED_CONSUMER)
-        and any(
-            _is_or_is_under(module, _SANCTIONED_CONSUMER_MODULE)
-            for module in _imported_modules(path)
+    for consumer, module_name in zip(_SANCTIONED_CONSUMERS, _SANCTIONED_CONSUMER_MODULES):
+        offenders = [
+            str(path.relative_to(_REPO_ROOT))
+            for path in _PRODUCTION_ROOT.rglob("*.py")
+            if "__pycache__" not in path.parts
+            and not str(path.relative_to(_REPO_ROOT)).startswith(consumer)
+            and any(_is_or_is_under(module, module_name) for module in _imported_modules(path))
+        ]
+        assert offenders == [], (
+            f"{module_name} is a reader of the strategy graph, not a route into it: {offenders}"
         )
-    ]
-    assert offenders == [], (
-        "Strategic Salience is a reader of the strategy graph, not a route into it: "
-        f"{offenders}"
-    )
+
+
+def test_corroboration_does_not_depend_on_salience():
+    """A node does not have to be emphasised before Atlas will look for
+    evidence about it.
+
+    Salience measures what management chooses to stress. Making it a
+    gate on corroboration would mean the company decided which of its
+    own strategies Atlas would check -- the exact circularity this layer
+    exists to break. The two consumers are a fan out of the strategy
+    graph, not a chain."""
+    corroboration = _PRODUCTION_ROOT / "analysis_engine" / "strategy_corroboration"
+    for path in sorted(corroboration.rglob("*.py")):
+        if "__pycache__" in path.parts:
+            continue
+        assert not any(
+            _is_or_is_under(module, "atlas.analysis_engine.strategy_salience")
+            for module in _imported_modules(path)
+        ), f"{path.name} imports salience"
 
 
 def test_strategy_never_reaches_recommendation_conviction_or_the_engines():
