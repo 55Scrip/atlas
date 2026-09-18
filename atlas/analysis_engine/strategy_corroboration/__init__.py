@@ -24,6 +24,7 @@ from atlas.analysis_engine.strategy_corroboration.models import (
     NodeCorroboration,
     ObservedEvidence,
 )
+from atlas.analysis_engine.strategy_corroboration.render import render_corroboration
 
 __all__ = [
     "CORROBORATOR_VERSION",
@@ -38,5 +39,6 @@ __all__ = [
     "ObservedEvidence",
     "TemporalRelation",
     "company_corroboration",
+    "render_corroboration",
     "temporal_relation",
 ]
