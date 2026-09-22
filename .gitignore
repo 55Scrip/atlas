@@ -19,6 +19,16 @@ frontend/dist/
 # Root-level node_modules (frontend/ has its own rule above).
 node_modules/
 
+# Cached SEC filing bodies (atlas.business_data_providers.sec_filing.cache).
+# Refetchable public documents, tens of megabytes, never investment history --
+# but kept out of /tmp so a temp sweep cannot silently shrink a frozen corpus.
+database/sec_filing_cache/
+
+# Research scratch scripts and frozen benchmarks for the evidence sprints.
+# Kept out of /tmp for the same reason as the cache: the decision-shadow
+# generator was swept away and had to be rebuilt from a transcript.
+database/sprint_scratch/
+
 # Scheduled composition operational state (when a job last ran, and its
 # advisory lock). Machine-local, never investment history.
 runtime/

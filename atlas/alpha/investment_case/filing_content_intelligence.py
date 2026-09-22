@@ -168,6 +168,8 @@ from atlas.alpha.investment_case.regulatory_filings import RegulatoryFiling
 
 __all__ = [
     "TextFetcher",
+    "MissingFilingArtifact",
+    "require_filing_content",
     "FilingSectionKind",
     "ExtractionStatus",
     "FilingParagraph",
@@ -1133,3 +1135,34 @@ def find_tables_by_keyword(content: FilingContent, keyword: str) -> tuple[Filing
         if (table.caption is not None and needle in table.caption.lower())
         or (table.heading_context is not None and needle in table.heading_context.lower())
     )
+
+
+class MissingFilingArtifact(Exception):
+    """A filing a bounded corpus requires could not be read.
+
+    `extract_filing_content` deliberately never raises: a live page should
+    still show a filing's own metadata when the network is having a bad
+    minute. That is right for the application and wrong for a frozen research
+    corpus, where an unreadable filing is not "a filing with no paragraphs" --
+    it is a hole in the evidence, and every count computed over it is quietly
+    too small. This is the exception that tells the two apart.
+    """
+
+
+def require_filing_content(
+    filing: RegulatoryFiling, fetch_text_fn: TextFetcher, *, headers: dict[str, str] | None = None,
+) -> FilingContent:
+    """`extract_filing_content`, for callers that cannot tolerate a hole.
+
+    Identical in every respect but one: if the body could not be read, this
+    raises instead of returning an empty filing. A filing that parsed cleanly
+    and genuinely contains no paragraphs is returned untouched -- that is a
+    real answer about the source, not a missing artifact.
+    """
+    content = extract_filing_content(filing, fetch_text_fn, headers=headers)
+    if content.extraction_status is ExtractionStatus.FETCH_FAILED:
+        raise MissingFilingArtifact(
+            f"{filing.form_type} {filing.accession_number} could not be read from "
+            f"{filing.filing_url}; refusing to report it as an empty filing"
+        )
+    return content

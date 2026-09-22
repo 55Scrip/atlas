@@ -13,7 +13,11 @@ from __future__ import annotations
 
 from datetime import date, datetime, timezone
 
+import pytest
+
 from atlas.alpha.investment_case.filing_content_intelligence import (
+    MissingFilingArtifact,
+    require_filing_content,
     ExtractionStatus,
     FilingSectionKind,
     extract_filing_content,
@@ -649,3 +653,62 @@ class TestFindTablesByKeyword:
         content = extract_filing_content(_filing("10-K"), _fetcher(html))
         found = find_tables_by_keyword(content, "compensation")
         assert len(found) == 2
+
+
+# ------------------------------------------------------------------ missing artifact
+class TestARequiredFilingThatCannotBeReadIsNotAnEmptyFiling:
+    """Sprint 26: four cached filings vanished from a temp directory and the
+    corpus built on them reported 109 records instead of 162 -- no error, just
+    a smaller answer. `extract_filing_content` was behaving as designed; the
+    hole was that a caller could not tell "nothing to read" from "nothing
+    there". `require_filing_content` is that distinction."""
+
+    filing = RegulatoryFiling(
+        form_type="10-K", filed_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        accession_number="0001692819-26-000006",
+        filing_url="https://www.sec.gov/Archives/edgar/data/1/000/x.htm", period_of_report=None)
+
+    @staticmethod
+    def _gone(url, headers=None):
+        raise FileNotFoundError("cached body was swept away")
+
+    def test_the_forgiving_reader_still_never_raises(self):
+        content = extract_filing_content(self.filing, self._gone)
+        assert content.extraction_status is ExtractionStatus.FETCH_FAILED
+        assert content.sections == () and content.unattributed_paragraphs == ()
+
+    def test_the_strict_reader_refuses_to_call_an_unreadable_filing_empty(self):
+        with pytest.raises(MissingFilingArtifact) as caught:
+            require_filing_content(self.filing, self._gone)
+        # the message has to name the filing, or a corpus run cannot say which
+        assert "0001692819-26-000006" in str(caught.value)
+
+    def test_a_filing_that_really_has_no_paragraphs_is_returned_not_refused(self):
+        # the distinction that matters: this parsed cleanly and simply says
+        # nothing, which is a real answer about the source
+        content = require_filing_content(self.filing, lambda u, h=None: "<html><body></body></html>")
+        assert content.extraction_status is not ExtractionStatus.FETCH_FAILED
+        assert content.unattributed_paragraphs == ()
+
+    def test_a_corpus_of_filings_cannot_silently_shrink_when_one_is_missing(self):
+        # the 162 -> 109 shape, in miniature: three filings, the middle one gone
+        bodies = {"a": "<html><body><p>We entered into an agreement.</p></body></html>",
+                  "c": "<html><body><p>We completed the acquisition.</p></body></html>"}
+
+        def fetch(url, headers=None):
+            key = url.rsplit("/", 1)[-1]
+            if key not in bodies:
+                raise FileNotFoundError(key)
+            return bodies[key]
+
+        filings = [
+            RegulatoryFiling(form_type="10-K", filed_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+                             accession_number=k, filing_url=f"https://www.sec.gov/Archives/edgar/data/1/000/{k}",
+                             period_of_report=None) for k in ("a", "b", "c")]
+        # the old, forgiving path reports a smaller corpus and no error at all
+        quiet = [extract_filing_content(f, fetch) for f in filings]
+        assert sum(len(c.unattributed_paragraphs) for c in quiet) == 2
+        assert all(c is not None for c in quiet)
+        # the strict path stops on the hole instead of under-reporting
+        with pytest.raises(MissingFilingArtifact):
+            [require_filing_content(f, fetch) for f in filings]

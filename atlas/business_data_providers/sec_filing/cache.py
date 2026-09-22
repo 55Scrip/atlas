@@ -41,6 +41,8 @@ from typing import Callable
 
 __all__ = [
     "SEC_ARCHIVE_PREFIX",
+    "DEFAULT_CACHE_DIR_NAME",
+    "default_cache_root",
     "MIN_REQUEST_INTERVAL_SECONDS",
     "CorruptCachedFiling",
     "SecFilingCache",
@@ -50,6 +52,35 @@ __all__ = [
 ]
 
 SEC_ARCHIVE_PREFIX = "https://www.sec.gov/Archives/edgar/data/"
+
+#: Beside the database rather than inside it, following the same shape the
+#: ESEF ingest already uses for its own cache: bodies are bytes nothing
+#: queries, so they do not belong in a table, but they are the evidence a
+#: research corpus is reproduced from, so they must outlive a reboot.
+#:
+#: The default was a temporary directory until a macOS `/private/tmp` sweep
+#: deleted four of sixteen cached filings overnight, which silently cut an
+#: already-accepted corpus from 162 records to 109. A cache may be rebuilt by
+#: refetching; a *bounded* research corpus may not, because refetching is a
+#: network request the analysis that depends on it is not allowed to make.
+DEFAULT_CACHE_DIR_NAME = "sec_filing_cache"
+
+
+def default_cache_root() -> Path:
+    """Where cached filing bodies live when the caller names no directory.
+
+    `ATLAS_SEC_FILING_CACHE` overrides it; otherwise it sits beside the
+    configured database, so it follows `ATLAS_HOME` like everything else and
+    is never a temporary directory. Tests pass their own root instead.
+    """
+    import os
+
+    override = os.environ.get("ATLAS_SEC_FILING_CACHE")
+    if override:
+        return Path(override).expanduser().resolve()
+    from atlas.config import DATABASE_DIR
+
+    return DATABASE_DIR / DEFAULT_CACHE_DIR_NAME
 
 #: SEC publishes a 10 requests/second ceiling. This is a third of it:
 #: the corpus is a few hundred filings fetched in the background, so

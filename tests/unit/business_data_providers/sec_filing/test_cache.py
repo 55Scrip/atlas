@@ -1,8 +1,11 @@
 """Fetching politely, storing reproducibly, refusing a corrupt file."""
+import tempfile
+
 import pytest
 
 from atlas.business_data_providers.sec_filing.cache import (
     MIN_REQUEST_INTERVAL_SECONDS,
+    SEC_ARCHIVE_PREFIX,
     CorruptCachedFiling,
     SecFilingCache,
     validate_instance,
@@ -194,3 +197,42 @@ def test_a_corrupt_cached_label_linkbase_is_discarded_and_refetched(tmp_path):
     assert c.fetch(url, validate=validate_label_linkbase) == GOOD_LABELS
     assert len(fetcher.calls) == 2
     assert c.read(url) == GOOD_LABELS
+
+
+# ------------------------------------------------------------------ durable default root
+class TestTheDefaultCacheLocationSurvivesATempSweep:
+    """Sprint 26: a macOS `/private/tmp` sweep deleted four of sixteen cached
+    filings overnight, and the frozen corpus built on them silently shrank
+    from 162 records to 109. The default location must not be temporary."""
+
+    def test_the_default_sits_beside_the_database_not_in_a_temp_directory(self, monkeypatch):
+        from atlas.business_data_providers.sec_filing.cache import default_cache_root
+        from atlas.config import DATABASE_DIR
+
+        monkeypatch.delenv("ATLAS_SEC_FILING_CACHE", raising=False)
+        root = default_cache_root()
+        assert root.parent == DATABASE_DIR
+        assert not str(root).startswith("/tmp")
+        assert not str(root).startswith("/private/tmp")
+        assert not str(root).startswith(tempfile.gettempdir())
+
+    def test_an_explicit_root_overrides_it_so_tests_can_use_a_tmp_directory(self, monkeypatch, tmp_path):
+        from atlas.business_data_providers.sec_filing.cache import default_cache_root
+
+        monkeypatch.setenv("ATLAS_SEC_FILING_CACHE", str(tmp_path / "elsewhere"))
+        assert default_cache_root() == (tmp_path / "elsewhere").resolve()
+
+    def test_the_cache_still_reads_a_body_written_under_the_default_root(self, monkeypatch, tmp_path):
+        from atlas.business_data_providers.sec_filing.cache import SecFilingCache, default_cache_root
+
+        monkeypatch.setenv("ATLAS_SEC_FILING_CACHE", str(tmp_path / "durable"))
+        root = default_cache_root()
+        root.mkdir(parents=True)
+
+        def never(url, headers):
+            raise AssertionError("a cached body must not be refetched")
+
+        store = SecFilingCache(root=root, fetch_text=never, headers={})
+        url = SEC_ARCHIVE_PREFIX + "1/000/x.htm"
+        store.path_for(url).write_bytes(GOOD_PRIMARY)
+        assert store.fetch(url) == GOOD_PRIMARY
