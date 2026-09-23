@@ -52,10 +52,12 @@ def test_action_evidence_does_not_import_strategy_claim_either():
         assert not any(_under(m, TARGET) for m in _imports(path)), path.name
 
 
-#: The one permitted consumer: Claim-Action Comparison (Sprint 25), itself a
-#: decision-shadow read model that nothing consumes in turn. The guarantee that
-#: matters -- no decision layer reads this -- is enforced unchanged below.
-COMPARATOR = "atlas.analysis_engine.claim_action_comparison"
+#: The permitted consumers: two decision-shadow read models, each of which
+#: nothing consumes in turn -- Claim-Action Comparison (Sprint 25) and Project
+#: Reference (Sprint 31). The guarantee that matters -- no decision layer reads
+#: this -- is enforced unchanged below.
+SHADOW_CONSUMERS = ("atlas.analysis_engine.claim_action_comparison",
+                    "atlas.analysis_engine.project_reference")
 
 
 def test_no_production_module_imports_strategy_claim():
@@ -63,7 +65,8 @@ def test_no_production_module_imports_strategy_claim():
     for path in (ROOT / "atlas").rglob("*.py"):
         if path.parent == PACKAGE:
             continue
-        if _under(str(path.relative_to(ROOT)).replace('/', '.').removesuffix('.py'), COMPARATOR):
+        module = str(path.relative_to(ROOT)).replace('/', '.').removesuffix('.py')
+        if any(_under(module, consumer) for consumer in SHADOW_CONSUMERS):
             continue
         if any(_under(m, TARGET) for m in _imports(path)):
             offenders.append(str(path.relative_to(ROOT)))

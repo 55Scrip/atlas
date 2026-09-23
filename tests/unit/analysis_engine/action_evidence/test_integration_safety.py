@@ -37,10 +37,12 @@ def test_the_package_imports_nothing_from_atlas_but_itself():
         assert not foreign, f"{path.name} imports {sorted(foreign)}"
 
 
-#: The one permitted consumer: Claim-Action Comparison (Sprint 25), itself a
-#: decision-shadow read model that nothing consumes in turn. The guarantee that
-#: matters -- no decision layer reads this -- is enforced unchanged below.
-COMPARATOR = "atlas.analysis_engine.claim_action_comparison"
+#: The permitted consumers: two decision-shadow read models, each of which
+#: nothing consumes in turn -- Claim-Action Comparison (Sprint 25) and Project
+#: Reference (Sprint 31). The guarantee that matters -- no decision layer reads
+#: this -- is enforced unchanged below.
+SHADOW_CONSUMERS = ("atlas.analysis_engine.claim_action_comparison",
+                    "atlas.analysis_engine.project_reference")
 
 
 def test_no_production_module_imports_action_evidence():
@@ -48,7 +50,8 @@ def test_no_production_module_imports_action_evidence():
     for path in (ROOT / "atlas").rglob("*.py"):
         if PACKAGE in path.parents or path.parent == PACKAGE:
             continue
-        if _under(str(path.relative_to(ROOT)).replace('/', '.').removesuffix('.py'), COMPARATOR):
+        module = str(path.relative_to(ROOT)).replace('/', '.').removesuffix('.py')
+        if any(_under(module, consumer) for consumer in SHADOW_CONSUMERS):
             continue
         if any(_under(m, TARGET) for m in _imports(path)):
             offenders.append(str(path.relative_to(ROOT)))
