@@ -80,8 +80,15 @@ _AUX = r"(?:(?:had|has|have)\s+)?(?:(?:also|subsequently|previously|successfully
 #: Construction is deliberately absent. The filings do report real
 #: groundbreakings, but every one of them is refused by a guard that predates
 #: this vocabulary, so a CONSTRUCTION_STARTED type could never be emitted.
+#: Construction begins only in the past tense, and only as a verb. "break
+#: ground" is an intention, "construction in progress" is a balance-sheet
+#: caption, "plans for a fab" is an announcement, and funds "for the
+#: construction of" a site are money rather than work. None of them is here.
 _FINITE_PATTERNS = (
     (r"repurchased", ActionType.SHARE_REPURCHASE, ActionStatus.COMPLETED),
+    (r"broke\s+ground(?:\s+on|\s+for)?", ActionType.CONSTRUCTION_STARTED, ActionStatus.STARTED),
+    (r"(?:began|begun|started|commenced)\s+construction(?:\s+of|\s+on)?",
+     ActionType.CONSTRUCTION_STARTED, ActionStatus.STARTED),
 )
 _FINITE_RX = [(re.compile(r"\b" + _AUX + re.escape(words) + r"\b", re.I), words, t, s)
               for words, t, s in _FINITE]

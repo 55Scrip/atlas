@@ -77,6 +77,11 @@ class ActionType(str, Enum):
     COMPLETION = "completion"
     EXECUTION = "execution"
     ONGOING_ACTIVITY = "ongoing_activity"
+    CONSTRUCTION_STARTED = "construction_started"
+    """The filer reports that building a named thing has begun -- ground
+    broken, construction commenced. It is the START and nothing more: not a
+    plan to build, not an announcement of a site, not money provided for
+    construction, and emphatically not a finished facility."""
     SHARE_REPURCHASE = "share_repurchase"
     """Shares actually bought back. Never a board authorization, which is a
     ceiling someone is permitted to spend, not money spent."""
@@ -92,6 +97,9 @@ class ActionStatus(str, Enum):
     ENTERED = "entered"
     COMPLETED = "completed"
     ONGOING = "ongoing"
+    STARTED = "started"
+    """Begun, and not reported finished. A groundbreaking is neither entered
+    into nor completed, and calling it either would misstate the source."""
 
 
 class QuantityKind(str, Enum):

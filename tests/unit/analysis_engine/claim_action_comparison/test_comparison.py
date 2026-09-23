@@ -525,3 +525,39 @@ class TestTheComparatorReadsTheRecordNotTheProse:
         a = action("Through August 28, 2025, we had repurchased an aggregate of $7.19 billion "
                    "under the authorization.", issuer="MU")
         assert a.date is None and module._action_ym(a) is None
+
+
+class TestConstructionHasNoComparisonSemanticsYet:
+    """Sprint 30 earned CONSTRUCTION_STARTED as an observed action and then
+    stopped. Telling the same project from merely the same place cannot be
+    done from the surfaces these records carry, and the corpus contains no
+    true construction pair to validate any rule against -- so the comparator
+    was deliberately left alone."""
+
+    SINGAPORE_CLAIM = ("In NAND, the combination of a higher demand outlook and our decision to "
+                       "colocate R&D cleanroom in our manufacturing fab underpins our decision to "
+                       "break ground for a new NAND fab at our Singapore site.")
+    SINGAPORE_ACTION = ("Singapore: we broke ground on an HBM advanced packaging facility to "
+                        "meaningfully expand our total advanced packaging capacity.")
+    NEW_YORK_CLAIM = ("We plan to break ground on our first New York fab in early calendar 2026, "
+                      "which we expect will provide supply in 2030 and beyond.")
+
+    def test_the_comparator_maps_no_construction_event(self):
+        import atlas.analysis_engine.claim_action_comparison.comparison as module
+        from atlas.analysis_engine.strategy_claim import EventKind
+
+        assert EventKind.CONSTRUCTION_STARTED not in module._EVENT_FROM_TYPE
+
+    def test_breaking_ground_in_singapore_is_not_the_singapore_fab_claimed(self):
+        # same issuer, same site, same groundbreaking vocabulary -- and a NAND
+        # fab is not an HBM advanced packaging facility
+        r = rel(self.SINGAPORE_CLAIM, self.SINGAPORE_ACTION, issuer="MU", period="2026Q2",
+                surfaces=("Singapore",))
+        assert r.relation is Relation.NOT_RELEVANT
+
+    def test_a_new_york_claim_finds_no_new_york_groundbreaking(self):
+        # the held filings report New York only as an announced plan and as
+        # funding provided for construction; nothing broke ground there
+        r = rel(self.NEW_YORK_CLAIM, self.SINGAPORE_ACTION, issuer="MU", period="2026Q1",
+                surfaces=("New York",))
+        assert r.relation is Relation.NOT_RELEVANT

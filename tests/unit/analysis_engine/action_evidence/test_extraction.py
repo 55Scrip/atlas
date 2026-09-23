@@ -652,11 +652,86 @@ def test_a_year_in_a_later_clause_does_not_date_this_action():
     assert r.date is None
 
 
-def test_construction_is_still_not_in_the_vocabulary():
-    # deferred deliberately: representing a groundbreaking needs an action
-    # type the comparator has no semantics for
-    assert [r for r, _ in read_sentence(
-        "In September 2022, we broke ground on a memory manufacturing fab.") if r] == []
-    assert [r for r, _ in read_sentence(
-        "We have started construction of a second cleanroom at this site.") if r] == []
-    assert not any("construction" in t.value for t in ActionType)
+def test_construction_is_now_representable_as_an_action():
+    # Sprint 28 asserted the opposite: the vocabulary was deferred because the
+    # comparator had no semantics for it. Sprint 30 earned the action type.
+    # The comparator still has no construction semantics -- that is a separate,
+    # deliberate gap, pinned in the comparator suite.
+    out = [r for r, _ in read_sentence(
+        "In September 2022, we broke ground on a memory manufacturing fab.") if r]
+    assert out and out[0].action_type is ActionType.CONSTRUCTION_STARTED
+    assert any("construction" in t.value for t in ActionType)
+
+
+class TestGroundBrokenOnANamedThing:
+    """Construction begins once, in the past tense, on something named. The
+    corpus holds three such sentences and a great many that only sound like
+    them."""
+
+    def test_a_groundbreaking_is_read_with_the_facility_it_broke_ground_on(self):
+        r = one("As part of this plan, in September 2022, we broke ground on a leading-edge "
+                "memory manufacturing fab in Boise, Idaho.")
+        assert r.action_type is ActionType.CONSTRUCTION_STARTED
+        assert r.status is ActionStatus.STARTED          # begun, not finished
+        assert r.actor_is_filer is True
+        assert r.object_text == "a leading-edge memory manufacturing fab in Boise, Idaho"
+
+    def test_the_object_is_what_was_built_not_where(self):
+        # the label names the place; the object names the project, and they
+        # are not interchangeable
+        r = one("Singapore: we broke ground on an HBM advanced packaging facility to "
+                "meaningfully expand our total advanced packaging capacity.")
+        assert r.action_type is ActionType.CONSTRUCTION_STARTED
+        assert r.object_text == "an HBM advanced packaging facility"
+        assert "Singapore" not in r.object_text
+
+    def test_beginning_construction_reads_the_same_way(self):
+        r = one("In 2024, we commenced construction of a second cleanroom at the site.")
+        assert r.action_type is ActionType.CONSTRUCTION_STARTED
+
+    @pytest.mark.parametrize("sentence", [
+        # an announced plan that merely mentions construction
+        "Our announced plan for New York includes construction of a leading-edge DRAM memory "
+        "manufacturing site, consisting of up to four fabs to be built over the next 20-plus years.",
+        "In June 2025, we announced plans for a second leading-edge memory manufacturing fab in Idaho.",
+        # money provided for construction is not construction
+        "Funding will be based on the achievement of construction, tool installation, and wafer "
+        "production milestones.",
+        # a balance-sheet caption
+        "Construction in progress is primarily comprised of ongoing construction and expansion of "
+        "our facilities, equipment and tooling.",
+        # intentions, including the claims' own wording
+        "We, and some of our competitors, have plans to construct new fabrication facilities.",
+        "We plan to break ground on our first New York fab in early calendar 2026.",
+        "Adding to the existing fab, we plan to begin construction of a similar-sized second "
+        "cleanroom at this site by 2026.",
+        "The groundbreaking ceremony is expected to take place in the first half of 2026.",
+    ])
+    def test_plans_announcements_funding_and_captions_are_not_construction(self, sentence):
+        assert [r for r, _ in read_sentence(sentence)
+                if r and r.action_type is ActionType.CONSTRUCTION_STARTED] == []
+
+    def test_finishing_construction_is_never_a_construction_start(self):
+        out = [r for r, _ in read_sentence(
+            "We completed construction of the second cleanroom at this site.") if r]
+        assert out and out[0].action_type is ActionType.COMPLETION
+        assert all(r.action_type is not ActionType.CONSTRUCTION_STARTED for r in out)
+
+    def test_only_the_past_tense_is_a_predicate(self):
+        from atlas.analysis_engine.action_evidence.extraction import _FINITE_PATTERNS
+        import re as _re
+
+        patterns = [p for p, t, s in _FINITE_PATTERNS if t is ActionType.CONSTRUCTION_STARTED]
+        for phrase in ("break ground", "to break ground", "begin construction", "start construction"):
+            assert not any(_re.search(p, phrase, _re.I) for p in patterns), (
+                f"{phrase!r} states an intention and must not be a predicate")
+        for phrase in ("broke ground on", "commenced construction of"):
+            assert any(_re.search(p, phrase, _re.I) for p in patterns)
+
+    def test_an_infinitival_object_stays_unrepresentable(self):
+        # Sprint 28 left this guard NOT_EARNED; the Xi'an groundbreaking is a
+        # real observed action that Atlas still cannot express, and widening
+        # the guard to reach it would let purpose clauses in as objects
+        assert [r for r, _ in read_sentence(
+            "We have started construction to expand our existing assembly and test facility "
+            "in Xi’an, China.") if r] == []

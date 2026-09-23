@@ -76,6 +76,7 @@ def test_no_clock_is_read():
 #: Issuers, counterparties, facilities and products the benchmark names. A rule
 #: that mentions any of them is a rule fitted to a passage.
 _NAMES = ("vistra", "vst", "amazon", "aws", "meta", "comanche", "micron", "mu", "crm", "ma",
+          "singapore", "boise", "idaho", "new york", "hbm", "nand",
           "shop", "tesla", "tsla", "waymo",
           "lotus", "google", "googl", "alphabet", "mastercard", "salesforce", "shopify", "optimus",
           "gemini", "applied materials", "amat", "department of commerce", "energy harbor", "cogentrix")
