@@ -314,3 +314,135 @@ def test_an_actions_quantities_can_never_change_the_relation():
         # and a fabricated quantity cannot rescue or strengthen one either
         invented = compare(c, dataclasses.replace(a, quantities=a.quantities * 3), surfaces)
         assert invented.relation is with_quantities.relation
+
+
+# ================================================================ self-directed acts
+MU_REPURCHASE_CLAIM = ("In fiscal Q1, we repurchased $300 million of shares as permitted by the terms "
+                       "of the CHIPS agreement.")
+MU_REPURCHASE_ACTION = "We repurchased 3.2 million shares of our common stock for $300 million in 2024."
+VST_ALLOCATION_CLAIM = ("We have allocated approximately $3 billion to our equity holders in 2026 and "
+                        "2027 through share repurchases and common and preferred dividends.")
+VST_REPURCHASE_ACTION = ("During the year ended December 31, 2024, we repurchased 16.6 million shares "
+                         "for $1.2 billion under the program.")
+CRM_REPURCHASE_ACTION = ("During the fiscal year ended January 31, 2025, we repurchased approximately "
+                         "30 million shares of our common stock for approximately $7.8 billion.")
+
+
+class TestACompanyActingOnItsOwnShares:
+    """A buyback has no counterparty, no site and no partner: its object is
+    the filer's own stock. The comparator normally insists on an external
+    entity, so these pairs were refused even when claim and action named the
+    identical act. The licence granted here is narrow -- same issuer on its
+    own still proves nothing."""
+
+    def test_a_reported_buyback_is_execution_evidence_for_a_reported_buyback_claim(self):
+        r = rel(MU_REPURCHASE_CLAIM, MU_REPURCHASE_ACTION, issuer="MU", period="2026Q1",
+                surfaces=("CHIPS",))
+        assert r.relation is Relation.RELEVANT_EXECUTION
+        assert r.entity_basis is EntityBasis.SELF_DIRECTED_ACT
+        assert r.event is Compatibility.MATCH
+        assert r.entity_surfaces == ()        # there is no third party to name
+
+    def test_the_relation_never_rests_on_the_amounts_agreeing(self):
+        import dataclasses
+        from atlas.analysis_engine.action_evidence import Quantity, QuantityKind
+
+        c, a = claim(MU_REPURCHASE_CLAIM, "MU", "2026Q1"), action(MU_REPURCHASE_ACTION, "MU")
+        base = compare(c, a, ("CHIPS",))
+        emptied = compare(c, dataclasses.replace(a, quantities=()), ("CHIPS",))
+        unrelated = compare(c, dataclasses.replace(a, quantities=(
+            Quantity(value_text="99", unit="$", kind=QuantityKind.MONETARY, qualifier=""),)), ("CHIPS",))
+        assert base.relation is emptied.relation is unrelated.relation is Relation.RELEVANT_EXECUTION
+
+    def test_a_forward_allocation_is_not_evidenced_by_a_buyback_already_done(self):
+        # Vistra allocates capital to holders IN 2026 AND 2027; the action is a
+        # 2024 repurchase. Same issuer, same act type, and still not evidence,
+        # because the claim states an intention rather than reporting a deed.
+        r = rel(VST_ALLOCATION_CLAIM, VST_REPURCHASE_ACTION, issuer="VST", period="2026Q2",
+                surfaces=("share repurchases",))
+        assert r.relation is Relation.NOT_RELEVANT
+        assert r.entity_basis is not EntityBasis.SELF_DIRECTED_ACT
+
+    def test_a_buyback_does_not_evidence_a_claim_about_investing_in_the_business(self):
+        r = rel("We will invest in distribution to capture the opportunity and continue to innovate.",
+                CRM_REPURCHASE_ACTION, issuer="CRM", period="2026Q1")
+        assert r.relation is Relation.NOT_RELEVANT
+
+    def test_the_same_act_at_a_different_company_is_never_self_directed(self):
+        # built side by side on purpose: Micron's claim against Salesforce's
+        # buyback. compare() is called directly, so nothing but the rule
+        # itself stops two different issuers being matched.
+        micron_claim = claim(MU_REPURCHASE_CLAIM, "MU", "2026Q1")
+        salesforce_action = action(CRM_REPURCHASE_ACTION, "CRM")
+        r = compare(micron_claim, salesforce_action, ("CHIPS",))
+        assert r.relation is Relation.NOT_RELEVANT
+        assert r.entity_basis is not EntityBasis.SELF_DIRECTED_ACT
+
+    def test_the_right_entity_with_the_wrong_act_still_fails(self):
+        # a reported buyback claim against the CHIPS funding agreement: the
+        # self-directed licence needs the action to BE the claimed act
+        r = rel(MU_REPURCHASE_CLAIM, CHIPS_FUNDING_WITH_AMOUNT, issuer="MU", period="2026Q1",
+                surfaces=("CHIPS",))
+        assert r.entity_basis is not EntityBasis.SELF_DIRECTED_ACT
+        assert r.relation is Relation.RELEVANT_DEPENDENCY   # unchanged from Sprint 25
+
+    def test_issuer_only_remains_insufficient_for_ordinary_claims(self):
+        r = rel(PPAS, BALDWIN, surfaces=("PPAs",))
+        assert r.entity_basis is EntityBasis.ISSUER_ONLY
+        assert r.relation is Relation.NOT_RELEVANT
+
+    def test_the_relation_vocabulary_did_not_grow(self):
+        assert {r.value for r in Relation} == {
+            "relevant_execution", "relevant_dependency", "not_relevant", "not_comparable"}
+
+
+class TestTheSelfDirectedLicenceIsNarrow:
+    """The held corpus has no claim that is both an observational report and
+    about a non-self-directed event, so these two fixtures are built at the
+    contract level -- clearly synthetic, and the only way to pin what the
+    licence must refuse."""
+
+    @staticmethod
+    def _claim(status, events):
+        import dataclasses
+        from atlas.analysis_engine.strategy_claim import (
+            ClaimType, Direction, Observability, StrategyClaim)
+
+        base = claim(MU_REPURCHASE_CLAIM, "MU", "2026Q1")
+        return dataclasses.replace(base, status=status, event_kinds=events,
+                                   claim_type=ClaimType.DELIVERY, direction=Direction.COMPLETE,
+                                   observability=Observability.QUALITATIVELY_OBSERVABLE)
+
+    def test_only_a_self_directed_event_kind_earns_the_licence(self):
+        # SYNTHETIC: an observational completion claim against a real
+        # completion action. Everything else about it looks self-directed --
+        # same issuer, filer actor, matching event -- but completing an
+        # acquisition is something a company does to another company.
+        from atlas.analysis_engine.strategy_claim import ClaimStatus, EventKind
+
+        c = self._claim(ClaimStatus.OBSERVATIONAL_STATEMENT, (EventKind.COMPLETION,))
+        a = action("In March 2024, we completed the acquisition of Energy Harbor.", issuer="MU")
+        r = compare(c, a, ())
+        assert r.entity_basis is not EntityBasis.SELF_DIRECTED_ACT
+        assert r.relation is not Relation.RELEVANT_EXECUTION
+
+    def test_an_action_whose_actor_is_not_established_earns_nothing(self):
+        # SYNTHETIC: the Micron buyback with its filer actor withdrawn. Every
+        # record in the corpus says "we" or "the Company", so this case can
+        # only be built by hand -- and it must still refuse, because a
+        # repurchase by somebody unnamed is not the company acting on itself.
+        import dataclasses
+        from atlas.analysis_engine.action_evidence import ActorKind
+
+        a = action(MU_REPURCHASE_ACTION, issuer="MU")
+        anonymous = dataclasses.replace(a, actor_is_filer=None, actor_kind=ActorKind.IMPLICIT,
+                                        actor_text=None)
+        r = compare(claim(MU_REPURCHASE_CLAIM, "MU", "2026Q1"), anonymous, ("CHIPS",))
+        assert r.entity_basis is not EntityBasis.SELF_DIRECTED_ACT
+        assert r.relation is not Relation.RELEVANT_EXECUTION
+
+    def test_the_self_directed_set_holds_only_what_the_corpus_earned(self):
+        import atlas.analysis_engine.claim_action_comparison.comparison as module
+        from atlas.analysis_engine.strategy_claim import EventKind
+
+        assert module._SELF_DIRECTED == frozenset({EventKind.SHARE_REPURCHASE})

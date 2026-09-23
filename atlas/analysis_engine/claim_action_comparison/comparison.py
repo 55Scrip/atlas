@@ -16,7 +16,9 @@ from atlas.analysis_engine.claim_action_comparison.contracts import (
     ActionRef, ClaimActionComparison, ClaimRef, Compatibility, EntityBasis, Relation,
     TemporalRelation,
 )
-from atlas.analysis_engine.strategy_claim import EventKind, MeasureKind, StrategyClaim
+from atlas.analysis_engine.strategy_claim import (
+    ClaimStatus, EventKind, MeasureKind, StrategyClaim,
+)
 
 __all__ = ["compare", "compare_many"]
 
@@ -28,7 +30,15 @@ __all__ = ["compare", "compare_many"]
 _EVENT_FROM_TYPE: dict[EventKind, frozenset[ActionType]] = {
     EventKind.CONTRACT_ENTERED: frozenset({ActionType.CONTRACT_ENTERED}),
     EventKind.COMPLETION: frozenset({ActionType.COMPLETION}),
+    EventKind.SHARE_REPURCHASE: frozenset({ActionType.SHARE_REPURCHASE}),
 }
+
+#: Acts a company performs upon itself. A buyback has no counterparty, no
+#: site and no partner: the object is the filer's own stock, so the external
+#: entity this comparator normally insists on cannot exist. Kept as an
+#: explicit set rather than inferred, because the licence it grants is narrow
+#: and every member has to be earned from the corpus.
+_SELF_DIRECTED = frozenset({EventKind.SHARE_REPURCHASE})
 #: A capital-deployment claim is evidenced by an action that says capital was
 #: deployed -- in the action's own object, not merely by its type. An
 #: acquisition is capital leaving the company, but the filing has to call it
@@ -54,6 +64,26 @@ def _word_in(token: str, text: str) -> bool:
     return re.search(rf"(?<![A-Za-z]){stem}s?(?![A-Za-z])", text, re.I) is not None
 
 
+def _is_self_directed(claim: StrategyClaim, action: ActionEvidence) -> bool:
+    """Do both sides report the same completed act by the filer upon itself?
+
+    Four things must hold together, and same issuer is only one of them: the
+    claim must rest on a self-directed event, the action must be that same
+    event, the claim must *report* it rather than intend it -- a plan to
+    return capital in two years' time is not evidenced by a buyback already
+    done -- and the filing must say the filer is the one who acted.
+    """
+    if claim.provenance.issuer != action.locator.issuer:
+        return False
+    if not claim.event_kinds or not set(claim.event_kinds) <= _SELF_DIRECTED:
+        return False
+    if not any(action.action_type in _EVENT_FROM_TYPE.get(k, frozenset()) for k in claim.event_kinds):
+        return False
+    if claim.status is not ClaimStatus.OBSERVATIONAL_STATEMENT:
+        return False
+    return action.actor_is_filer is True
+
+
 def _entity(claim: StrategyClaim, surfaces: Sequence[str],
             action: ActionEvidence) -> tuple[Compatibility, EntityBasis, tuple[str, ...]]:
     """Where the claim's own named things appear in the action, if anywhere.
@@ -63,6 +93,8 @@ def _entity(claim: StrategyClaim, surfaces: Sequence[str],
     matching, no identity resolution -- if nothing matches, the comparison
     refuses rather than guessing.
     """
+    if _is_self_directed(claim, action):
+        return Compatibility.MATCH, EntityBasis.SELF_DIRECTED_ACT, ()
     named = {s for s in surfaces if s}
     named |= set(re.findall(r"\b[A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*", claim.object_text or ""))
     named = {n for n in named if n.lower() not in _STOP and len(n) > 2}

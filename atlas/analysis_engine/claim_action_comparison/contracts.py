@@ -52,6 +52,12 @@ class EntityBasis(str, Enum):
 
     ASSERTED_ROLE = "asserted_role"
     SOURCE_SPAN = "source_span"
+    SELF_DIRECTED_ACT = "self_directed_act"
+    """The company acting on its own economic object -- buying back its own
+    shares. There is no third party to match, so the usual external-entity
+    evidence cannot exist. This basis is not "same issuer": it is granted only
+    when both sides report the same completed act by the filer upon itself,
+    and ISSUER_ONLY remains insufficient everywhere else."""
     ISSUER_ONLY = "issuer_only"
     NONE = "none"
 
