@@ -438,3 +438,132 @@ class TestSharesActuallyBoughtBack:
     def test_no_date_is_invented_when_the_source_states_none_this_layer_reads(self):
         r = one("We repurchased 3.2 million shares of our common stock for $300 million in 2024.")
         assert r.date is None
+
+
+# ------------------------------------------------------------------ guard repairs
+class TestANounThatLooksLikeAnIntention:
+    """The forward guard reads "plan" as a modal. After a determiner it is a
+    thing, and a sentence can describe something already done as part of one."""
+
+    def test_an_action_taken_under_a_plan_is_still_an_action(self):
+        r = one("As part of this plan, in September 2022, we entered into an agreement with a supplier.")
+        assert r.action_type is ActionType.CONTRACT_ENTERED and r.actor_is_filer is True
+
+    def test_the_determiner_is_what_makes_it_a_noun(self):
+        assert one("Under the plan, we acquired 4,048 MW of nuclear generation facilities.")
+
+    @pytest.mark.parametrize("sentence", [
+        # the verb, which really is intent, is untouched
+        "We plan to enter into an agreement with a supplier.",
+        "The Company plans to enter into an agreement with a supplier.",
+        # so is the adjective
+        "In addition to our planned solar investments, we may enter into further agreements.",
+        # and a modal still governs whatever noun sits beside it
+        "The trading arrangement will terminate one year from the date the plan is entered into.",
+    ])
+    def test_intent_is_still_refused(self, sentence):
+        assert [r for r, _ in read_sentence(sentence) if r] == []
+
+    def test_a_plan_completing_itself_is_not_the_company_acting(self):
+        assert [r for r, _ in read_sentence("The plan was substantially completed in 2023.") if r] == []
+
+
+class TestALabelInFrontOfTheClause:
+    """Filings label a clause with its subject -- "Singapore: we broke
+    ground". The label hid the actor behind it, and where an actor was found
+    anyway the label was pasted onto the front of its name."""
+
+    def test_the_actor_behind_a_label_is_found(self):
+        r = one("Singapore: we entered into an agreement with a supplier.")
+        assert r.actor_text == "we" and r.actor_is_filer is True
+
+    def test_the_label_is_not_part_of_the_actors_name(self):
+        r = one("Idaho: the Company acquired 4,048 MW of nuclear generation facilities.")
+        assert r.actor_text == "the Company"
+        assert ":" not in r.actor_text
+
+    def test_a_bare_heading_never_becomes_the_actor(self):
+        # nothing follows the colon, so the label names the topic and the
+        # filing does not say who acted
+        assert [r for r, _ in read_sentence(
+            "Amazon Web Services: entered into an agreement with a third party.") if r] == []
+
+    def test_a_label_cannot_manufacture_a_predicate_or_an_actor(self):
+        assert [r for r, _ in read_sentence("Note 5: the fair value of the trust was $450 million.") if r] == []
+
+    def test_forward_language_still_governs_after_a_label(self):
+        assert [r for r, _ in read_sentence(
+            "Risk Factors: we may be unable to complete the transaction.") if r] == []
+
+
+class TestAReportingPeriodIsNotADay:
+    """"During the year ended December 31, 2024" says the act happened
+    somewhere inside 2024. It does not say it happened on the 31st."""
+
+    def test_a_year_ended_opener_yields_a_period_with_no_day(self):
+        r = one("During the year ended December 31, 2024, we repurchased 16.6 million shares "
+                "for $1.2 billion under the program.")
+        assert r.date is not None
+        assert r.date.kind is DateKind.PERIOD
+        assert (r.date.year, r.date.month, r.date.day) == (2024, None, None)
+
+    def test_a_fiscal_year_is_read_the_same_way(self):
+        r = one("During the fiscal year ended January 31, 2025, we repurchased approximately "
+                "30 million shares.")
+        assert r.date.kind is DateKind.PERIOD
+        assert (r.date.year, r.date.month, r.date.day) == (2025, None, None)
+
+    def test_a_cumulative_boundary_is_not_a_period_of_occurrence(self):
+        # "through" says how much had been done by a date, not when it was done
+        r = one("Through August 28, 2025, we had repurchased an aggregate of $7.19 billion "
+                "under the authorization.")
+        assert r.date is None
+
+    def test_two_years_in_one_opener_are_left_unread_rather_than_collapsed(self):
+        out = [r for r, _ in read_sentence(
+            "During the years ended December 31, 2024 and 2025, we entered into agreements "
+            "with several suppliers.") if r]
+        assert out and out[0].date is None
+
+    def test_an_explicit_day_keeps_its_day_and_stays_an_event(self):
+        r = one("On December 9, 2024, we entered into direct funding agreements with a department.")
+        assert r.date.kind is DateKind.EVENT and r.date.day == 9
+
+    def test_the_filing_date_is_never_used_as_the_action_date(self):
+        r = one("We repurchased 3.2 million shares of our common stock for $300 million in 2024.")
+        assert r.date is None
+
+
+class TestTheRepairsStayInsideTheirOwnBoundaries:
+    """Each repair removes one specific false refusal. These pin the edge it
+    must not cross -- the forward negatives above cannot do it, because a
+    sentence stating intent uses an infinitive and is refused for having no
+    predicate at all, whichever way the guard behaves."""
+
+    @pytest.mark.parametrize("phrase", ["this plan", "the plan", "our plans", "a plan", "such plans"])
+    def test_a_determiner_before_it_makes_it_a_noun(self, phrase):
+        from atlas.analysis_engine.action_evidence.extraction import _NOUN_PLAN
+        assert _NOUN_PLAN.search(f"As part of {phrase}, we acted")
+
+    @pytest.mark.parametrize("phrase", [
+        "we plan to build", "the Company plans to build", "planning to build",
+        "planned to build", "our planned investments", "we are planning",
+    ])
+    def test_the_verb_and_the_adjective_are_left_for_the_forward_guard(self, phrase):
+        from atlas.analysis_engine.action_evidence.extraction import _NOUN_PLAN
+        assert not _NOUN_PLAN.search(phrase), f"{phrase!r} must still read as intent"
+
+    def test_a_long_clause_before_a_colon_is_not_a_label(self):
+        from atlas.analysis_engine.action_evidence.extraction import _classify_actor
+
+        # four words or fewer is a heading; beyond that it is running prose,
+        # and the text after a colon inside it is not the actor
+        assert _classify_actor("Singapore: we")[0] == "we"
+        assert _classify_actor("Following a detailed review of our capital structure: we")[0] != "we"
+
+    def test_through_a_date_is_not_a_year_ended_period(self):
+        from atlas.analysis_engine.action_evidence.extraction import _PERIOD_YEAR
+
+        assert _PERIOD_YEAR.match("During the year ended December 31, 2024,")
+        assert not _PERIOD_YEAR.match("Through August 28, 2025,")
+        assert not _PERIOD_YEAR.match("As of December 31, 2024,")

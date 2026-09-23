@@ -88,6 +88,13 @@ _FINITE_RX = [(re.compile(r"\b" + _AUX + re.escape(words) + r"\b", re.I), words,
 _FINITE_RX += [(re.compile(r"\b" + _AUX + pattern + r"\b", re.I), None, t, s)
                for pattern, t, s in _FINITE_PATTERNS]
 _ONGOING_RX = re.compile(r"\bis now ([a-z]+ing)\b")
+#: "plan" after a determiner is a thing, not an intention. The forward guard
+#: reads the word as a modal, so "As part of this plan, we broke ground"
+#: was refused as though it described something not yet done. Stripped
+#: before the hedge checks, exactly as dates are, so the verb "plan to" --
+#: which really is intent -- keeps its meaning, and so does the adjective
+#: "planned".
+_NOUN_PLAN = re.compile(r"\b(?:the|this|that|our|its|their|a|an|such|each|any)\s+plans?\b", re.I)
 #: An object that only points forward at a table or list names nothing.
 _CATAPHORA = re.compile(r"(?:the\s+)?(?:following|below|table)\b|\bas\s+follows\b", re.I)
 
@@ -131,6 +138,18 @@ _CONNECTOR = {"of", "and", "&", "the", "for", "de", "la"}
 def _classify_actor(segment: str) -> tuple[str | None, ActorKind | None, str | None]:
     """(actor text, kind, reported_via) or (None, None, None) if no actor."""
     segment = segment.strip().rstrip(",").strip()
+    # A short label introducing the clause -- "Singapore: we broke ground" --
+    # hides the actor behind it and, where an actor was still found, was
+    # pasted onto the front of its name. The label is dropped only when real
+    # text follows it, so a bare "Amazon Web Services:" cannot become one.
+    if ":" in segment:
+        label, _, rest = segment.rpartition(":")
+        if rest.strip() and 0 < len(label.split()) <= 4:
+            segment = rest.strip()
+        elif not rest.strip():
+            # a bare heading with the clause hanging off it: the label names
+            # the topic, not whoever acted
+            return None, None, None
     if "," in segment:
         segment = segment.rsplit(",", 1)[1].strip()
     reported = _REPORTED.match(segment)
@@ -305,10 +324,23 @@ _YEAR_DATE = re.compile(r"\b(?:In|in|During|during)\s+(\d{4})\b")
 _ANY_DATE = re.compile(_M + r"(?:\s+\d{1,2},)?\s+\d{4}")
 
 
+#: "During the year ended December 31, 2024" says the act happened somewhere
+#: inside that year -- not on the 31st of December. The year is kept, the day
+#: and month are not, and the kind says PERIOD so nothing downstream can read
+#: it as an instant. Singular only: "the years ended December 31, 2024 and
+#: 2025" spans two years and is left unread rather than collapsed into one.
+_PERIOD_YEAR = re.compile(
+    r"(?:During|In|For)\s+the\s+(?:fiscal\s+)?year\s+ended\s+[A-Z][a-z]+\s+\d{1,2},\s*(\d{4})", re.I)
+
+
 def _date(prefix: str, reported_via: str | None) -> DateEvidence | None:
     """The sentence-opening date adverbial only. "dated May 15, 2025" inside
     the sentence dates an agreement, not the action, and is left alone."""
     head = re.sub(r"^(?:For example|Additionally|In addition|Also|Further),\s*", "", prefix)
+    period = _PERIOD_YEAR.match(head.strip())
+    if period:
+        return DateEvidence(raw_text=period.group(0), kind=DateKind.PERIOD,
+                            year=int(period.group(1)), month=None, day=None)
     for rx, precision in ((_DAY_DATE, "day"), (_MONTH_DATE, "month"), (_YEAR_DATE, "year")):
         m = rx.search(head)
         if not m or m.start() > 3 or head[max(0, m.start() - 6):m.start()].strip().endswith("dated"):
@@ -356,6 +388,7 @@ def read_sentence(sentence: str, locator_base: dict | None = None
         # Dates are removed before the hedge checks: "dated May 15, 2025"
         # names a month, and a case-blind modal check reads it as "may".
         clause = _ANY_DATE.sub(" ", prefix.rsplit(";", 1)[-1])
+        clause = _NOUN_PLAN.sub(" ", clause)
         if _NEGATION.search(clause[-40:]):
             results.append((None, "negated")); continue
         if _FORWARD.search(clause):
