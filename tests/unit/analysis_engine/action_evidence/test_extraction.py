@@ -368,3 +368,73 @@ def test_contract_duration_is_never_read_as_capacity():
     kinds = {(x.value_text, x.unit): x.kind for x in one(AWS).quantities}
     assert kinds[("20", "year")] is QuantityKind.DURATION
     assert kinds[("1,200", "MW")] is QuantityKind.CAPACITY
+
+
+# ------------------------------------------------------------------ share repurchase
+class TestSharesActuallyBoughtBack:
+    """Sprint 26. Claims about returning capital had no action vocabulary at
+    all, so every one of them was refused on event. The family is narrow on
+    purpose: only the past-tense verb counts, because the nouns around it --
+    "repurchase programme", "authorized repurchases", "remaining
+    authorization" -- describe permission to spend, not spending."""
+
+    def test_a_completed_repurchase_is_read_with_its_amount(self):
+        r = one("We repurchased 3.2 million shares of our common stock for $300 million in 2024.")
+        assert r.action_type is ActionType.SHARE_REPURCHASE
+        assert r.status is ActionStatus.COMPLETED
+        assert r.actor_is_filer is True
+        assert r.object_text == "3.2 million shares of our common stock"
+        assert [(q.value_text, q.unit) for q in r.quantities] == [("300 million", "$")]
+
+    def test_a_cumulative_repurchase_is_still_an_observed_one(self):
+        r = one("Through August 28, 2025, we had repurchased an aggregate of $7.19 billion "
+                "under the authorization.")
+        assert r.action_type is ActionType.SHARE_REPURCHASE
+        assert r.predicate.lower().endswith("repurchased")
+        # the figure is what was spent, not what was permitted
+        assert [q.value_text for q in r.quantities] == ["7.19 billion"]
+
+    def test_the_company_as_actor_reads_the_same_as_we(self):
+        r = one("The Company repurchased an additional $959 million dollar-value of shares in 2025.")
+        assert r.action_type is ActionType.SHARE_REPURCHASE and r.actor_is_filer is True
+
+    # ---------------------------------------------------------- hard negatives
+    @pytest.mark.parametrize("sentence", [
+        # a board permitting a ceiling is not a purchase -- the single most
+        # dangerous false positive in this family
+        "In February 2026, our Board of Directors authorized the repurchase of up to $2 billion "
+        "of our Class A subordinate voting shares.",
+        "In March 2025, our Board of Directors approved a common stock repurchase program "
+        "authorizing $10.0 billion in repurchases.",
+        "As of January 31, 2026, we were authorized to purchase a remaining $17.9 billion of the "
+        "Company's common stock under the Share Repurchase Program.",
+        # the same permission without the "As of" opener, so the sentence has
+        # to be refused on what it says rather than on how it begins
+        "We were authorized to purchase a remaining $17.9 billion of the Company's common stock.",
+        "The Board authorized an additional $20.0 billion in repurchases under the programme.",
+        # explicitly denied
+        "No shares were repurchased in 2025.",
+        # permitted, not done
+        "Under the Share Repurchase Program, shares of common stock may be repurchased using a "
+        "variety of methods.",
+        # future
+        "The timing, number, and value of shares repurchased will be determined at our discretion.",
+        # accounting description, not an act
+        "Repurchased shares of our common stock are considered treasury stock.",
+        "Amounts repurchased are included in treasury stock.",
+        # somebody else's act
+        "The US has imposed a 1% excise tax on the fair market value of shares repurchased.",
+    ])
+    def test_permission_denial_and_description_never_become_a_repurchase(self, sentence):
+        assert [r for r, _ in read_sentence(sentence) if r] == []
+
+    def test_a_table_lead_in_names_nothing_and_is_refused(self):
+        # "the following" points at rows this layer never read
+        out = read_sentence("We repurchased the following under the Share Repurchase Program "
+                            "(in millions, except average price per share):")
+        assert [r for r, _ in out if r] == []
+        assert "not_active_object" in [why for _, why in out if why]
+
+    def test_no_date_is_invented_when_the_source_states_none_this_layer_reads(self):
+        r = one("We repurchased 3.2 million shares of our common stock for $300 million in 2024.")
+        assert r.date is None

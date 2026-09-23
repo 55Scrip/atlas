@@ -65,9 +65,31 @@ _FINITE = (
     ("executed", ActionType.EXECUTION, ActionStatus.COMPLETED),
 )
 _AUX = r"(?:(?:had|has|have)\s+)?(?:(?:also|subsequently|previously|successfully)\s+)?"
+
+#: Predicates whose surface varies, kept apart from the literal table above so
+#: that table's behaviour is provably unchanged. Each pattern absorbs its own
+#: preposition where the source uses one, so the object span starts at the
+#: thing acted upon rather than at "on" or "of".
+#:
+#: Share repurchase exists because a StrategyClaim demanded it and the held
+#: filings supply it: claims about returning capital had no action vocabulary
+#: at all before this. It reads no noun -- "repurchase" and "repurchases"
+#: standing alone report nothing, so a board "authorizing $10 billion in
+#: repurchases" is a permission and never a purchase.
+#:
+#: Construction is deliberately absent. The filings do report real
+#: groundbreakings, but every one of them is refused by a guard that predates
+#: this vocabulary, so a CONSTRUCTION_STARTED type could never be emitted.
+_FINITE_PATTERNS = (
+    (r"repurchased", ActionType.SHARE_REPURCHASE, ActionStatus.COMPLETED),
+)
 _FINITE_RX = [(re.compile(r"\b" + _AUX + re.escape(words) + r"\b", re.I), words, t, s)
               for words, t, s in _FINITE]
+_FINITE_RX += [(re.compile(r"\b" + _AUX + pattern + r"\b", re.I), None, t, s)
+               for pattern, t, s in _FINITE_PATTERNS]
 _ONGOING_RX = re.compile(r"\bis now ([a-z]+ing)\b")
+#: An object that only points forward at a table or list names nothing.
+_CATAPHORA = re.compile(r"(?:the\s+)?(?:following|below|table)\b|\bas\s+follows\b", re.I)
 
 # ------------------------------------------------------------------ refusals
 REJECTION_REASONS = (
@@ -355,7 +377,11 @@ def read_sentence(sentence: str, locator_base: dict | None = None
             if kind is None:
                 results.append((None, "no_actor")); continue
         object_text = _span(rest, _OBJECT_STOPS)
-        if not object_text:
+        if not object_text or _CATAPHORA.match(object_text):
+            # "we repurchased the following (in millions):" introduces a
+            # table. The act is real but the sentence names nothing, so a
+            # record built from it would carry an object that points at
+            # words this layer never read.
             results.append((None, "not_active_object")); continue
         if atype is ActionType.CONTRACT_ENTERED and not _AGREEMENT.search(object_text):
             atype = ActionType.ENTRY

@@ -289,3 +289,28 @@ def test_absence_of_any_action_produces_no_relation_at_all():
     assert not hasattr(Relation, "RELEVANT_CONTRADICTION")
     assert {r.value for r in Relation} == {
         "relevant_execution", "relevant_dependency", "not_relevant", "not_comparable"}
+
+
+def test_an_actions_quantities_can_never_change_the_relation():
+    """Sprint 26 found four new records that over-capture a neighbouring
+    figure -- a dividend paid in the same sentence, an average price per
+    share, a prior-year comparison. Those values are wrong and known to be
+    wrong, so the thing that matters is that no relation can rest on them.
+    Measure is recorded; it is never allowed to decide."""
+    import dataclasses
+
+    claim_action_pairs = [
+        (claim(CHIPS, issuer="MU", period="2026Q1"), action(CHIPS_FUNDING_WITH_AMOUNT, issuer="MU"), ("CHIPS",)),
+        (claim(PPAS), action(META_PPA), ("PPAs",)),
+        (claim(WEST_TEXAS, period="2025Q3"), action(WEST_TEXAS_ACTION), ("West Texas",)),
+        (claim(PJM), action(ENERGY_HARBOR), ("PJM",)),
+        (claim(COMANCHE), action(AWS_PPA), ("Comanche Peak",)),
+    ]
+    for c, a, surfaces in claim_action_pairs:
+        with_quantities = compare(c, a, surfaces)
+        without = compare(c, dataclasses.replace(a, quantities=()), surfaces)
+        assert with_quantities.relation is without.relation
+        assert with_quantities.refusal_reasons == without.refusal_reasons
+        # and a fabricated quantity cannot rescue or strengthen one either
+        invented = compare(c, dataclasses.replace(a, quantities=a.quantities * 3), surfaces)
+        assert invented.relation is with_quantities.relation

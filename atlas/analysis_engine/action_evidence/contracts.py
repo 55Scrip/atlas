@@ -77,6 +77,9 @@ class ActionType(str, Enum):
     COMPLETION = "completion"
     EXECUTION = "execution"
     ONGOING_ACTIVITY = "ongoing_activity"
+    SHARE_REPURCHASE = "share_repurchase"
+    """Shares actually bought back. Never a board authorization, which is a
+    ceiling someone is permitted to spend, not money spent."""
 
 
 class ActionStatus(str, Enum):
