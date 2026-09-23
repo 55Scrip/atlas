@@ -333,10 +333,28 @@ _PERIOD_YEAR = re.compile(
     r"(?:During|In|For)\s+the\s+(?:fiscal\s+)?year\s+ended\s+[A-Z][a-z]+\s+\d{1,2},\s*(\d{4})", re.I)
 
 
-def _date(prefix: str, reported_via: str | None) -> DateEvidence | None:
+#: Things filings put in front of a sentence before its date: a footnote
+#: marker, a heading closed by a dash, a section label closed by a colon.
+#: None of them changes what the date governs.
+_LEADING_FURNITURE = re.compile(
+    r"^(?:\(\d{1,2}\)\s*|\[\d{1,2}\]\s*|[A-Z][^.\u2014:]{0,60}?\s*[\u2014\u2013-]{1,2}\s+|[A-Z][A-Za-z ]{1,30}:\s+)+")
+
+#: A year after the predicate, inside the predicate's own clause. "We
+#: repurchased 3.2 million shares for $300 million in 2024" dates the
+#: repurchase; the year is a period, never a day, and never a month.
+_TRAILING_YEAR = re.compile(r"\bin\s+((?:19|20)\d{2})\b", re.I)
+#: ... unless the year belongs to something else that happened. A programme
+#: adopted in 2024 says nothing about when shares were bought back under it.
+_YEAR_OF_ANOTHER_ACT = re.compile(
+    r"\b(?:adopted|approved|authorized|authorised|established|dated|announced|commenced|"
+    r"issued|amended|expiring|maturing|effective|beginning|ending|commencing)\s+$", re.I)
+
+
+def _date(prefix: str, reported_via: str | None, rest: str = "") -> DateEvidence | None:
     """The sentence-opening date adverbial only. "dated May 15, 2025" inside
     the sentence dates an agreement, not the action, and is left alone."""
     head = re.sub(r"^(?:For example|Additionally|In addition|Also|Further),\s*", "", prefix)
+    head = _LEADING_FURNITURE.sub("", head.strip())
     period = _PERIOD_YEAR.match(head.strip())
     if period:
         return DateEvidence(raw_text=period.group(0), kind=DateKind.PERIOD,
@@ -358,7 +376,22 @@ def _date(prefix: str, reported_via: str | None) -> DateEvidence | None:
         else:
             kind = DateKind.EVENT
         return DateEvidence(raw_text=m.group(0), kind=kind, year=year, month=month, day=day)
-    return None
+    return _trailing_year(rest)
+
+
+def _trailing_year(rest: str) -> DateEvidence | None:
+    """A year inside the predicate's own clause, at the precision given.
+
+    Only the first one counts: "repurchased ... for $300 million in 2024 and
+    8.6 million shares for $425 million in 2023" reports two buybacks, and the
+    record describes the first of them.
+    """
+    clause = re.split(r";|\.\s", rest)[0]
+    m = _TRAILING_YEAR.search(clause)
+    if not m or _YEAR_OF_ANOTHER_ACT.search(clause[:m.start()]):
+        return None
+    return DateEvidence(raw_text=m.group(0), kind=DateKind.PERIOD,
+                        year=int(m.group(1)), month=None, day=None)
 
 
 # ------------------------------------------------------------------ reading
@@ -435,7 +468,7 @@ def read_sentence(sentence: str, locator_base: dict | None = None
             object_text=object_text,
             counterparty_text=counterparty,
             quantities=_quantities(sentence),
-            date=_date(prefix, via),
+            date=_date(prefix, via, rest),
             reported_via=via,
         ), None))
     if not found:

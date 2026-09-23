@@ -144,18 +144,34 @@ def _measure(claim: StrategyClaim, action: ActionEvidence) -> Compatibility:
 
 
 def _action_ym(action: ActionEvidence) -> tuple[int, int] | None:
-    """The action's own stated date, never today's. No year, no answer."""
+    """The action's own stated date, never today's. No year, no answer.
+
+    Read from the structured fields, which are authoritative. The raw text is
+    kept as evidence, not re-parsed: "During the year ended December 31, 2024"
+    carries the word December precisely because that is when the *period*
+    closed, and the record says `month=None` to record that the act's month is
+    not known. Recovering December from the prose would invent the precision
+    the reading deliberately withheld.
+    """
     if action.date is None:
         return None
-    raw = action.date.raw_text
-    year = re.search(r"\b(19|20)\d{2}\b", raw)
-    if not year:
-        return None
-    month = next((v for k, v in _MONTHS.items() if re.search(rf"\b{k}\b", raw, re.I)), None)
-    return int(year.group(0)), month or 0
+    return action.date.year, action.date.month or 0
 
 
 def _temporal(claim: StrategyClaim, action: ActionEvidence) -> tuple[Compatibility, TemporalRelation]:
+    """Where the action sits relative to the claim, and whether that is a
+    problem -- which depends on what kind of claim it is.
+
+    An aim states something not yet done, so a deal already closed cannot be
+    its execution; that refusal is what the Vistra/AWS pair earned in Sprint
+    25 and it stands. A management statement *reporting* a buyback is the
+    opposite case: the act it describes necessarily came first, and refusing
+    the earlier action would refuse the only evidence such a claim can ever
+    have.
+
+    The ordering itself is reported the same way either way. Only its meaning
+    changes.
+    """
     ym = _action_ym(action)
     p = _PERIOD.search(claim.provenance.source_period or "")
     if ym is None or p is None:
@@ -167,7 +183,9 @@ def _temporal(claim: StrategyClaim, action: ActionEvidence) -> tuple[Compatibili
         return Compatibility.MATCH, TemporalRelation.ACTION_AFTER_CLAIM
     if y == py and (m == 0 or start <= m <= end):
         return Compatibility.MATCH, TemporalRelation.ACTION_SAME_PERIOD
-    return Compatibility.MISMATCH, TemporalRelation.ACTION_BEFORE_CLAIM
+    reports_the_past = claim.status is ClaimStatus.OBSERVATIONAL_STATEMENT
+    return (Compatibility.MATCH if reports_the_past else Compatibility.MISMATCH,
+            TemporalRelation.ACTION_BEFORE_CLAIM)
 
 
 def _dependency(claim: StrategyClaim, action: ActionEvidence) -> Compatibility:
@@ -228,7 +246,8 @@ def compare(claim: StrategyClaim, action: ActionEvidence,
             return out(Relation.RELEVANT_DEPENDENCY)
         reasons.append("event_mismatch")
         return out(Relation.NOT_RELEVANT)
-    if tr is TemporalRelation.ACTION_BEFORE_CLAIM:
+    if tc is Compatibility.MISMATCH:
+        # only an ordering the claim cannot live with; _temporal decides which
         reasons.append("temporal_action_before_claim")
         return out(Relation.NOT_RELEVANT)
     return out(Relation.RELEVANT_EXECUTION)

@@ -446,3 +446,82 @@ class TestTheSelfDirectedLicenceIsNarrow:
         from atlas.analysis_engine.strategy_claim import EventKind
 
         assert module._SELF_DIRECTED == frozenset({EventKind.SHARE_REPURCHASE})
+
+
+class TestWhatAnEarlierActionMeansDependsOnTheClaim:
+    """One temporal rule served two opposite cases. An aim states something
+    not yet done, so a deal already closed cannot be its execution. A
+    statement *reporting* a buyback is the reverse: the act it describes
+    necessarily came first, and refusing the earlier action would refuse the
+    only evidence such a claim can ever have."""
+
+    def test_a_report_of_a_buyback_is_evidenced_by_the_earlier_buyback(self):
+        r = rel(MU_REPURCHASE_CLAIM, MU_REPURCHASE_ACTION, issuer="MU", period="2026Q1",
+                surfaces=("CHIPS",))
+        assert r.relation is Relation.RELEVANT_EXECUTION
+        assert r.temporal_relation is TemporalRelation.ACTION_BEFORE_CLAIM
+        assert r.temporal is Compatibility.MATCH
+        # the ordering is still reported honestly -- only its meaning changed
+        assert "temporal_action_before_claim" not in r.refusal_reasons
+
+    def test_an_aim_is_still_not_evidenced_by_a_deal_already_done(self):
+        # THE load-bearing negative: the Vistra/AWS pair Sprint 25 earned
+        r = rel(PPAS, AWS_PPA, surfaces=("PPAs",))
+        assert r.event is Compatibility.MATCH
+        assert r.temporal_relation is TemporalRelation.ACTION_BEFORE_CLAIM
+        assert r.temporal is Compatibility.MISMATCH
+        assert r.relation is Relation.NOT_RELEVANT
+        assert "temporal_action_before_claim" in r.refusal_reasons
+
+    def test_a_forward_allocation_is_still_not_evidenced_by_a_past_buyback(self):
+        r = rel(VST_ALLOCATION_CLAIM, VST_REPURCHASE_ACTION, issuer="VST", period="2026Q2",
+                surfaces=("share repurchases",))
+        assert r.relation is Relation.NOT_RELEVANT
+
+    def test_an_action_after_the_claim_is_unaffected(self):
+        r = rel(PPAS, META_PPA, surfaces=("PPAs",))
+        assert r.temporal_relation is TemporalRelation.ACTION_AFTER_CLAIM
+        assert r.relation is Relation.RELEVANT_EXECUTION
+
+    def test_unknown_time_is_still_unknown_and_not_assumed_compatible(self):
+        r = rel(WEST_TEXAS, WEST_TEXAS_ACTION, period="2025Q3", surfaces=("West Texas",))
+        assert r.temporal is Compatibility.UNKNOWN
+        assert r.temporal_relation is TemporalRelation.UNKNOWN
+
+    def test_being_earlier_never_proves_it_is_the_same_transaction(self):
+        # same issuer, same act, same amount, compatible timing -- and still
+        # only evidence that the kind of act happened, never that these two
+        # sentences describe one buyback
+        r = rel(MU_REPURCHASE_CLAIM, MU_REPURCHASE_ACTION, issuer="MU", period="2026Q1",
+                surfaces=("CHIPS",))
+        assert r.relation is Relation.RELEVANT_EXECUTION
+        assert {x.value for x in Relation} == {
+            "relevant_execution", "relevant_dependency", "not_relevant", "not_comparable"}
+
+
+class TestTheComparatorReadsTheRecordNotTheProse:
+    """A year-level period carries the words "December 31" because that is
+    when the period closed. The record says month is unknown; the comparator
+    used to recover December from the prose anyway."""
+
+    def test_a_year_level_period_stays_year_level(self):
+        import atlas.analysis_engine.claim_action_comparison.comparison as module
+
+        a = action("During the year ended December 31, 2024, we repurchased 16.6 million shares "
+                   "for $1.2 billion under the program.", issuer="VST")
+        assert (a.date.year, a.date.month) == (2024, None)
+        assert module._action_ym(a) == (2024, 0)      # never (2024, 12)
+
+    def test_an_exact_event_date_keeps_its_month(self):
+        import atlas.analysis_engine.claim_action_comparison.comparison as module
+
+        a = action("On December 9, 2024, we entered into direct funding agreements with a department.",
+                   issuer="MU")
+        assert module._action_ym(a) == (2024, 12)
+
+    def test_an_undated_action_reads_as_no_date_at_all(self):
+        import atlas.analysis_engine.claim_action_comparison.comparison as module
+
+        a = action("Through August 28, 2025, we had repurchased an aggregate of $7.19 billion "
+                   "under the authorization.", issuer="MU")
+        assert a.date is None and module._action_ym(a) is None

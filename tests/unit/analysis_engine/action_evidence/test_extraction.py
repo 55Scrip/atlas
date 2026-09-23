@@ -435,9 +435,13 @@ class TestSharesActuallyBoughtBack:
         assert [r for r, _ in out if r] == []
         assert "not_active_object" in [why for _, why in out if why]
 
-    def test_no_date_is_invented_when_the_source_states_none_this_layer_reads(self):
+    def test_no_precision_is_invented_beyond_what_the_source_states(self):
+        # Sprint 26 asserted no date at all here, because the year sat after
+        # the predicate and went unread. Sprint 29 reads it -- as a year, and
+        # only a year.
         r = one("We repurchased 3.2 million shares of our common stock for $300 million in 2024.")
-        assert r.date is None
+        assert r.date is not None
+        assert (r.date.year, r.date.month, r.date.day) == (2024, None, None)
 
 
 # ------------------------------------------------------------------ guard repairs
@@ -530,7 +534,9 @@ class TestAReportingPeriodIsNotADay:
         assert r.date.kind is DateKind.EVENT and r.date.day == 9
 
     def test_the_filing_date_is_never_used_as_the_action_date(self):
-        r = one("We repurchased 3.2 million shares of our common stock for $300 million in 2024.")
+        # a sentence that states no date this layer can read stays undated,
+        # rather than borrowing the date of the filing it came from
+        r = one("We repurchased 3.2 million shares of our common stock under the program.")
         assert r.date is None
 
 
@@ -567,3 +573,90 @@ class TestTheRepairsStayInsideTheirOwnBoundaries:
         assert _PERIOD_YEAR.match("During the year ended December 31, 2024,")
         assert not _PERIOD_YEAR.match("Through August 28, 2025,")
         assert not _PERIOD_YEAR.match("As of December 31, 2024,")
+
+
+class TestAYearThatSitsAfterThePredicate:
+    """"We repurchased 3.2 million shares for $300 million in 2024" dates the
+    repurchase. The year is a period -- the source named no month and no day,
+    and none is filled in."""
+
+    def test_a_trailing_year_dates_the_action(self):
+        r = one("We repurchased 3.2 million shares of our common stock for $300 million in 2024.")
+        assert r.date is not None
+        assert r.date.kind is DateKind.PERIOD
+        assert (r.date.year, r.date.month, r.date.day) == (2024, None, None)
+
+    def test_only_the_first_clause_counts_when_two_years_are_coordinated(self):
+        # two buybacks in one sentence; the record describes the first
+        r = one("We repurchased 3.2 million shares of our common stock for $300 million in 2024 "
+                "and 8.6 million shares for $425 million in 2023.")
+        assert r.date.year == 2024
+
+    def test_a_year_belonging_to_another_act_is_not_the_actions_year(self):
+        r = one("We repurchased shares under a program adopted in 2024.")
+        assert r.date is None
+
+    def test_a_year_inside_an_instruments_name_is_not_a_date(self):
+        r = one("We entered into fixed-to-floating interest rate swaps on the 2027 Notes.")
+        assert r.date is None
+
+
+class TestFurnitureInFrontOfADate:
+    """Filings put a footnote marker, a heading and dash, or a section label
+    in front of a sentence. None of it changes what the date governs."""
+
+    @pytest.mark.parametrize("sentence,year", [
+        ("(1) In 2021, we entered into interest rate swaps with a counterparty.", 2021),
+        ("Acquisition of Nuclear Generation Facilities — In 2024, we acquired 4,048 MW "
+         "of nuclear generation facilities from a seller.", 2024),
+        ("Share Repurchase Program: During the fiscal year ended January 31, 2025, we "
+         "repurchased approximately 30 million shares of our common stock.", 2025),
+    ])
+    def test_the_date_behind_the_furniture_is_read(self, sentence, year):
+        r = one(sentence)
+        assert r.date is not None and r.date.year == year
+        assert r.date.day is None
+
+
+class TestACumulativeBoundaryIsNotAnOccurrence:
+    """"Through August 28, 2025, we had repurchased an aggregate of $7.19bn"
+    says how much had been bought back BY that date. It does not say any of it
+    happened in August 2025, and the comparator reads a month out of whatever
+    raw text a date carries -- so emitting one here would assert an ordering
+    the filing never states."""
+
+    def test_a_through_boundary_yields_no_date(self):
+        r = one("Through August 28, 2025, we had repurchased an aggregate of $7.19 billion "
+                "under the authorization.")
+        assert r.date is None
+
+    def test_an_as_of_boundary_is_refused_outright(self):
+        assert [r for r, _ in read_sentence(
+            "As of December 31, 2024, we had repurchased 10 million shares.") if r] == []
+
+    @pytest.mark.parametrize("sentence", [
+        "During the years ended December 31, 2022, 2023, and 2024, we repurchased $59.3 billion, "
+        "$62.2 billion, and $62.0 billion, respectively, of common stock.",
+        "During the years ended December 31, 2024 and 2023, the Company completed individually "
+        "immaterial acquisitions.",
+    ])
+    def test_plural_periods_are_never_collapsed_into_one_year(self, sentence):
+        out = [r for r, _ in read_sentence(sentence) if r]
+        assert out and out[0].date is None
+
+
+def test_a_year_in_a_later_clause_does_not_date_this_action():
+    # the predicate's own clause names no year; the one after the semicolon
+    # belongs to a different statement
+    r = one("We repurchased 3.2 million shares under the program; we opened a facility in 2024.")
+    assert r.date is None
+
+
+def test_construction_is_still_not_in_the_vocabulary():
+    # deferred deliberately: representing a groundbreaking needs an action
+    # type the comparator has no semantics for
+    assert [r for r, _ in read_sentence(
+        "In September 2022, we broke ground on a memory manufacturing fab.") if r] == []
+    assert [r for r, _ in read_sentence(
+        "We have started construction of a second cleanroom at this site.") if r] == []
+    assert not any("construction" in t.value for t in ActionType)
