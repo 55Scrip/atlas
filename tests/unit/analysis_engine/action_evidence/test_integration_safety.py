@@ -37,12 +37,16 @@ def test_the_package_imports_nothing_from_atlas_but_itself():
         assert not foreign, f"{path.name} imports {sorted(foreign)}"
 
 
-#: The permitted consumers: two decision-shadow read models, each of which
-#: nothing consumes in turn -- Claim-Action Comparison (Sprint 25) and Project
-#: Reference (Sprint 31). The guarantee that matters -- no decision layer reads
-#: this -- is enforced unchanged below.
+#: The permitted consumers: three decision-shadow read models, each of which
+#: nothing consumes in turn -- Claim-Action Comparison (Sprint 25), Project
+#: Reference (Sprint 31) and Project Enumeration (Sprint 34). The last reads
+#: actions to tell a filing's list of projects from its list of risks, and the
+#: seam runs one way: this package must never learn that lists exist. The
+#: guarantee that matters -- no decision layer reads this -- is enforced
+#: unchanged below.
 SHADOW_CONSUMERS = ("atlas.analysis_engine.claim_action_comparison",
-                    "atlas.analysis_engine.project_reference")
+                    "atlas.analysis_engine.project_reference",
+                    "atlas.analysis_engine.project_enumeration")
 
 
 def test_no_production_module_imports_action_evidence():
