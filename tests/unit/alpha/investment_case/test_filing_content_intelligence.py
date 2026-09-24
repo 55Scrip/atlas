@@ -12,10 +12,16 @@ separately, outside the unit suite.
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
+from pathlib import Path
 
 import pytest
 
 from atlas.alpha.investment_case.filing_content_intelligence import (
+    FilingParagraph,
+    FilingReference,
+    FilingSection,
+    FilingSubsection,
+    FilingTable,
     MissingFilingArtifact,
     require_filing_content,
     ExtractionStatus,
@@ -712,3 +718,203 @@ class TestARequiredFilingThatCannotBeReadIsNotAnEmptyFiling:
         # the strict path stops on the hole instead of under-reporting
         with pytest.raises(MissingFilingArtifact):
             [require_filing_content(f, fetch) for f in filings]
+
+
+class TestSourceEventIndex:
+    """Sprint 38. The parser builds one ordered stream of block/table/anchor
+    events and then files them in three separately numbered tuples, which used
+    to be the point where the order BETWEEN a paragraph and a table was lost.
+    `source_event_index` is that order, and nothing else: it says which event
+    came first, never that two objects belong together.
+    """
+
+    _DOC = (
+        "<html><body>"
+        "<p>Item 2. Properties</p>"
+        "<p>Our principal facilities are:</p>"
+        "<table><tr><td>Site</td><td>Use</td></tr><tr><td>A</td><td>Fab</td></tr></table>"
+        "<p>We also lease other space.</p>"
+        "<p><a href='#note'>See note</a></p>"
+        "<p>Item 3. Legal Proceedings</p>"
+        "<p>None.</p>"
+        "</body></html>"
+    )
+
+    def _content(self):
+        return extract_filing_content(_filing("10-K"), _fetcher(self._DOC))
+
+    def test_a_table_between_two_paragraphs_is_ordered_between_them(self):
+        """The whole point of the sprint. Both objects are index 0 in their own
+        tuple, so before this field there was nothing to compare."""
+        section = find_section(self._content(), FilingSectionKind.PROPERTIES)
+        lead_in, after = section.paragraphs[0], section.paragraphs[1]
+        table = section.tables[0]
+        assert lead_in.order_index == 0 and table.order_index == 0
+        assert lead_in.source_event_index < table.source_event_index < after.source_event_index
+
+    def test_the_existing_per_type_ordinal_is_untouched(self):
+        section = find_section(self._content(), FilingSectionKind.PROPERTIES)
+        assert [p.order_index for p in section.paragraphs] == list(range(len(section.paragraphs)))
+        assert [t.order_index for t in section.tables] == [0]
+        assert section.paragraphs[0].source_event_index != section.paragraphs[0].order_index
+
+    def test_the_counter_is_document_global_so_two_sections_compare(self):
+        content = self._content()
+        properties = find_section(content, FilingSectionKind.PROPERTIES)
+        legal = find_section(content, FilingSectionKind.LEGAL_PROCEEDINGS)
+        assert properties.paragraphs[-1].source_event_index < legal.paragraphs[0].source_event_index
+        assert legal.paragraphs[0].order_index == 0
+
+    def test_a_section_carries_its_own_heading_event(self):
+        """An `Item` heading becomes no paragraph. The section carries its index,
+        so the heading is not simply dropped out of the ordering."""
+        content = self._content()
+        properties = find_section(content, FilingSectionKind.PROPERTIES)
+        assert properties.source_event_index < properties.paragraphs[0].source_event_index
+
+    def test_every_object_in_a_document_has_a_distinct_position(self):
+        content = self._content()
+        seen = [s.source_event_index for s in content.sections]
+        seen += [p.source_event_index for s in content.sections for p in s.paragraphs]
+        seen += [t.source_event_index for s in content.sections for t in s.tables]
+        seen += [r.source_event_index for s in content.sections for r in s.references]
+        seen += [p.source_event_index for p in content.unattributed_paragraphs]
+        assert len(seen) == len(set(seen))
+
+    def test_sorting_by_position_reproduces_the_source_order(self):
+        section = find_section(self._content(), FilingSectionKind.PROPERTIES)
+        items = ([(p.source_event_index, p.text) for p in section.paragraphs]
+                 + [(t.source_event_index, "<table>") for t in section.tables])
+        assert [text for _, text in sorted(items)] == [
+            "Our principal facilities are:", "<table>", "We also lease other space.", "See note",
+        ]
+
+    def test_an_anchor_carries_a_position_too(self):
+        section = find_section(self._content(), FilingSectionKind.PROPERTIES)
+        assert section.references[0].source_event_index >= 0
+        assert section.references[0].order_index == 0
+
+    def test_unattributed_content_is_numbered_from_the_same_counter(self):
+        """Text before the first recognised Item heading is not renumbered into a
+        sequence of its own."""
+        content = extract_filing_content(
+            _filing("10-K"),
+            _fetcher("<html><body><p>Cover page.</p><p>Item 2. Properties</p><p>A site.</p></body></html>"),
+        )
+        first = content.unattributed_paragraphs[0]
+        section = find_section(content, FilingSectionKind.PROPERTIES)
+        assert first.source_event_index < section.source_event_index < section.paragraphs[0].source_event_index
+
+    def test_repeated_text_keeps_two_distinct_positions(self):
+        content = extract_filing_content(
+            _filing("10-K"),
+            _fetcher("<html><body><p>Item 2. Properties</p><p>Same.</p><p>Other.</p><p>Same.</p></body></html>"),
+        )
+        section = find_section(content, FilingSectionKind.PROPERTIES)
+        same = [p for p in section.paragraphs if p.text == "Same."]
+        assert len(same) == 2
+        assert same[0].source_event_index != same[1].source_event_index
+
+    def test_parsing_the_same_bytes_twice_gives_the_same_positions(self):
+        def positions(content):
+            return [(s.source_event_index, [p.source_event_index for p in s.paragraphs],
+                     [t.source_event_index for t in s.tables]) for s in content.sections]
+
+        assert positions(self._content()) == positions(self._content())
+
+    def test_table_rows_and_cells_are_not_given_positions_of_their_own(self):
+        """The upstream stream emits one event per table. Giving a row or a cell
+        a document position would invent an ordering the parser never had."""
+        section = find_section(self._content(), FilingSectionKind.PROPERTIES)
+        table = section.tables[0]
+        row = table.rows[0] if table.rows else table.header.rows[0]
+        assert not hasattr(row, "source_event_index")
+        assert not hasattr(row.cells[0], "source_event_index")
+
+    def test_positions_are_not_contiguous_when_an_item_heading_is_unmapped(self):
+        """An `Item` heading Atlas cannot name ends the previous section and opens
+        none, so it carries no position. Renumbering to close that gap would break
+        correspondence with the event stream."""
+        content = extract_filing_content(
+            _filing("10-K"),
+            _fetcher("<html><body><p>Item 2. Properties</p><p>A site.</p>"
+                     "<p>Item 4. Mine Safety Disclosures</p><p>Not applicable.</p></body></html>"),
+        )
+        section = find_section(content, FilingSectionKind.PROPERTIES)
+        carried = {s.source_event_index for s in content.sections}
+        carried |= {p.source_event_index for s in content.sections for p in s.paragraphs}
+        carried |= {p.source_event_index for p in content.unattributed_paragraphs}
+        assert section.paragraphs[0].source_event_index + 1 not in carried
+
+    def test_a_position_names_the_event_it_came_from(self):
+        """The invariant the whole field rests on: the value is an index into the
+        document's own event stream, and the event it lands on is of the object's
+        own kind. A counter that merely increases would satisfy the ordering tests
+        while no longer corresponding to anything in the source."""
+        from atlas.alpha.investment_case.filing_content_intelligence import (
+            _AnchorEvent, _BlockEvent, _parse_html, _TableEvent,
+        )
+
+        events = _parse_html(self._DOC)
+        content = self._content()
+        checked = 0
+        for section in content.sections:
+            assert isinstance(events[section.source_event_index], _BlockEvent)
+            for paragraph in section.paragraphs:
+                assert isinstance(events[paragraph.source_event_index], _BlockEvent)
+                assert events[paragraph.source_event_index].text == paragraph.text
+                checked += 1
+            for table in section.tables:
+                assert isinstance(events[table.source_event_index], _TableEvent)
+                checked += 1
+            for reference in section.references:
+                assert isinstance(events[reference.source_event_index], _AnchorEvent)
+                checked += 1
+        assert checked >= 5
+
+    def test_the_field_is_required_rather_than_defaulted(self):
+        """A position of 'unknown' would be a lie about a parsed object, so the
+        contract has no default to fall back on."""
+        import dataclasses
+
+        for kind in (FilingParagraph, FilingTable, FilingReference, FilingSection, FilingSubsection):
+            field_ = next(f for f in dataclasses.fields(kind) if f.name == "source_event_index")
+            assert field_.default is dataclasses.MISSING
+            assert field_.default_factory is dataclasses.MISSING
+
+
+class TestSourceEventIndexIsNotADecisionInput:
+    """Sprint 38 keeps the new field a fact about the source document. The moment
+    a semantic layer consults it, source ORDER starts being read as MEANING --
+    "this paragraph precedes this table, therefore it introduces it" -- which is a
+    hypothesis Sprint 37 left deliberately unfalsified (753 such adjacencies).
+    """
+
+    _ROOT = Path(__file__).resolve().parents[4]
+    _FIELD = "source_event_index"
+
+    #: The one module that may name it: the parser that assigns it.
+    _PERMITTED = ("atlas/alpha/investment_case/filing_content_intelligence.py",)
+
+    def _offenders(self, *relative_dirs):
+        out = []
+        for relative in relative_dirs:
+            base = self._ROOT / relative
+            if not base.exists():
+                continue
+            for path in base.rglob("*.py"):
+                rel = str(path.relative_to(self._ROOT))
+                if rel in self._PERMITTED:
+                    continue
+                if self._FIELD in path.read_text(encoding="utf-8"):
+                    out.append(rel)
+        return out
+
+    def test_no_shadow_read_model_consults_it(self):
+        assert self._offenders("atlas/analysis_engine") == []
+
+    def test_no_decision_layer_consults_it(self):
+        assert self._offenders("atlas/alpha/investment_case", "atlas/alpha/portfolio") == []
+
+    def test_nothing_in_production_but_the_parser_names_it(self):
+        assert self._offenders("atlas") == []

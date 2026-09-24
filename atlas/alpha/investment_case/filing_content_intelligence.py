@@ -154,6 +154,24 @@ the document itself never wrote (Phase 4's own "never infer absent
 metadata"). A consumer that wants the expanded visual grid can compute
 it from the preserved `rowspan`/`colspan` values; this module only
 preserves.
+
+**Source order between the three collections is now kept too.** The
+parser has always produced ONE ordered stream of block/table/anchor
+events and then filed them in three tuples numbered independently from
+zero, which meant that a paragraph and a table were each "index 0" and
+nothing recorded which came first -- an audit of the held corpus found
+183 of 183 sections containing a table have one sitting BETWEEN two
+paragraphs, so this was the ordering of real content, not an edge case.
+`source_event_index` carries each object's index in that stream through
+the split. Additive in the strictest sense: `order_index` keeps its
+meaning and its values everywhere, and no consumer of this module
+needed a change.
+
+It is ORDER and nothing more. That a colon-terminated paragraph is
+immediately followed by a table is, here, a fact about where two events
+sat -- not a claim that the paragraph introduces, governs, contains or
+describes the table. Whether it does is a separate question about the
+documents, and this module deliberately does not answer it.
 """
 from __future__ import annotations
 
@@ -266,6 +284,25 @@ class ExtractionStatus(str, Enum):
 @dataclass(frozen=True)
 class FilingParagraph:
     order_index: int
+    source_event_index: int
+    """Where this object sat in the single ordered event stream
+    `_parse_html` produced for its document -- the one piece of source
+    order that was known upstream and then thrown away when the stream
+    was split into separate paragraph/table/reference tuples.
+
+    Document-global, so two objects of *different* kinds in the same
+    document are comparable: a paragraph at 581 came before the table
+    at 582. Deliberately NOT named `order_index`, and never a
+    substitute for it: `order_index` stays a position within this
+    object's own tuple and is unchanged.
+
+    It records ORDER and nothing else. Two consecutive values mean the
+    parser emitted those two events one after the other. They do not
+    mean the objects belong together, that one governs, contains,
+    introduces or describes the other, or that they are the same
+    anything. Comparing indices across two documents is meaningless --
+    each document has its own counter.
+    """
     text: str
     """Verbatim, whitespace-normalized text -- never rewritten,
     summarized, or reordered."""
@@ -361,6 +398,9 @@ class TableHeader:
 @dataclass(frozen=True)
 class FilingTable:
     order_index: int
+    source_event_index: int
+    """This table's index in its document's own event stream -- see
+    `FilingParagraph.source_event_index`."""
     row_count: int
     column_count: int
     """Literal counts -- the number of `<tr>` elements with at least
@@ -396,6 +436,9 @@ class FilingTable:
 @dataclass(frozen=True)
 class FilingReference:
     order_index: int
+    source_event_index: int
+    """This reference's index in its document's own event stream -- see
+    `FilingParagraph.source_event_index`."""
     text: str
     target: str
     """The literal `href` attribute value -- may be an internal anchor
@@ -420,6 +463,9 @@ class FilingSubsection:
     a real, always-available capability, not a fabricated one."""
 
     order_index: int
+    source_event_index: int
+    """This subsection's heading block's index in its document's own event stream -- see
+    `FilingParagraph.source_event_index`."""
     heading_text: str
     paragraphs: tuple[FilingParagraph, ...]
     tables: tuple[FilingTable, ...]
@@ -433,6 +479,9 @@ class FilingSubsection:
 @dataclass(frozen=True)
 class FilingSection:
     order_index: int
+    source_event_index: int
+    """This section's own `Item` heading block's index in its document's own event stream -- see
+    `FilingParagraph.source_event_index`."""
     kind: FilingSectionKind
     heading_text: str
     """The verbatim heading text this section was detected from."""
@@ -867,31 +916,40 @@ def _resolve_item_kind(
 # -- Phase 4 + 6: assembling sections, and navigation ------------------------
 
 
+#: Each list holds `(source_event_index, value)`, so the position an item
+#: occupied in the single ordered event stream survives the split into three
+#: separate collections. Pairing rather than a parallel list because the two
+#: cannot then drift apart.
 @dataclass
 class _MutableSubsection:
     heading_text: str
-    paragraphs: list[str]
-    tables: list[_TableEvent]
-    references: list[tuple[str, str]]
+    source_event_index: int
+    paragraphs: list[tuple[int, str]]
+    tables: list[tuple[int, _TableEvent]]
+    references: list[tuple[int, tuple[str, str]]]
 
 
 @dataclass
 class _MutableSection:
     item_number: str
     kind: FilingSectionKind
-    paragraphs: list[str]
-    tables: list[_TableEvent]
-    references: list[tuple[str, str]]
+    source_event_index: int
+    paragraphs: list[tuple[int, str]]
+    tables: list[tuple[int, _TableEvent]]
+    references: list[tuple[int, tuple[str, str]]]
     subsections: list[_MutableSubsection]
 
 
-def _paragraph_objects(texts: list[str], filing: RegulatoryFiling) -> tuple[FilingParagraph, ...]:
+def _paragraph_objects(
+    texts: list[tuple[int, str]], filing: RegulatoryFiling,
+) -> tuple[FilingParagraph, ...]:
     return tuple(
         FilingParagraph(
-            order_index=i, text=t, accession_number=filing.accession_number, form_type=filing.form_type,
+            order_index=i, source_event_index=event_index, text=t,
+            accession_number=filing.accession_number, form_type=filing.form_type,
             filed_at=filing.filed_at, source_reference=filing.filing_url,
         )
-        for i, t in enumerate(texts)
+        for i, (event_index, t) in enumerate(texts)
     )
 
 
@@ -922,35 +980,40 @@ def _row_objects(rows: tuple[_ParsedRow, ...], table_order_index: int, filing: R
 
 
 def _table_objects(
-    table_events: list[_TableEvent], filing: RegulatoryFiling, *, heading_context: str | None,
+    table_events: list[tuple[int, _TableEvent]], filing: RegulatoryFiling, *, heading_context: str | None,
 ) -> tuple[FilingTable, ...]:
     return tuple(
         FilingTable(
-            order_index=i, row_count=t.row_count, column_count=t.column_count, caption=t.caption,
+            order_index=i, source_event_index=event_index,
+            row_count=t.row_count, column_count=t.column_count, caption=t.caption,
             heading_context=heading_context,
             header=TableHeader(rows=_row_objects(t.header_rows, i, filing)) if t.header_rows else None,
             rows=_row_objects(t.body_rows, i, filing), footer_rows=_row_objects(t.footer_rows, i, filing),
             accession_number=filing.accession_number, form_type=filing.form_type, filed_at=filing.filed_at,
             source_reference=filing.filing_url,
         )
-        for i, t in enumerate(table_events)
+        for i, (event_index, t) in enumerate(table_events)
     )
 
 
-def _reference_objects(refs: list[tuple[str, str]], filing: RegulatoryFiling) -> tuple[FilingReference, ...]:
+def _reference_objects(
+    refs: list[tuple[int, tuple[str, str]]], filing: RegulatoryFiling,
+) -> tuple[FilingReference, ...]:
     return tuple(
         FilingReference(
-            order_index=i, text=t, target=target, accession_number=filing.accession_number,
+            order_index=i, source_event_index=event_index, text=t, target=target,
+            accession_number=filing.accession_number,
             form_type=filing.form_type, filed_at=filing.filed_at, source_reference=filing.filing_url,
         )
-        for i, (t, target) in enumerate(refs)
+        for i, (event_index, (t, target)) in enumerate(refs)
     )
 
 
 def _subsection_objects(subsections: list[_MutableSubsection], filing: RegulatoryFiling) -> tuple[FilingSubsection, ...]:
     return tuple(
         FilingSubsection(
-            order_index=i, heading_text=sub.heading_text, paragraphs=_paragraph_objects(sub.paragraphs, filing),
+            order_index=i, source_event_index=sub.source_event_index,
+            heading_text=sub.heading_text, paragraphs=_paragraph_objects(sub.paragraphs, filing),
             tables=_table_objects(sub.tables, filing, heading_context=sub.heading_text),
             references=_reference_objects(sub.references, filing),
             accession_number=filing.accession_number, form_type=filing.form_type, filed_at=filing.filed_at,
@@ -984,17 +1047,25 @@ def _assign_events_to_sections(
     next subsection heading or the section itself ends. A heading tag
     outside any open section never creates a floating subsection -- it
     falls through to `unattributed_paragraphs` like any other text,
-    unchanged from Sprint 13's own behavior."""
+    unchanged from Sprint 13's own behavior.
+
+    Every object built here also carries the index its event held in
+    `events` (`source_event_index`). This walk is the point at which one
+    ordered stream becomes three separately numbered tuples, so it is the
+    only place that still knows the order between a paragraph and a table;
+    carrying the index is what stops that knowledge from being lost. An
+    `Item` heading becomes no paragraph, so its own index is carried by the
+    `FilingSection` it opens -- which leaves no event unrepresented."""
     form_type = filing.form_type
     sections: list[_MutableSection] = []
-    unattributed_paragraphs: list[str] = []
-    unattributed_tables: list[_TableEvent] = []
-    unattributed_references: list[tuple[str, str]] = []
+    unattributed_paragraphs: list[tuple[int, str]] = []
+    unattributed_tables: list[tuple[int, _TableEvent]] = []
+    unattributed_references: list[tuple[int, tuple[str, str]]] = []
     current_part: str | None = None
     current_section: _MutableSection | None = None
     current_subsection: _MutableSubsection | None = None
 
-    for event in events:
+    for event_index, event in enumerate(events):
         if isinstance(event, _BlockEvent):
             if form_type in _PART_AWARE_FORMS:
                 part = _match_part_heading(event.text)
@@ -1007,7 +1078,8 @@ def _assign_events_to_sections(
                 kind = _resolve_item_kind(item_number, form_type, item_map, current_part) if item_map is not None else None
                 if kind is not None:
                     current_section = _MutableSection(
-                        item_number=item_number, kind=kind, paragraphs=[], tables=[], references=[], subsections=[],
+                        item_number=item_number, kind=kind, source_event_index=event_index,
+                        paragraphs=[], tables=[], references=[], subsections=[],
                     )
                     sections.append(current_section)
                 else:
@@ -1018,7 +1090,10 @@ def _assign_events_to_sections(
                 current_subsection = None
                 continue
             if event.is_heading and current_section is not None:
-                current_subsection = _MutableSubsection(heading_text=event.text, paragraphs=[], tables=[], references=[])
+                current_subsection = _MutableSubsection(
+                    heading_text=event.text, source_event_index=event_index,
+                    paragraphs=[], tables=[], references=[],
+                )
                 current_section.subsections.append(current_subsection)
                 continue
             target_paragraphs = (
@@ -1026,25 +1101,26 @@ def _assign_events_to_sections(
                 else current_section.paragraphs if current_section is not None
                 else unattributed_paragraphs
             )
-            target_paragraphs.append(event.text)
+            target_paragraphs.append((event_index, event.text))
         elif isinstance(event, _TableEvent):
             target_tables = (
                 current_subsection.tables if current_subsection is not None
                 else current_section.tables if current_section is not None
                 else unattributed_tables
             )
-            target_tables.append(event)
+            target_tables.append((event_index, event))
         elif isinstance(event, _AnchorEvent):
             target_references = (
                 current_subsection.references if current_subsection is not None
                 else current_section.references if current_section is not None
                 else unattributed_references
             )
-            target_references.append((event.text, event.target))
+            target_references.append((event_index, (event.text, event.target)))
 
     section_objects = tuple(
         FilingSection(
-            order_index=i, kind=section.kind, heading_text=f"Item {section.item_number}", item_number=section.item_number,
+            order_index=i, source_event_index=section.source_event_index,
+            kind=section.kind, heading_text=f"Item {section.item_number}", item_number=section.item_number,
             paragraphs=_paragraph_objects(section.paragraphs, filing),
             tables=_table_objects(section.tables, filing, heading_context=None),
             references=_reference_objects(section.references, filing),
