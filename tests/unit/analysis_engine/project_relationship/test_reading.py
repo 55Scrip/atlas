@@ -233,3 +233,171 @@ class TestAnAntecedentHasToIntroduceSomething:
         assert of(read_relationships(paras(
             "In 2023, Vistra Operations entered into a facility agreement (Facility Agreement) "
             "with a syndicate of banks.")), RelationshipKind.DEFINED_TERM) == []
+
+
+# --------------------------------------------------------------------------
+# Sprint 35: what a validated project enumeration says about its own entries.
+# The enumeration itself was earned upstream, by an action the filer reported
+# having taken. This layer restates it and adds nothing.
+# --------------------------------------------------------------------------
+from atlas.analysis_engine.action_evidence import SourceParagraph as ActionParagraph  # noqa: E402
+from atlas.analysis_engine.action_evidence import extract_actions  # noqa: E402
+from atlas.analysis_engine.project_enumeration import SourceParagraph as EnumParagraph  # noqa: E402
+from atlas.analysis_engine.project_enumeration import read_enumerations  # noqa: E402
+from atlas.analysis_engine.project_relationship import (  # noqa: E402
+    ContextForm, relationships_from_enumerations,
+)
+
+VST_LIST = [
+    "We have already taken or announced significant steps to transform our generation portfolio, "
+    "including:",
+    "•Acquisition of Nuclear Generation Facilities — In 2024, we acquired Energy Harbor, "
+    "including 4,048 MW of nuclear generation facilities in PJM.",
+    "•Acquisition of Natural Gas Generation Facilities — In 2025, we acquired 2,557 MW of "
+    "natural gas generation facilities in Delaware and Pennsylvania (PJM).",
+    "•Solar Projects — As of December 31, 2025, we owned solar generations facilities "
+    "totaling 538 MW in Texas."]
+MU_LIST = [
+    "Planned investments and those underway include the following:",
+    "•Singapore: we broke ground on an HBM advanced packaging facility to meaningfully expand "
+    "our total advanced packaging capacity beginning in calendar 2027; and",
+    "•Taiwan: we are modernizing our production capacity for DRAM and HBM products to meet "
+    "rising market demand."]
+
+
+def enumerate_list(texts, issuer="ZZ", accession="ZZ-1", section="BUSINESS", period="2026-02"):
+    actions = list(extract_actions(
+        [ActionParagraph(issuer=issuer, accession=accession, section=section, ordinal=i, text=t)
+         for i, t in enumerate(texts)]))
+    paras = [EnumParagraph(issuer=issuer, accession=accession, section=section, ordinal=i,
+                           text=t, period=period) for i, t in enumerate(texts)]
+    return read_enumerations(paras, actions)
+
+
+class TestAValidatedEnumerationSpeaksAboutItsEntries:
+    def test_each_entry_that_names_a_plant_becomes_one_record(self):
+        records = relationships_from_enumerations(enumerate_list(VST_LIST))
+        assert len(records) == 3
+        for r in records:
+            assert r.kind is RelationshipKind.DISTINCT_ENUMERATION
+            assert r.left.role is EndpointRole.ENTRY
+            assert r.right.role is EndpointRole.ENUMERATION
+            assert r.direction is Direction.ENTRY_TO_ENUMERATION
+            assert r.context.form is ContextForm.BULLETED_LIST
+            assert r.right.surface == VST_LIST[0] == r.licensing_surface
+            assert r.right.span.paragraph_ordinal == 0
+
+    def test_an_entry_that_names_no_plant_is_not_an_endpoint(self):
+        (r,) = relationships_from_enumerations(enumerate_list(MU_LIST))
+        assert "HBM advanced packaging facility" in r.left.surface
+        assert "Taiwan" not in r.left.surface
+
+    def test_the_canonical_pair_is_recoverable_and_never_asserted(self):
+        """Two entries of one enumeration are two records sharing a container.
+        The layer never says they are different projects -- a consumer sees two
+        entries and draws its own conclusion, or none."""
+        records = relationships_from_enumerations(enumerate_list(VST_LIST))
+        nuclear = [r for r in records if "nuclear generation facilities" in r.left.surface]
+        gas = [r for r in records if "natural gas generation facilities" in r.left.surface]
+        assert len(nuclear) == len(gas) == 1
+        assert nuclear[0].right.span == gas[0].right.span, "same enumeration"
+        assert nuclear[0].left.span != gas[0].left.span, "different entries"
+
+    def test_source_period_and_provenance_survive(self):
+        records = relationships_from_enumerations(
+            enumerate_list(VST_LIST, issuer="ZZ", accession="ZZ-9", section="BUSINESS",
+                           period="2026-02"))
+        for r in records:
+            assert r.source_period == "2026-02"
+            assert r.left.span.accession == "ZZ-9" and r.right.span.accession == "ZZ-9"
+
+
+class TestNothingRelatesThatTheSourceDidNotList:
+    def test_entries_of_two_enumerations_share_no_container(self):
+        first = relationships_from_enumerations(enumerate_list(VST_LIST, accession="ZZ-2025"))
+        second = relationships_from_enumerations(enumerate_list(VST_LIST, accession="ZZ-2026"))
+        assert {r.right.span for r in first}.isdisjoint({r.right.span for r in second})
+
+    def test_the_same_words_in_two_documents_stay_apart(self):
+        """The Micron list appears in two sections of one filing. Identical
+        entries, two containers, and no record joins them."""
+        mda = relationships_from_enumerations(enumerate_list(MU_LIST, section="MDA"))
+        props = relationships_from_enumerations(enumerate_list(MU_LIST, section="PROPERTIES"))
+        assert mda[0].left.surface == props[0].left.surface
+        assert mda[0].right.span != props[0].right.span
+
+    def test_no_record_ever_pairs_an_entry_with_itself(self):
+        records = relationships_from_enumerations(enumerate_list(VST_LIST))
+        for r in records:
+            assert r.left.span != r.right.span
+        entries = [(r.right.span, r.left.span) for r in records]
+        assert len(set(entries)) == len(entries)
+
+    def test_a_list_the_enumeration_layer_refused_reaches_nothing(self):
+        """A risk list. No enumeration record exists for it, so this layer never
+        sees it -- and it does not get a second opinion here."""
+        risk = [
+            "The ownership and operation of nuclear generation facilities involves certain risks. "
+            "These risks include:",
+            "•the costs of storing and maintaining spent nuclear fuel at our on-site dry cask "
+            "storage facility;",
+            "•uncertainties with respect to decommissioning nuclear facilities."]
+        assert enumerate_list(risk) == ()
+        assert relationships_from_enumerations(enumerate_list(risk)) == ()
+
+    def test_an_empty_input_yields_nothing(self):
+        assert relationships_from_enumerations(()) == ()
+
+
+class TestTheEnumerationRelationIsNotAnIdentityVerdict:
+    def test_no_identity_vocabulary_appears_anywhere(self):
+        import atlas.analysis_engine.project_relationship as pkg
+        banned = ("same", "not_same", "identi", "equal", "match", "resolve", "alias", "canonical",
+                  "different")
+        offered = [n for n in dir(pkg) if not n.startswith("_")]
+        assert not [n for n in offered if any(w in n.lower() for w in banned)], offered
+
+    def test_a_record_says_membership_and_not_difference(self):
+        for r in relationships_from_enumerations(enumerate_list(VST_LIST)):
+            assert r.direction is Direction.ENTRY_TO_ENUMERATION
+            assert r.right.role is EndpointRole.ENUMERATION
+            assert not hasattr(r, "distinct")
+            assert not hasattr(r, "identity")
+
+    def test_the_existing_relationship_kinds_are_untouched(self):
+        records = read_relationships(paras(BOISE_AND_CLAY))
+        assert {r.kind for r in records} == {RelationshipKind.PART_WHOLE,
+                                            RelationshipKind.ORDINAL_DISTINCTION,
+                                            RelationshipKind.ANAPHORIC_COREFERENCE}
+        assert all(r.kind is not RelationshipKind.DISTINCT_ENUMERATION for r in records)
+
+
+class TestTheEnumerationRelationIsStable:
+    def test_deterministic(self):
+        given = enumerate_list(VST_LIST)
+        assert relationships_from_enumerations(given) == relationships_from_enumerations(given)
+
+    def test_order_independent(self):
+        given = enumerate_list(VST_LIST)
+        assert set(relationships_from_enumerations(given)) == set(
+            relationships_from_enumerations(list(reversed(list(given)))))
+
+    def test_surfaces_are_the_sources_own_words(self):
+        for r in relationships_from_enumerations(enumerate_list(VST_LIST)):
+            assert r.left.surface in " ".join(VST_LIST)
+            assert r.right.surface in " ".join(VST_LIST)
+
+
+class TestOneEntryIsOneRecord:
+    def test_an_entry_reporting_two_actions_still_yields_one_record(self):
+        """SYNTHETIC. No entry in the held lists carries two action records,
+        because each of their bullets reports at most one thing. A bullet with
+        two sentences does -- and an entry is a place in a list, not a tally of
+        what happened there."""
+        texts = ["We have already taken the following steps:",
+                 "•Generation: In 2024, we acquired 4,048 MW of nuclear generation facilities "
+                 "in PJM. In 2025, we acquired 2,557 MW of natural gas generation facilities."]
+        (enumeration,) = enumerate_list(texts)
+        assert len(enumeration.entries[0].action_keys) == 2
+        records = relationships_from_enumerations((enumeration,))
+        assert len(records) == 1, "one entry is one record, whatever it reports"

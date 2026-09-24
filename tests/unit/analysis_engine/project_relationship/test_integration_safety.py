@@ -36,10 +36,26 @@ def _under(module: str, prefix: str) -> bool:
     return module == prefix or module.startswith(prefix + ".")
 
 
-def test_the_package_imports_nothing_from_atlas_but_itself():
+#: The one thing it reads besides itself: Project Enumeration (Sprint 34), which
+#: settles whether a list enumerates projects before this layer says anything
+#: about its entries. The seam runs one way, and the tests below hold it there.
+ENUMERATION = "atlas.analysis_engine.project_enumeration"
+
+
+def test_the_package_imports_only_itself_and_the_enumeration_seam():
     for path in PACKAGE.glob("*.py"):
-        foreign = {m for m in _imports(path) if _under(m, "atlas") and not _under(m, TARGET)}
+        foreign = {m for m in _imports(path) if _under(m, "atlas")
+                   and not _under(m, TARGET) and not _under(m, ENUMERATION)}
         assert not foreign, f"{path.name} imports {sorted(foreign)}"
+
+
+def test_it_does_not_read_what_the_enumeration_seam_reads():
+    """Reading ActionEvidence directly would mean re-deciding upstream whether a
+    list is about projects. The enumeration record is the answer, and this layer
+    consumes the answer rather than the inputs."""
+    for path in PACKAGE.glob("*.py"):
+        assert not any(_under(m, "atlas.analysis_engine.action_evidence")
+                       for m in _imports(path)), path.name
 
 
 def test_nothing_in_production_imports_it():
@@ -128,3 +144,11 @@ def test_no_identity_or_closure_is_defined_anywhere_in_the_package():
         names += [t.id for n in ast.walk(tree) if isinstance(n, ast.Assign)
                   for t in n.targets if isinstance(t, ast.Name)]
         assert not [n for n in names if any(w in n.lower() for w in banned)], (path.name, names)
+
+
+def test_the_enumeration_seam_has_no_return_path():
+    """The dependency must not close into a cycle. Project Enumeration decides
+    whether a list is about projects; this layer reads that decision, and the
+    decision must never depend on what is read from it."""
+    for path in (ROOT / Path(ENUMERATION.replace(".", "/"))).rglob("*.py"):
+        assert not any(_under(m, TARGET) for m in _imports(path)), path

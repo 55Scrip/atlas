@@ -45,10 +45,22 @@ def test_it_reads_action_evidence_and_nothing_else_from_atlas():
         assert not foreign, f"{path.name} imports {sorted(foreign)}"
 
 
-def test_nothing_in_production_imports_it():
-    offenders = [str(p.relative_to(ROOT)) for p in (ROOT / "atlas").rglob("*.py")
-                 if PACKAGE not in p.parents and p.parent != PACKAGE
-                 and any(_under(m, TARGET) for m in _imports(p))]
+#: The one permitted consumer: Project Relationship (Sprint 35), which restates a
+#: validated enumeration as evidence about its own entries and is itself consumed
+#: by nothing. A closed list of named modules, never a prefix.
+PERMITTED_CONSUMERS = ("atlas.analysis_engine.project_relationship",)
+
+
+def test_only_the_named_consumer_imports_it():
+    offenders = []
+    for path in (ROOT / "atlas").rglob("*.py"):
+        if PACKAGE in path.parents or path.parent == PACKAGE:
+            continue
+        module = str(path.relative_to(ROOT)).replace("/", ".").removesuffix(".py")
+        if any(_under(module, c) for c in PERMITTED_CONSUMERS):
+            continue
+        if any(_under(m, TARGET) for m in _imports(path)):
+            offenders.append(str(path.relative_to(ROOT)))
     assert not offenders, offenders
 
 
@@ -59,9 +71,8 @@ def test_the_seam_runs_one_way():
         assert not any(_under(m, TARGET) for m in _imports(path)), path
 
 
-def test_the_neighbouring_shadow_models_do_not_consume_it():
-    for neighbour in ("project_reference", "project_relationship", "claim_action_comparison",
-                      "strategy_claim"):
+def test_the_other_neighbouring_shadow_models_do_not_consume_it():
+    for neighbour in ("project_reference", "claim_action_comparison", "strategy_claim"):
         for path in (ROOT / "atlas" / "analysis_engine" / neighbour).rglob("*.py"):
             assert not any(_under(m, TARGET) for m in _imports(path)), path
 

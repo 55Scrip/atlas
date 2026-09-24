@@ -10,8 +10,11 @@ from atlas.analysis_engine.project_relationship.contracts import (
     ProjectRelationshipEvidence, RelationshipEndpoint, RelationshipKind, SourceParagraph,
     SourceSpan, StructuralContext,
 )
-from atlas.analysis_engine.project_relationship.reading import read_relationships
+from atlas.analysis_engine.project_relationship.reading import (
+    read_relationships, relationships_from_enumerations,
+)
 
 __all__ = ["PROJECT_RELATIONSHIP_VERSION", "ContextForm", "Direction", "EndpointRole",
            "ProjectRelationshipEvidence", "RelationshipEndpoint", "RelationshipKind",
-           "SourceParagraph", "SourceSpan", "StructuralContext", "read_relationships"]
+           "SourceParagraph", "SourceSpan", "StructuralContext", "read_relationships",
+           "relationships_from_enumerations"]

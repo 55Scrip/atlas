@@ -7,7 +7,9 @@ that test on their own, so none of them licenses a record.
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 
+from atlas.analysis_engine.project_enumeration import ProjectEnumerationEvidence
 from atlas.analysis_engine.project_relationship.contracts import (
     ContextForm, Direction, EndpointRole, ProjectRelationshipEvidence,
     RelationshipEndpoint, RelationshipKind, SourceParagraph, SourceSpan, StructuralContext,
@@ -151,4 +153,45 @@ def read_relationships(paragraphs) -> tuple[ProjectRelationshipEvidence, ...]:
     for p in paragraphs:
         out.extend(_from_sentences(p, p.period))
         out.extend(_from_anaphora(p, p.period))
+    return tuple(out)
+
+
+def relationships_from_enumerations(
+    enumerations: Iterable[ProjectEnumerationEvidence],
+) -> tuple[ProjectRelationshipEvidence, ...]:
+    """What a validated project enumeration says about its own entries.
+
+    One record per entry that names a plant: this phrase is an entry of that
+    enumeration. Two entries of one enumeration are two entries -- a consumer
+    sees that by finding two records with the same container and different
+    spans, which is why nothing pairwise is emitted and why no record can ever
+    pair an entry with itself.
+
+    Whether the list enumerates projects at all was settled upstream, by an
+    action the filer reported having taken. That question is not reopened here:
+    an enumeration record's existence IS the validation, and re-deciding it
+    would put a second, weaker classifier behind the first.
+    """
+    out: list[ProjectRelationshipEvidence] = []
+    for enumeration in enumerations:
+        container = SourceSpan(issuer=enumeration.container.issuer,
+                               accession=enumeration.container.accession,
+                               section=enumeration.container.section,
+                               paragraph_ordinal=enumeration.container.paragraph_ordinal)
+        for entry in enumeration.entries:
+            if not entry.names_a_plant:
+                continue
+            out.append(ProjectRelationshipEvidence(
+                kind=RelationshipKind.DISTINCT_ENUMERATION,
+                left=RelationshipEndpoint(
+                    entry.surface, EndpointRole.ENTRY,
+                    SourceSpan(issuer=entry.span.issuer, accession=entry.span.accession,
+                               section=entry.span.section,
+                               paragraph_ordinal=entry.span.paragraph_ordinal)),
+                right=RelationshipEndpoint(enumeration.lead_in, EndpointRole.ENUMERATION,
+                                           container),
+                direction=Direction.ENTRY_TO_ENUMERATION,
+                licensing_surface=enumeration.lead_in,
+                context=StructuralContext(ContextForm.BULLETED_LIST, enumeration.lead_in, None),
+                source_period=enumeration.source_period))
     return tuple(out)
