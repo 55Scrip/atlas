@@ -888,13 +888,25 @@ class TestSourceEventIndexIsNotADecisionInput:
     a semantic layer consults it, source ORDER starts being read as MEANING --
     "this paragraph precedes this table, therefore it introduces it" -- which is a
     hypothesis Sprint 37 left deliberately unfalsified (753 such adjacencies).
+
+    Sprint 39 falsified it: over 1,387 adjudicated cases, a colon-terminated or
+    explicitly deictic paragraph immediately before a table introduced it 803 times
+    and never failed to, while dropping either condition cost 25% and 9% precision.
+    Table Introduction is the one reader that earned the field, so it is named here
+    file by file. A wildcard or a directory exemption would give the next reader the
+    same access without the same argument, which is the whole point of this test.
     """
 
     _ROOT = Path(__file__).resolve().parents[4]
     _FIELD = "source_event_index"
 
-    #: The one module that may name it: the parser that assigns it.
-    _PERMITTED = ("atlas/alpha/investment_case/filing_content_intelligence.py",)
+    #: A closed list, never a prefix: the parser that assigns the field, and the
+    #: files of the one read model whose use of it has been measured.
+    _PERMITTED = (
+        "atlas/alpha/investment_case/filing_content_intelligence.py",
+        "atlas/analysis_engine/table_introduction/contracts.py",
+        "atlas/analysis_engine/table_introduction/reading.py",
+    )
 
     def _offenders(self, *relative_dirs):
         out = []
