@@ -901,11 +901,17 @@ class TestSourceEventIndexIsNotADecisionInput:
     _FIELD = "source_event_index"
 
     #: A closed list, never a prefix: the parser that assigns the field, and the
-    #: files of the one read model whose use of it has been measured.
+    #: files of each read model whose use of it has been measured and gated. Two
+    #: layers qualify so far -- Table Introduction, which needs the field to order
+    #: a paragraph against a table, and Table Presentation, which needs it only to
+    #: say WHICH table an observation is about. Both entries were added by a sprint
+    #: that first measured the claim; neither is a licence for the next reader.
     _PERMITTED = (
         "atlas/alpha/investment_case/filing_content_intelligence.py",
         "atlas/analysis_engine/table_introduction/contracts.py",
         "atlas/analysis_engine/table_introduction/reading.py",
+        "atlas/analysis_engine/table_presentation/contracts.py",
+        "atlas/analysis_engine/table_presentation/reading.py",
     )
 
     def _offenders(self, *relative_dirs):
