@@ -1063,6 +1063,10 @@ def _assign_events_to_sections(
     unattributed_references: list[tuple[int, tuple[str, str]]] = []
     current_part: str | None = None
     current_section: _MutableSection | None = None
+    #: The open section's own source-item identity, as the *existing* item-map key
+    #: `(lookup_part, item_number)`. Held only as walk state -- never a field, never
+    #: persisted. `None` whenever no section is open.
+    current_item_key: tuple[str | None, str] | None = None
     current_subsection: _MutableSubsection | None = None
 
     for event_index, event in enumerate(events):
@@ -1075,6 +1079,19 @@ def _assign_events_to_sections(
                     continue
             item_number = _match_item_heading_shape(event.text)
             if item_number is not None:
+                #: One open source Item is one logical section. A filing that prints
+                #: its current Item's own heading again -- a running page header, which
+                #: real EDGAR HTML does on every page -- is a repeated *occurrence* of
+                #: the section already open, not a second section. Keyed on the same
+                #: `(lookup_part, item_number)` the item map itself uses, so a 10-Q's
+                #: Part I Item 1 and Part II Item 1 stay distinct; for 10-K/8-K
+                #: `lookup_part` is always `None` and the key is the Item number alone.
+                item_key = (current_part if form_type in _PART_AWARE_FORMS else None, item_number)
+                if item_key == current_item_key:
+                    #: Falls through to nothing: the open section keeps its own opening
+                    #: `source_event_index`/`heading_text`, any open subsection stays
+                    #: open, and the content after this header continues into it.
+                    continue
                 kind = _resolve_item_kind(item_number, form_type, item_map, current_part) if item_map is not None else None
                 if kind is not None:
                     current_section = _MutableSection(
@@ -1082,11 +1099,13 @@ def _assign_events_to_sections(
                         paragraphs=[], tables=[], references=[], subsections=[],
                     )
                     sections.append(current_section)
+                    current_item_key = item_key
                 else:
                     #: A real heading Atlas cannot name (e.g. Part II's
                     #: own Item 2) still ends the previous section --
                     #: never silently absorbed into it.
                     current_section = None
+                    current_item_key = None
                 current_subsection = None
                 continue
             if event.is_heading and current_section is not None:

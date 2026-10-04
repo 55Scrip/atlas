@@ -138,6 +138,138 @@ class TestTenKSectionDetection:
         assert len(business.paragraphs) == 2
 
 
+class TestOneOpenSourceItemIsOneLogicalSection:
+    """Real EDGAR HTML prints the current Item's own heading again at the top of
+    every page. A repeated occurrence of the heading for the section already open
+    is page furniture, not a second section -- one open source Item is one logical
+    `FilingSection`. Keyed on the Item number (Part-qualified where the form's own
+    item map is), never on the heading surface and never on the semantic kind."""
+
+    _REPEATED = (
+        "<p>Item 1. Business</p><p>First body.</p>"
+        "<p>42</p><p>ITEM 1. BUSINESS</p><p>Second body.</p>"
+        "<p>Item 1A. Risk Factors</p><p>Risk body.</p>"
+    )
+
+    def test_first_item_heading_opens_a_section(self):
+        content = extract_filing_content(_filing("10-K"), _fetcher(self._REPEATED))
+        assert find_section(content, FilingSectionKind.BUSINESS) is not None
+
+    def test_repeated_heading_for_the_open_item_opens_no_second_section(self):
+        content = extract_filing_content(_filing("10-K"), _fetcher(self._REPEATED))
+        business = [s for s in content.sections if s.kind is FilingSectionKind.BUSINESS]
+        assert len(business) == 1
+
+    def test_content_after_a_repeated_heading_stays_in_the_open_section(self):
+        content = extract_filing_content(_filing("10-K"), _fetcher(self._REPEATED))
+        section = find_section(content, FilingSectionKind.BUSINESS)
+        assert [p.text for p in section.paragraphs] == ["First body.", "42", "Second body."]
+
+    def test_the_section_keeps_its_first_occurrence_provenance(self):
+        content = extract_filing_content(_filing("10-K"), _fetcher(self._REPEATED))
+        section = find_section(content, FilingSectionKind.BUSINESS)
+        first_body = section.paragraphs[0].source_event_index
+        assert section.source_event_index < first_body
+
+    def test_a_different_item_heading_still_opens_a_new_section(self):
+        content = extract_filing_content(_filing("10-K"), _fetcher(self._REPEATED))
+        risk = find_section(content, FilingSectionKind.RISK_FACTORS)
+        assert [p.text for p in risk.paragraphs] == ["Risk body."]
+
+    def test_identity_is_the_item_number_not_the_heading_surface(self):
+        """Sprint 46 measured title variation for 23 of 24 observed Items, so the
+        heading surface cannot carry identity."""
+        html = (
+            "<p>Item 7: Management's Discussion and Analysis</p><p>Body one.</p>"
+            "<p>ITEM 7. MANAGEMENT'S DISCUSSION AND ANALYSIS OF FINANCIAL CONDITION</p><p>Body two.</p>"
+        )
+        content = extract_filing_content(_filing("10-K"), _fetcher(html))
+        mda = [s for s in content.sections if s.kind is FilingSectionKind.MDA]
+        assert len(mda) == 1
+        assert [p.text for p in mda[0].paragraphs] == ["Body one.", "Body two."]
+
+    def test_an_unmapped_item_still_ends_the_open_section(self):
+        """The repeat guard must not keep a section open across a real boundary."""
+        html = "<p>Item 1. Business</p><p>Body.</p><p>Item 4. Mine Safety</p><p>After.</p>"
+        content = extract_filing_content(_filing("10-K"), _fetcher(html))
+        assert [p.text for p in find_section(content, FilingSectionKind.BUSINESS).paragraphs] == ["Body."]
+
+    def test_a_repeated_heading_before_any_section_is_still_not_a_section(self):
+        html = "<p>Cover.</p><p>Item 4. Mine Safety</p><p>Unmapped body.</p><p>Item 4. Mine Safety</p><p>More.</p>"
+        content = extract_filing_content(_filing("10-K"), _fetcher(html))
+        assert find_section(content, FilingSectionKind.BUSINESS) is None
+
+    def test_prose_mentioning_an_item_mid_sentence_is_unaffected(self):
+        html = (
+            "<p>Item 1. Business</p><p>Body.</p>"
+            "<p>We discuss this further in Item 1 of this report, which remains our "
+            "principal description of the business and is incorporated by reference "
+            "here for the convenience of the reader of this annual report.</p>"
+        )
+        content = extract_filing_content(_filing("10-K"), _fetcher(html))
+        section = find_section(content, FilingSectionKind.BUSINESS)
+        assert len(section.paragraphs) == 2
+
+    def test_a_cross_reference_sentence_opens_no_section(self):
+        html = "<p>See Part III, Item 10. Directors, Executive Officers and Corporate Governance.</p>"
+        content = extract_filing_content(_filing("10-K"), _fetcher(html))
+        assert content.sections == ()
+
+    def test_ten_q_part_qualified_items_are_not_merged(self):
+        """Part I Item 1 and Part II Item 1 are different source sections."""
+        html = (
+            "<p>PART I</p><p>Item 1. Financial Statements</p><p>Statements body.</p>"
+            "<p>PART II</p><p>Item 1. Legal Proceedings</p><p>Legal body.</p>"
+        )
+        content = extract_filing_content(_filing("10-Q"), _fetcher(html))
+        statements = find_section(content, FilingSectionKind.FINANCIAL_STATEMENTS)
+        assert [p.text for p in statements.paragraphs] == ["Statements body."]
+        assert [p.text for p in content.unattributed_paragraphs] == ["Legal body."]
+
+    def test_ten_q_repeated_part_and_item_is_still_one_section(self):
+        html = (
+            "<p>PART I</p><p>Item 1. Financial Statements</p><p>A.</p>"
+            "<p>PART I</p><p>Item 1. Financial Statements</p><p>B.</p>"
+        )
+        content = extract_filing_content(_filing("10-Q"), _fetcher(html))
+        statements = find_section(content, FilingSectionKind.FINANCIAL_STATEMENTS)
+        assert [p.text for p in statements.paragraphs] == ["A.", "B."]
+
+    def test_no_two_sections_share_an_item_number(self):
+        content = extract_filing_content(_filing("10-K"), _fetcher(self._REPEATED))
+        numbers = [s.item_number for s in content.sections if s.item_number is not None]
+        assert len(numbers) == len(set(numbers))
+
+    def test_many_repeats_of_the_same_heading_all_collapse(self):
+        """Mastercard prints its current Item heading on every page -- 48 times for
+        one Item in the held corpus -- so suppressing only the first repeat is not
+        enough. The guard must hold for every subsequent occurrence."""
+        html = "<p>Item 1. Business</p><p>Body 0.</p>" + "".join(
+            f"<p>{n}</p><p>ITEM 1. BUSINESS</p><p>Body {n}.</p>" for n in range(1, 6)
+        )
+        content = extract_filing_content(_filing("10-K"), _fetcher(html))
+        business = [s for s in content.sections if s.kind is FilingSectionKind.BUSINESS]
+        assert len(business) == 1
+        assert [p.text for p in business[0].paragraphs if p.text.startswith("Body")] == [
+            f"Body {n}." for n in range(6)
+        ]
+
+    def test_the_guard_is_the_open_item_not_a_document_wide_set(self):
+        """The earned rule is "same as the Item currently open", deliberately narrower
+        than "any Item seen anywhere". A document that genuinely returns to an earlier
+        Item after a different one must open a new section rather than be swallowed."""
+        html = (
+            "<p>Item 1. Business</p><p>First.</p>"
+            "<p>Item 1A. Risk Factors</p><p>Risk.</p>"
+            "<p>Item 1. Business</p><p>Second.</p>"
+        )
+        content = extract_filing_content(_filing("10-K"), _fetcher(html))
+        business = [s for s in content.sections if s.kind is FilingSectionKind.BUSINESS]
+        assert len(business) == 2
+        assert [p.text for p in business[0].paragraphs] == ["First."]
+        assert [p.text for p in business[1].paragraphs] == ["Second."]
+
+
 class TestTenQUsesADifferentItemMapThanTenK(object):
     def test_item_1a_under_part_ii_means_risk_updates_not_risk_factors(self):
         html = "<p>PART II</p><p>Item 1A. Risk Factors Update</p><p>No material changes.</p>"
