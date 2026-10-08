@@ -26,6 +26,7 @@ from atlas.alpha.investment_case.filing_content_intelligence import (
     require_filing_content,
     ExtractionStatus,
     FilingSectionKind,
+    SourcePageBox,
     extract_filing_content,
     find_section,
     find_tables_by_keyword,
@@ -1068,3 +1069,280 @@ class TestSourceEventIndexIsNotADecisionInput:
 
     def test_nothing_in_production_but_the_parser_names_it(self):
         assert self._offenders("atlas") == []
+
+_HEADER_BOX = 'min-height:42.75pt;width:100%'
+_FOOTER_BOX = 'bottom:0;position:absolute;width:100%'
+
+
+def _boxes(html: str) -> list[tuple[str, str]]:
+    """`(text, page-box name)` for every paragraph the parser emits."""
+    content = extract_filing_content(_filing("10-K"), _fetcher(html))
+    paragraphs = list(content.unattributed_paragraphs)
+    for section in content.sections:
+        paragraphs.extend(section.paragraphs)
+        for subsection in section.subsections:
+            paragraphs.extend(subsection.paragraphs)
+    paragraphs.sort(key=lambda p: p.source_event_index)
+    return [(p.text, p.source_page_box.name) for p in paragraphs]
+
+
+class TestSourcePageBoxPosition:
+    """Where the raw source placed a block -- never what the block means.
+
+    Every assertion here is about source ancestry. Nothing in this class
+    may assert that a page-box block is furniture, non-substantive, or
+    excludable: the parser records position and stops there.
+    """
+
+    def test_block_outside_any_box_is_none(self):
+        assert _boxes("<div><p>Ordinary body text.</p></div>") == [("Ordinary body text.", "NONE")]
+
+    def test_block_inside_header_box(self):
+        html = f'<div style="{_HEADER_BOX}"><div>Running header</div></div>'
+        assert _boxes(html) == [("Running header", "HEADER_BOX")]
+
+    def test_block_inside_footer_box(self):
+        html = f'<div style="{_FOOTER_BOX}"><div>101</div></div>'
+        assert _boxes(html) == [("101", "FOOTER_BOX")]
+
+    def test_header_state_does_not_leak_to_a_later_sibling(self):
+        html = f'<div style="{_HEADER_BOX}"><div>In box</div></div><div>After box</div>'
+        assert _boxes(html) == [("In box", "HEADER_BOX"), ("After box", "NONE")]
+
+    def test_footer_state_does_not_leak_to_a_later_sibling(self):
+        html = f'<div style="{_FOOTER_BOX}"><div>In box</div></div><div>After box</div>'
+        assert _boxes(html) == [("In box", "FOOTER_BOX"), ("After box", "NONE")]
+
+    def test_nested_inline_elements_keep_the_box(self):
+        html = f'<div style="{_HEADER_BOX}"><div><span><strong>Deep</strong></span></div></div>'
+        assert _boxes(html) == [("Deep", "HEADER_BOX")]
+
+    def test_nested_divs_inherit_the_enclosing_box(self):
+        html = f'<div style="{_HEADER_BOX}"><div><div style="text-align:center">Nested</div></div></div>'
+        assert _boxes(html) == [("Nested", "HEADER_BOX")]
+
+    def test_text_before_a_box_opens_is_not_in_the_box(self):
+        html = f'<div>Before</div><div style="{_HEADER_BOX}"><div>Inside</div></div>'
+        assert _boxes(html) == [("Before", "NONE"), ("Inside", "HEADER_BOX")]
+
+    def test_identical_text_inside_and_outside_differs_only_by_position(self):
+        html = (
+            f'<div style="{_FOOTER_BOX}"><div>See Notes to the Consolidated Financial Statements</div></div>'
+            "<div>See Notes to the Consolidated Financial Statements</div>"
+        )
+        assert _boxes(html) == [
+            ("See Notes to the Consolidated Financial Statements", "FOOTER_BOX"),
+            ("See Notes to the Consolidated Financial Statements", "NONE"),
+        ]
+
+    def test_substantive_prose_inside_a_box_is_still_recorded_as_in_the_box(self):
+        #: Position is recorded regardless of what the text is. The parser
+        #: does not decide that long prose cannot be page-positioned.
+        prose = "This sentence is long, substantive body prose that happens to sit inside the box."
+        html = f'<div style="{_HEADER_BOX}"><div>{prose}</div></div>'
+        assert _boxes(html) == [(prose, "HEADER_BOX")]
+
+    def test_a_bare_number_outside_a_box_is_none(self):
+        assert _boxes("<div>101</div>") == [("101", "NONE")]
+
+    def test_centred_text_outside_a_box_is_none(self):
+        assert _boxes('<div style="text-align:center">Centred</div>') == [("Centred", "NONE")]
+
+    def test_bold_text_outside_a_box_is_none(self):
+        assert _boxes('<div><span style="font-weight:700">Bold</span></div>') == [("Bold", "NONE")]
+
+    def test_unstyled_text_inside_a_box_is_still_in_the_box(self):
+        html = f'<div style="{_HEADER_BOX}"><div>Plain</div></div>'
+        assert _boxes(html) == [("Plain", "HEADER_BOX")]
+
+    def test_min_height_alone_is_not_a_header_box(self):
+        assert _boxes('<div style="min-height:42.75pt"><div>x</div></div>') == [("x", "NONE")]
+
+    def test_width_alone_is_not_a_header_box(self):
+        assert _boxes('<div style="width:100%"><div>x</div></div>') == [("x", "NONE")]
+
+    def test_position_absolute_alone_is_not_a_footer_box(self):
+        assert _boxes('<div style="position:absolute"><div>x</div></div>') == [("x", "NONE")]
+
+    def test_bottom_zero_alone_is_not_a_footer_box(self):
+        assert _boxes('<div style="bottom:0"><div>x</div></div>') == [("x", "NONE")]
+
+    def test_a_page_break_alone_creates_no_box(self):
+        html = '<hr style="page-break-after:always"/><div>After the break</div>'
+        assert _boxes(html) == [("After the break", "NONE")]
+
+    def test_declaration_order_is_irrelevant(self):
+        html = '<div style="width:100%;min-height:42.75pt"><div>x</div></div>'
+        assert _boxes(html) == [("x", "HEADER_BOX")]
+
+    def test_whitespace_around_declarations_is_irrelevant(self):
+        html = '<div style="  min-height : 42.75pt ;  width : 100%  "><div>x</div></div>'
+        assert _boxes(html) == [("x", "HEADER_BOX")]
+
+    def test_a_trailing_semicolon_is_harmless(self):
+        html = '<div style="min-height:42.75pt;width:100%;"><div>x</div></div>'
+        assert _boxes(html) == [("x", "HEADER_BOX")]
+
+    def test_a_property_whose_name_merely_ends_in_a_known_one_does_not_match(self):
+        html = '<div style="not-min-height:42.75pt;my-width:100%"><div>x</div></div>'
+        assert _boxes(html) == [("x", "NONE")]
+
+    def test_a_wider_width_value_does_not_match_one_hundred_percent(self):
+        #: `width:100.000%` occurs 1,324 times in the held corpus, so a
+        #: prefix match here would have been a real defect.
+        html = '<div style="min-height:42.75pt;width:100.000%"><div>x</div></div>'
+        assert _boxes(html) == [("x", "NONE")]
+        html = '<div style="min-height:42.75pt;width:1000%"><div>x</div></div>'
+        assert _boxes(html) == [("x", "NONE")]
+
+    def test_a_longer_position_value_does_not_match_absolute(self):
+        html = '<div style="position:absolutely;bottom:0"><div>x</div></div>'
+        assert _boxes(html) == [("x", "NONE")]
+
+    def test_a_non_point_min_height_does_not_match(self):
+        for value in ("auto", "100%", "0px", "calc(10pt + 2pt)"):
+            html = f'<div style="min-height:{value};width:100%"><div>x</div></div>'
+            assert _boxes(html) == [("x", "NONE")], value
+
+    def test_a_non_zero_bottom_does_not_match(self):
+        html = '<div style="bottom:4pt;position:absolute"><div>x</div></div>'
+        assert _boxes(html) == [("x", "NONE")]
+
+    def test_a_box_style_on_a_non_div_element_does_not_match(self):
+        html = f'<p style="{_HEADER_BOX}">x</p>'
+        assert _boxes(html) == [("x", "NONE")]
+
+    def test_a_table_inside_a_box_does_not_corrupt_later_positions(self):
+        html = (
+            f'<div style="{_HEADER_BOX}"><div>Header</div>'
+            "<table><tr><td>cell</td></tr></table></div><div>After</div>"
+        )
+        assert _boxes(html) == [("Header", "HEADER_BOX"), ("After", "NONE")]
+
+    def test_an_anchor_inside_a_box_does_not_corrupt_later_positions(self):
+        html = (
+            f'<div style="{_HEADER_BOX}"><div><a href="#t">Table of Contents</a></div></div>'
+            "<div>After</div>"
+        )
+        assert _boxes(html) == [("Table of Contents", "HEADER_BOX"), ("After", "NONE")]
+
+    def test_consecutive_boxes_are_each_attributed_to_themselves(self):
+        html = (
+            f'<div style="{_HEADER_BOX}"><div>H</div></div>'
+            "<div>Body</div>"
+            f'<div style="{_FOOTER_BOX}"><div>F</div></div>'
+        )
+        assert _boxes(html) == [("H", "HEADER_BOX"), ("Body", "NONE"), ("F", "FOOTER_BOX")]
+
+    def test_a_footer_box_nested_inside_a_header_box_reports_the_inner_box(self):
+        #: The held corpus has zero such cases. This only pins that parser
+        #: state stays coherent rather than leaking: the innermost opened
+        #: box wins and the outer one resumes afterwards.
+        html = (
+            f'<div style="{_HEADER_BOX}"><div>Outer</div>'
+            f'<div style="{_FOOTER_BOX}"><div>Inner</div></div>'
+            "<div>Outer again</div></div>"
+        )
+        assert _boxes(html) == [
+            ("Outer", "HEADER_BOX"),
+            ("Inner", "FOOTER_BOX"),
+            ("Outer again", "HEADER_BOX"),
+        ]
+
+    def test_the_position_reaches_filingparagraph_inside_a_section(self):
+        html = (
+            "<p>Item 1. Business</p><p>Substantive business disclosure.</p>"
+            f'<div style="{_FOOTER_BOX}"><div>12</div></div>'
+        )
+        content = extract_filing_content(_filing("10-K"), _fetcher(html))
+        section = content.sections[0]
+        assert [(p.text, p.source_page_box) for p in section.paragraphs] == [
+            ("Substantive business disclosure.", SourcePageBox.NONE),
+            ("12", SourcePageBox.FOOTER_BOX),
+        ]
+
+    def test_a_page_box_block_is_not_dropped_filtered_or_reordered(self):
+        #: The fact has no consumer: a positioned block stays in the
+        #: section, in source order, exactly as before this sprint.
+        html = (
+            "<p>Item 1. Business</p><p>First.</p>"
+            f'<div style="{_HEADER_BOX}"><div>Running header</div></div>'
+            "<p>Second.</p>"
+        )
+        content = extract_filing_content(_filing("10-K"), _fetcher(html))
+        section = content.sections[0]
+        assert [p.text for p in section.paragraphs] == ["First.", "Running header", "Second."]
+        assert [p.order_index for p in section.paragraphs] == [0, 1, 2]
+
+    def test_heading_detection_is_unaffected_by_box_membership(self):
+        html = (
+            "<p>Item 1. Business</p>"
+            f'<div style="{_HEADER_BOX}"><h2>Boxed heading</h2></div>'
+        )
+        content = extract_filing_content(_filing("10-K"), _fetcher(html))
+        assert [s.heading_text for s in content.sections[0].subsections] == ["Boxed heading"]
+
+    def test_any_point_valued_min_height_qualifies_not_just_one_observed_value(self):
+        #: The corpus carries 18 distinct min-height values. Pinning one of
+        #: them would be exactly the hardcoded numeric §25 forbids, so every
+        #: point-valued form has to behave the same.
+        for value in ("42.75pt", "36pt", "54pt", "63pt", "40.46pt", "9pt"):
+            html = f'<div style="min-height:{value};width:100%"><div>x</div></div>'
+            assert _boxes(html) == [("x", "HEADER_BOX")], value
+
+    def test_a_bold_div_outside_a_box_is_none(self):
+        #: Boldness sits on the element's own style in real filing markup as
+        #: well as on inner spans; neither form may imply a page box.
+        assert _boxes('<div style="font-weight:700">Bold div</div>') == [("Bold div", "NONE")]
+        html = '<div style="font-weight:700;text-align:center">Bold centred div</div>'
+        assert _boxes(html) == [("Bold centred div", "NONE")]
+
+    def test_text_pending_when_a_box_opens_belongs_outside_the_box(self):
+        #: Bare text followed directly by a box-opening div: the text is still
+        #: accumulating when the div is seen, so it must be flushed against the
+        #: ancestry that held it, not against the box about to open.
+        html = f'Pending text<div style="{_HEADER_BOX}"><div>Inside</div></div>'
+        assert _boxes(html) == [("Pending text", "NONE"), ("Inside", "HEADER_BOX")]
+        html = f'Pending text<div style="{_FOOTER_BOX}"><div>Inside</div></div>'
+        assert _boxes(html) == [("Pending text", "NONE"), ("Inside", "FOOTER_BOX")]
+
+    def test_detection_is_independent_of_issuer_identity(self):
+        #: The fixtures below carry no issuer name at all, and a block that
+        #: does name a company is still NONE when it sits outside a box.
+        html = f'<div style="{_HEADER_BOX}"><div>Anonymous running header</div></div>'
+        assert _boxes(html) == [("Anonymous running header", "HEADER_BOX")]
+        assert _boxes("<div>Example Holdings, Inc. Form 10-K</div>") == [
+            ("Example Holdings, Inc. Form 10-K", "NONE")
+        ]
+
+    def test_other_attributes_on_the_box_element_are_ignored(self):
+        #: Only the style declarations the predicate names may matter. Anything
+        #: else on the element -- an id, a name, any generator bookkeeping --
+        #: must not be able to suppress or create a box.
+        html = (
+            f'<div id="Example-Co-page-1" name="hdr" style="{_HEADER_BOX}">'
+            "<div>Running header</div></div>"
+        )
+        assert _boxes(html) == [("Running header", "HEADER_BOX")]
+        html = f'<div id="Example-Co-footer" style="{_FOOTER_BOX}"><div>7</div></div>'
+        assert _boxes(html) == [("7", "FOOTER_BOX")]
+        assert _boxes('<div id="min-height:42.75pt;width:100%"><div>x</div></div>') == [("x", "NONE")]
+
+    def test_detection_is_independent_of_year_and_form_wording(self):
+        assert _boxes("<div>2025 Form 10-K</div>") == [("2025 Form 10-K", "NONE")]
+        html = f'<div style="{_HEADER_BOX}"><div>2025 Form 10-K</div></div>'
+        assert _boxes(html) == [("2025 Form 10-K", "HEADER_BOX")]
+
+    def test_the_field_creates_no_section_and_changes_no_membership(self):
+        #: The field is inert: a document made only of page-box blocks still
+        #: produces no section, and box blocks inside a section stay in it.
+        html = f'<div style="{_HEADER_BOX}"><div>Header only</div></div>'
+        content = extract_filing_content(_filing("10-K"), _fetcher(html))
+        assert content.sections == ()
+        assert [p.text for p in content.unattributed_paragraphs] == ["Header only"]
+
+    def test_parsing_is_deterministic_and_leaves_no_state_behind(self):
+        html = (
+            f'<div style="{_HEADER_BOX}"><div>H</div></div><div>Body</div>'
+        )
+        assert _boxes(html) == _boxes(html) == [("H", "HEADER_BOX"), ("Body", "NONE")]

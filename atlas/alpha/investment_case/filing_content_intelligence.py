@@ -190,6 +190,7 @@ __all__ = [
     "require_filing_content",
     "FilingSectionKind",
     "ExtractionStatus",
+    "SourcePageBox",
     "FilingParagraph",
     "CellReference",
     "TableCell",
@@ -271,6 +272,36 @@ class ExtractionStatus(str, Enum):
     NOT_ATTEMPTED = "not_attempted"
 
 
+class SourcePageBox(str, Enum):
+    """Where the *raw source* placed a text block, and nothing else.
+
+    EDGAR HTML from the generator family this corpus is drawn from wraps
+    each rendered page's top and bottom strip in its own positioned
+    `<div>`. A block emitted while nested inside one of those two boxes
+    gets the matching member here; every other block gets `NONE`.
+
+    This is a POSITIONAL fact, never a semantic one. It does **not** say
+    the block is page furniture, a page header, a page footer,
+    non-substantive, ignorable, or safe to leave out of a section. The
+    held corpus settles that directly: the line "See Notes to the
+    Consolidated Financial Statements" appears inside `FOOTER_BOX` 14
+    times and outside any box 82 times -- the same line, placed in the
+    box only when pagination happened to put it at the page bottom --
+    and `(In millions)`, a units qualifier the table beneath it needs,
+    appears inside `HEADER_BOX` twice. Position therefore constrains
+    nothing about meaning, and no consumer reads this field.
+
+    Observed in one generator/template family across 11 issuers, 22
+    filings and 2 years. Not asserted to be generic SEC structure.
+    """
+
+    NONE = "none"
+    """No observed page-box ancestry at emission time. Means exactly
+    that -- never 'unknown semantic role' and never a parse failure."""
+    HEADER_BOX = "header_box"
+    FOOTER_BOX = "footer_box"
+
+
 # -- Phase 2 + 7: Filing Content Model + Provenance --------------------------
 
 
@@ -310,6 +341,10 @@ class FilingParagraph:
     form_type: str
     filed_at: datetime
     source_reference: str
+    source_page_box: SourcePageBox
+    """Which observed raw-source page box this paragraph's text was
+    emitted inside, or `SourcePageBox.NONE`. Source placement only --
+    see `SourcePageBox` for why this is not a claim about content."""
 
 
 @dataclass(frozen=True)
@@ -538,6 +573,9 @@ class _BlockEvent:
     #: the tag, never inferred from the text itself (Sprint 14, Phase 2
     #: subsection detection).
     is_heading: bool = False
+    #: The observed raw-source page box this block's text was accumulated
+    #: inside. Positional only -- see `SourcePageBox`.
+    page_box: SourcePageBox = SourcePageBox.NONE
 
 
 @dataclass(frozen=True)
@@ -637,7 +675,6 @@ def _parse_span_attr(attrs: list[tuple[str, str | None]], name: str) -> int:
 
 _ALIGN_STYLE_RE = re.compile(r"text-align\s*:\s*([a-zA-Z]+)", re.IGNORECASE)
 
-
 def _parse_alignment_attr(attrs: list[tuple[str, str | None]]) -> str | None:
     align = next((value for name, value in attrs if name == "align" and value), None)
     if align:
@@ -648,6 +685,62 @@ def _parse_alignment_attr(attrs: list[tuple[str, str | None]]) -> str | None:
         if match:
             return match.group(1).lower()
     return None
+
+
+#: A point-valued length, e.g. `42.75pt`. Every `min-height` in the held
+#: corpus is one of these (18 distinct values, no exceptions) -- `auto`,
+#: `100%` and `calc(...)` forms do not occur and are deliberately not
+#: accepted.
+_POINT_VALUE_RE = re.compile(r"^[0-9.]+pt$")
+
+
+def _style_declarations(attrs: list[tuple[str, str | None]]) -> dict[str, str]:
+    """The element's own inline `style`, as `{property: value}`.
+
+    Declarations are split on `;` and then on the FIRST `:`, so a value
+    containing a colon stays intact, and both halves are stripped and
+    casefolded. Callers then compare keys and values with `==`, which is
+    what keeps `not-min-height` from matching `min-height` and
+    `width:100.000%` -- 1,324 real occurrences in this corpus -- from
+    matching `width:100%`. Empty fragments from a trailing `;` are
+    skipped. No cascade is involved: all relevant styling in the held
+    source is inline.
+    """
+    style = next((value for name, value in attrs if name == "style" and value), None)
+    if not style:
+        return {}
+    declarations: dict[str, str] = {}
+    for fragment in style.split(";"):
+        key, separator, value = fragment.partition(":")
+        if not separator:
+            continue
+        declarations[key.strip().lower()] = value.strip().lower()
+    return declarations
+
+
+def _source_page_box(attrs: list[tuple[str, str | None]], tag: str) -> SourcePageBox:
+    """Which observed page box, if any, this element opens.
+
+    Both shapes are read as a conjunction of declarations rather than as
+    a serialized style string, so declaration order and whitespace do not
+    matter. The footer shape is the inner absolutely-positioned strip
+    alone: the outer `height:Npt;position:relative;width:100%` wrapper is
+    exactly coextensive with it in the held corpus, so requiring it would
+    widen the predicate without identifying anything further.
+    """
+    if tag != "div":
+        return SourcePageBox.NONE
+    declarations = _style_declarations(attrs)
+    if not declarations:
+        return SourcePageBox.NONE
+    if (
+        _POINT_VALUE_RE.match(declarations.get("min-height", ""))
+        and declarations.get("width") == "100%"
+    ):
+        return SourcePageBox.HEADER_BOX
+    if declarations.get("position") == "absolute" and declarations.get("bottom") == "0":
+        return SourcePageBox.FOOTER_BOX
+    return SourcePageBox.NONE
 
 
 def _row_is_header(row: _RowBuilder) -> bool:
@@ -709,11 +802,24 @@ class _FilingHTMLParser(HTMLParser):
         self._table_stack: list[_TableBuilder] = []
         self._anchor_href: str | None = None
         self._anchor_text: list[str] = []
+        #: One entry per currently-open element that opened an observed
+        #: page box -- a tiny membership stack, never a DOM. Nothing is
+        #: retained after `finish()` and nothing is exposed downstream.
+        self._page_box_stack: list[SourcePageBox] = []
+
+    def _current_page_box(self) -> SourcePageBox:
+        return self._page_box_stack[-1] if self._page_box_stack else SourcePageBox.NONE
 
     def _flush_block(self, *, is_heading: bool = False) -> None:
         text = re.sub(r"\s+", " ", "".join(self._current)).strip()
         if text:
-            self.events.append(_BlockEvent(text=text, is_heading=is_heading))
+            #: Read here rather than in the tag handlers: this is the
+            #: ancestry that held the text while it was accumulating. A
+            #: `div` is in `_BLOCK_TAGS`, so opening or closing a page box
+            #: flushes first and no block's text can straddle a boundary.
+            self.events.append(
+                _BlockEvent(text=text, is_heading=is_heading, page_box=self._current_page_box())
+            )
         self._current = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
@@ -759,6 +865,16 @@ class _FilingHTMLParser(HTMLParser):
                 self._anchor_text = []
         if tag in _BLOCK_TAGS:
             self._flush_block()
+        if tag == "div":
+            #: Pushed only AFTER the flush above, because that flush emits
+            #: text that PRECEDED this tag and so belongs to the ancestry
+            #: outside it. An ordinary nested `div` inherits whatever box
+            #: already encloses it, which is what keeps a box's membership
+            #: from being masked by its own inner wrappers.
+            opened = _source_page_box(attrs, tag)
+            self._page_box_stack.append(
+                opened if opened is not SourcePageBox.NONE else self._current_page_box()
+            )
 
     def handle_endtag(self, tag: str) -> None:
         if tag in _SKIP_CONTENT_TAGS:
@@ -803,6 +919,12 @@ class _FilingHTMLParser(HTMLParser):
             #: only ever flushes text that *preceded* the tag, which is
             #: never heading text.
             self._flush_block(is_heading=tag in _HEADING_TAGS)
+        if tag == "div" and self._page_box_stack:
+            #: Popped only after the flush above, so the element's own text
+            #: still reads the ancestry that contained it. Paired with the
+            #: push in `handle_starttag`: both sit on the same non-table
+            #: path, so a `div` inside a table neither pushes nor pops.
+            self._page_box_stack.pop()
 
     def handle_data(self, data: str) -> None:
         if self._skip_depth > 0:
@@ -924,7 +1046,7 @@ def _resolve_item_kind(
 class _MutableSubsection:
     heading_text: str
     source_event_index: int
-    paragraphs: list[tuple[int, str]]
+    paragraphs: list[tuple[int, str, SourcePageBox]]
     tables: list[tuple[int, _TableEvent]]
     references: list[tuple[int, tuple[str, str]]]
 
@@ -934,22 +1056,23 @@ class _MutableSection:
     item_number: str
     kind: FilingSectionKind
     source_event_index: int
-    paragraphs: list[tuple[int, str]]
+    paragraphs: list[tuple[int, str, SourcePageBox]]
     tables: list[tuple[int, _TableEvent]]
     references: list[tuple[int, tuple[str, str]]]
     subsections: list[_MutableSubsection]
 
 
 def _paragraph_objects(
-    texts: list[tuple[int, str]], filing: RegulatoryFiling,
+    texts: list[tuple[int, str, SourcePageBox]], filing: RegulatoryFiling,
 ) -> tuple[FilingParagraph, ...]:
     return tuple(
         FilingParagraph(
             order_index=i, source_event_index=event_index, text=t,
             accession_number=filing.accession_number, form_type=filing.form_type,
             filed_at=filing.filed_at, source_reference=filing.filing_url,
+            source_page_box=page_box,
         )
-        for i, (event_index, t) in enumerate(texts)
+        for i, (event_index, t, page_box) in enumerate(texts)
     )
 
 
@@ -1058,7 +1181,7 @@ def _assign_events_to_sections(
     `FilingSection` it opens -- which leaves no event unrepresented."""
     form_type = filing.form_type
     sections: list[_MutableSection] = []
-    unattributed_paragraphs: list[tuple[int, str]] = []
+    unattributed_paragraphs: list[tuple[int, str, SourcePageBox]] = []
     unattributed_tables: list[tuple[int, _TableEvent]] = []
     unattributed_references: list[tuple[int, tuple[str, str]]] = []
     current_part: str | None = None
@@ -1120,7 +1243,7 @@ def _assign_events_to_sections(
                 else current_section.paragraphs if current_section is not None
                 else unattributed_paragraphs
             )
-            target_paragraphs.append((event_index, event.text))
+            target_paragraphs.append((event_index, event.text, event.page_box))
         elif isinstance(event, _TableEvent):
             target_tables = (
                 current_subsection.tables if current_subsection is not None
