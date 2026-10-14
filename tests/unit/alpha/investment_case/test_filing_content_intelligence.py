@@ -27,6 +27,10 @@ from atlas.alpha.investment_case.filing_content_intelligence import (
     ExtractionStatus,
     FilingSectionKind,
     SourcePageBox,
+    _BlockEvent,
+    _TableEvent,
+    _parse_html,
+    _parse_source_stream,
     extract_filing_content,
     find_section,
     find_tables_by_keyword,
@@ -1346,3 +1350,200 @@ class TestSourcePageBoxPosition:
             f'<div style="{_HEADER_BOX}"><div>H</div></div><div>Body</div>'
         )
         assert _boxes(html) == _boxes(html) == [("H", "HEADER_BOX"), ("Body", "NONE")]
+
+
+_HEADER_BOX_STYLE = _HEADER_BOX
+
+
+def _markers(html: str) -> list[tuple[str, str, str, int]]:
+    """(identifier, attribute, tag, following_event_index) for each observed marker."""
+    _events, markers = _parse_source_stream(html)
+    return [(m.identifier, m.attribute, m.tag, m.following_event_index) for m in markers]
+
+
+def _texts(html: str) -> list[str]:
+    events, _markers = _parse_source_stream(html)
+    return [e.text for e in events if isinstance(e, _BlockEvent)]
+
+
+class TestSourceMarkerPosition:
+    """Sprint 58 -- the raw source's own `id`/`name` markers and where they sat in
+    document order. Positional provenance only: nothing here says a marker is a
+    heading, a section start, a navigation target, or meaningful at all."""
+
+    # ---------------------------------------------------------------- the fact
+
+    def test_empty_marker_element_survives_although_it_produces_no_event(self):
+        #: The shape real EDGAR HTML uses for a link destination. It has no text,
+        #: so it has never produced an event -- and that is exactly why it used to
+        #: vanish completely.
+        html = '<p>before</p><div id="alpha"></div><p>after</p>'
+        assert _texts(html) == ["before", "after"]
+        assert _markers(html) == [("alpha", "id", "div", 1)]
+
+    def test_preserving_a_marker_adds_no_event_and_shifts_no_index(self):
+        without = '<p>before</p><p>after</p>'
+        with_marker = '<p>before</p><div id="alpha"></div><p>after</p>'
+        bare, _ = _parse_source_stream(without)
+        marked, markers = _parse_source_stream(with_marker)
+        #: Same events, same order, same count -- the marker is beside the stream.
+        assert [e.text for e in marked] == [e.text for e in bare] == ["before", "after"]
+        assert len(markers) == 1
+
+    def test_marker_is_recorded_at_the_boundary_before_the_next_event(self):
+        html = '<div>one</div><div id="m"></div><div>two</div>'
+        assert _texts(html) == ["one", "two"]
+        #: Boundary 1 means: after event 0 ("one"), before event 1 ("two"). The
+        #: capture happens after the flush, so this is never off by one.
+        assert _markers(html) == [("m", "id", "div", 1)]
+
+    def test_marker_nested_inside_an_element_with_pending_text_is_not_early(self):
+        html = '<div>before<div id="m"></div>after</div>'
+        assert _texts(html) == ["before", "after"]
+        assert _markers(html) == [("m", "id", "div", 1)]
+
+    # ------------------------------------------------------- boundary extremes
+
+    def test_marker_before_the_first_event_is_boundary_zero(self):
+        assert _markers('<div id="first"></div><p>only</p>') == [("first", "id", "div", 0)]
+
+    def test_marker_after_the_last_event_is_the_end_boundary(self):
+        events, markers = _parse_source_stream('<p>only</p><div id="last"></div>')
+        #: One past the final event -- a real boundary, never an index into an
+        #: event that does not exist.
+        assert [m.following_event_index for m in markers] == [len(events)] == [1]
+
+    def test_a_document_that_is_only_a_marker_still_represents_it(self):
+        events, markers = _parse_source_stream('<div id="lonely"></div>')
+        assert events == ()
+        assert [(m.identifier, m.following_event_index) for m in markers] == [("lonely", 0)]
+
+    # ------------------------------------------------------- several at once
+
+    def test_several_markers_at_one_boundary_are_all_kept_in_source_order(self):
+        html = '<p>a</p><div id="m1"></div><div id="m2"></div><div id="m3"></div><p>b</p>'
+        assert _markers(html) == [
+            ("m1", "id", "div", 1), ("m2", "id", "div", 1), ("m3", "id", "div", 1),
+        ]
+
+    def test_duplicate_identifiers_are_both_preserved_never_deduplicated(self):
+        html = '<p>a</p><div id="dup"></div><p>b</p><div id="dup"></div><p>c</p>'
+        assert _markers(html) == [("dup", "id", "div", 1), ("dup", "id", "div", 2)]
+
+    # ------------------------------------------------------------ id vs name
+
+    def test_name_is_a_marker_on_the_elements_html_gives_that_meaning_to(self):
+        assert _markers('<p>a</p><a name="n"></a>') == [("n", "name", "a", 1)]
+        assert _markers('<p>a</p><map name="m"></map>') == [("m", "name", "map", 1)]
+
+    def test_name_elsewhere_is_not_a_fragment_identifier_and_is_not_recorded(self):
+        #: On an inline-XBRL element `name` carries the XBRL *concept*, not a
+        #: document position. Recording it would invent a marker that the source
+        #: never offered as one.
+        html = '<p>a</p><ix:nonfraction id="f-1" name="us-gaap:Revenues">9</ix:nonfraction>'
+        assert _markers(html) == [("f-1", "id", "ix:nonfraction", 1)]
+
+    def test_id_and_name_on_one_element_are_two_separate_source_facts(self):
+        html = '<p>a</p><a id="i" name="n" href="#t">L</a>'
+        observed = {(i, attr) for i, attr, _tag, _pos in _markers(html)}
+        assert observed == {("i", "id"), ("n", "name")}
+
+    # ------------------------------------------------------- value fidelity
+
+    def test_identifier_case_is_preserved_exactly_as_observed(self):
+        assert _markers('<p>a</p><div id="FooBar"></div>') == [("FooBar", "id", "div", 1)]
+
+    def test_identifier_whitespace_is_preserved_rather_than_cleaned_up(self):
+        assert _markers('<p>a</p><div id="has space"></div>') == [
+            ("has space", "id", "div", 1)
+        ]
+
+    def test_empty_identifier_values_are_not_identifiers(self):
+        assert _markers('<p>a</p><div id=""></div><a name="">x</a>') == []
+
+    def test_attribute_order_does_not_matter(self):
+        first = _markers('<div id="z" class="c"></div><p>t</p>')
+        second = _markers('<div class="c" id="z"></div><p>t</p>')
+        assert first == second == [("z", "id", "div", 0)]
+
+    def test_identifiers_are_captured_on_any_tag_not_just_div(self):
+        for tag in ("div", "span", "a", "p", "li", "h2", "img", "map", "section"):
+            html = f'<p>a</p><{tag} id="x"></{tag}><p>b</p>'
+            assert _markers(html) == [("x", "id", tag, 1)], tag
+
+    def test_markers_inside_skipped_content_are_not_captured(self):
+        assert _markers('<p>a</p><style><div id="hidden"></div></style><p>b</p>') == []
+
+    # ---------------------------------------------------------------- tables
+
+    def test_markers_inside_a_table_share_that_tables_boundary(self):
+        html = '<p>a</p><table id="t"><tr><td id="c">x</td></tr></table><p>b</p>'
+        events, _m = _parse_source_stream(html)
+        table_index = next(i for i, e in enumerate(events) if isinstance(e, _TableEvent))
+        #: A table is one event, so this is the honest limit of the contract: the
+        #: markers' order is kept, their position *within* the table is not.
+        assert _markers(html) == [
+            ("t", "id", "table", table_index), ("c", "id", "td", table_index),
+        ]
+
+    def test_an_in_table_marker_does_not_become_a_cell_reference(self):
+        html = '<table><tr><td id="c">x</td></tr></table>'
+        events, _m = _parse_source_stream(html)
+        cell = events[0].body_rows[0].cells[0]
+        assert cell.text == "x"
+        assert cell.references == ()
+
+    def test_a_broken_local_link_does_not_invent_a_marker(self):
+        html = '<table><tr><td><a href="#missing">L</a></td></tr></table>'
+        events, markers = _parse_source_stream(html)
+        assert markers == ()
+        assert events[0].body_rows[0].cells[0].references == (("L", "#missing"),)
+
+    # ------------------------------------------------- not consumer-driven
+
+    def test_an_identifier_nothing_links_to_is_still_preserved(self):
+        #: Preservation that depended on a current consumer would not be
+        #: preservation of the source at all.
+        assert _markers('<p>a</p><div id="nobody-links-here"></div><p>b</p>') == [
+            ("nobody-links-here", "id", "div", 1)
+        ]
+
+    # ------------------------------------------- everything else unchanged
+
+    def test_content_bearing_marker_keeps_its_text_exactly_once(self):
+        html = '<p>before</p><div id="beta">text</div><p>after</p>'
+        assert _texts(html) == ["before", "text", "after"]
+        assert _markers(html) == [("beta", "id", "div", 1)]
+
+    def test_marker_capture_does_not_disturb_page_box_classification(self):
+        html = (
+            f'<div style="{_HEADER_BOX_STYLE}" id="hdr"><div>H</div></div><div>Body</div>'
+        )
+        assert _boxes(html) == [("H", "HEADER_BOX"), ("Body", "NONE")]
+        assert _markers(html) == [("hdr", "id", "div", 0)]
+
+    def test_parse_html_still_returns_only_events(self):
+        html = '<p>a</p><div id="m"></div><p>b</p>'
+        events, _markers = _parse_source_stream(html)
+        assert _parse_html(html) == events
+
+    def test_paragraph_source_event_indexes_are_unaffected_by_markers(self):
+        html = (
+            '<div id="m0"></div><p>one</p><div id="m1"></div><p>two</p>'
+            '<div id="m2"></div><p>three</p>'
+        )
+        content = extract_filing_content(_filing("10-K"), _fetcher(html))
+        assert [p.source_event_index for p in content.unattributed_paragraphs] == [0, 1, 2]
+        assert [p.text for p in content.unattributed_paragraphs] == ["one", "two", "three"]
+
+    def test_markers_are_inert_no_section_is_created_from_one(self):
+        html = '<div id="x"></div><p>Item 1. Business</p><p>body</p><div id="y"></div>'
+        content = extract_filing_content(_filing("10-K"), _fetcher(html))
+        #: The ordinary block heading still opens exactly one section; the markers
+        #: neither open, close, nor alter anything.
+        assert [(s.item_number, s.source_event_index) for s in content.sections] == [("1", 0)]
+        assert [p.text for p in content.sections[0].paragraphs] == ["body"]
+
+    def test_marker_capture_is_deterministic_and_leaves_no_state_behind(self):
+        html = '<p>a</p><div id="m"></div><table id="t"><tr><td>x</td></tr></table>'
+        assert _markers(html) == _markers(html) == _markers(html)

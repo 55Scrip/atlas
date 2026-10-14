@@ -611,6 +611,59 @@ class _AnchorEvent:
     target: str
 
 
+#: The `name` attribute is a fragment identifier only on the elements HTML
+#: itself gives that meaning to. Everywhere else `name` means something else
+#: entirely -- on inline-XBRL elements it carries the XBRL *concept*
+#: (`dei:EntityPublicFloat`), which is not a document position and must never
+#: be recorded as one.
+_FRAGMENT_NAME_TAGS = frozenset({"a", "map"})
+_IDENTIFIER_ATTRS = ("id", "name")
+
+
+@dataclass(frozen=True)
+class _SourceMarker:
+    """An `id`/`name`-bearing element observed in the raw source, and where it
+    sat in the one ordered event stream -- a POSITIONAL fact, nothing else.
+
+    This does **not** say the element is a heading, an Item heading, a section
+    start, a table-of-contents target, a navigation destination, a body
+    destination, a `FilingSection` boundary, or meaningful in any way. It says
+    only: *the source carried this identifier at this point in document order.*
+    Whether anything follows from that belongs entirely to a consumer, and
+    there is none.
+
+    Markers live BESIDE the event stream, never in it: `source_event_index` is
+    an index into `events`, so an identifier admitted as an event would shift
+    every later paragraph, table and reference. An empty
+    `<div id="x"></div>` -- which is exactly the shape real EDGAR HTML uses
+    for a link destination -- produces no event at all, and is preserved here
+    without manufacturing a paragraph to hold it.
+    """
+
+    #: The attribute value exactly as the parser observed it: original case,
+    #: no stripping, no fragment decoding. Only `HTMLParser`'s own pre-existing
+    #: entity decoding applies.
+    identifier: str
+    #: The literal attribute name that carried it -- `"id"` or `"name"`. Kept
+    #: distinct rather than collapsed: they are different source facts.
+    attribute: str
+    #: The lowercased tag of the element that carried the identifier. Recorded
+    #: so a consumer can tell a layout `div` from an inline-XBRL element
+    #: without this layer having to know what either of those means.
+    tag: str
+    #: The index the NEXT event emitted after this marker will occupy, i.e.
+    #: this marker sat after `events[following_event_index - 1]` and before
+    #: `events[following_event_index]`. A marker before all content is `0`; a
+    #: marker after all content is `len(events)` -- a real boundary one past
+    #: the end, never an index into a non-existent event.
+    #:
+    #: A table is emitted as ONE event when it closes, so every marker inside
+    #: a table shares that table's boundary; their relative source order is
+    #: preserved but their position *within* the table is not. Stated rather
+    #: than invented.
+    following_event_index: int
+
+
 _ParsedEvent = _BlockEvent | _TableEvent | _AnchorEvent
 
 _TABLE_GROUP_TAGS = frozenset({"thead", "tbody", "tfoot"})
@@ -806,6 +859,23 @@ class _FilingHTMLParser(HTMLParser):
         #: page box -- a tiny membership stack, never a DOM. Nothing is
         #: retained after `finish()` and nothing is exposed downstream.
         self._page_box_stack: list[SourcePageBox] = []
+        #: Observed source identifiers, in source order, beside the stream.
+        self.markers: list[_SourceMarker] = []
+
+    def _record_source_markers(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        """Record any identifier this element carried, at the boundary the next
+        event will occupy. Called only AFTER whatever flush this tag triggers,
+        because a flush emits text that PRECEDED the tag -- recording first
+        would place the marker one boundary too early."""
+        for name, value in attrs:
+            if name not in _IDENTIFIER_ATTRS or not value:
+                continue
+            if name == "name" and tag not in _FRAGMENT_NAME_TAGS:
+                continue
+            self.markers.append(
+                _SourceMarker(identifier=value, attribute=name, tag=tag,
+                              following_event_index=len(self.events))
+            )
 
     def _current_page_box(self) -> SourcePageBox:
         return self._page_box_stack[-1] if self._page_box_stack else SourcePageBox.NONE
@@ -828,6 +898,7 @@ class _FilingHTMLParser(HTMLParser):
             return
         if tag == "table":
             self._flush_block()
+            self._record_source_markers(tag, attrs)
             #: A `<table>` opening directly inside an already-open
             #: cell marks that cell as containing a nested table --
             #: the nested table becomes its own, separate frame/event;
@@ -837,6 +908,10 @@ class _FilingHTMLParser(HTMLParser):
             self._table_stack.append(_TableBuilder())
             return
         if self._table_stack:
+            #: No flush happens on this path -- a table's own text is held in
+            #: cell builders, so `len(self.events)` is already the index the
+            #: enclosing table event will occupy.
+            self._record_source_markers(tag, attrs)
             frame = self._table_stack[-1]
             if tag in _TABLE_GROUP_TAGS:
                 frame.row_group_stack.append(tag)
@@ -865,6 +940,7 @@ class _FilingHTMLParser(HTMLParser):
                 self._anchor_text = []
         if tag in _BLOCK_TAGS:
             self._flush_block()
+        self._record_source_markers(tag, attrs)
         if tag == "div":
             #: Pushed only AFTER the flush above, because that flush emits
             #: text that PRECEDED this tag and so belongs to the ancestry
@@ -947,11 +1023,22 @@ class _FilingHTMLParser(HTMLParser):
         self._flush_block()
 
 
-def _parse_html(html: str) -> tuple[_ParsedEvent, ...]:
+def _parse_source_stream(
+    html: str,
+) -> tuple[tuple[_ParsedEvent, ...], tuple[_SourceMarker, ...]]:
+    """One parse, two faithful products: the ordered event stream exactly as
+    `_parse_html` has always produced it, and the observed source identifiers
+    beside it. The marker tuple is additive -- nothing about the events depends
+    on it, and no consumer reads it."""
     parser = _FilingHTMLParser()
     parser.feed(html)
     parser.finish()
-    return tuple(parser.events)
+    return tuple(parser.events), tuple(parser.markers)
+
+
+def _parse_html(html: str) -> tuple[_ParsedEvent, ...]:
+    events, _markers = _parse_source_stream(html)
+    return events
 
 
 # -- Phase 3: Filing Section Taxonomy (real SEC Item numbers only) ----------
