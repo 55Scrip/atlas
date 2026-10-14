@@ -1547,3 +1547,283 @@ class TestSourceMarkerPosition:
     def test_marker_capture_is_deterministic_and_leaves_no_state_behind(self):
         html = '<p>a</p><div id="m"></div><table id="t"><tr><td>x</td></tr></table>'
         assert _markers(html) == _markers(html) == _markers(html)
+
+
+def _toc_row(item: str, title: str, target: str) -> str:
+    """A table-of-contents row: the Item surface decomposed across cells, with the
+    forward link that real filings carry."""
+    return (
+        f'<tr><td>Item {item}.</td><td><a href="#{target}">{title}</a></td><td>4</td></tr>'
+    )
+
+
+def _heading_table(text: str) -> str:
+    """A body heading printed as a table whose row has one non-empty cell."""
+    return f'<table><tr><td>{text}</td><td></td></tr></table>'
+
+
+def _sections(html: str):
+    content = extract_filing_content(_filing("10-K"), _fetcher(html))
+    return [(s.item_number, s.kind.name, s.source_event_index) for s in content.sections]
+
+
+class TestTableCellItemHeadingRole:
+    """Sprint 59 -- a table event may itself be an Item-heading boundary, but only
+    when the filing's own navigation names that table as the destination for the
+    same Item. The role is the source's claim, never the cell's shape."""
+
+    # ------------------------------------------------------------ the role
+
+    def test_a_licensed_table_cell_opens_the_section_its_item_maps_to(self):
+        html = (
+            f'<table>{_toc_row("1", "Business", "t1")}</table>'
+            '<div id="t1"></div>'
+            + _heading_table("Item 1. Business")
+            + '<p>body text</p>'
+        )
+        #: Event 0 is the contents table, event 1 the heading table -- the anchor
+        #: inside a cell is a CellReference, not an event of its own.
+        assert _sections(html) == [("1", "BUSINESS", 1)]
+
+    def test_the_section_starts_at_the_tables_own_event_index(self):
+        html = (
+            f'<table>{_toc_row("1", "Business", "t1")}</table>'
+            '<div id="t1"></div>' + _heading_table("Item 1. Business") + '<p>body</p>'
+        )
+        content = extract_filing_content(_filing("10-K"), _fetcher(html))
+        events = _parse_html(html)
+        table_index = [i for i, e in enumerate(events) if isinstance(e, _TableEvent)][1]
+        #: Never the marker boundary, never a synthetic event.
+        assert content.sections[0].source_event_index == table_index
+
+    def test_the_heading_table_remains_source_content_in_the_section_it_opened(self):
+        html = (
+            f'<table>{_toc_row("1", "Business", "t1")}</table>'
+            '<div id="t1"></div>' + _heading_table("Item 1. Business") + '<p>body</p>'
+        )
+        content = extract_filing_content(_filing("10-K"), _fetcher(html))
+        section = content.sections[0]
+        #: Counted exactly once: present as a table, not swallowed, not duplicated.
+        assert len(section.tables) == 1
+        assert section.tables[0].source_event_index == section.source_event_index
+        assert section.tables[0].rows[0].cells[0].text == "Item 1. Business"
+        assert [p.text for p in section.paragraphs] == ["body"]
+
+    # --------------------------------------------------- A: unlinked contents row
+
+    def test_an_unlinked_item_sole_cell_row_is_not_a_heading(self):
+        #: The Sprint 55 rule accepted this. It is refused now, because nothing in
+        #: the source says this table is where Item 1 begins.
+        html = _heading_table("Item 1. Business") + '<p>body</p>'
+        assert _sections(html) == []
+
+    # ------------------------------------------- D/E: linked, but not the target
+
+    def test_an_item_row_whose_link_points_elsewhere_is_not_a_heading(self):
+        #: This is the MA shape: the row is an outbound navigation SOURCE. Its own
+        #: target lands before a different table.
+        html = (
+            '<table><tr><td>Item 1. Business</td><td></td></tr></table>'
+            '<p>unrelated</p><div id="t1"></div><table><tr><td>data</td><td>9</td></tr></table>'
+        )
+        assert _sections(html) == []
+
+    def test_an_unrelated_outbound_link_on_the_row_licenses_nothing(self):
+        html = (
+            '<table><tr><td><a href="#somewhere">Item 1. Business</a></td><td></td></tr></table>'
+            '<div id="somewhere"></div><p>body</p>'
+        )
+        assert _sections(html) == []
+
+    # ----------------------------------------------------- F: broken fragment
+
+    def test_a_fragment_with_no_preserved_marker_licenses_nothing(self):
+        html = (
+            f'<table>{_toc_row("1", "Business", "missing")}</table>'
+            + _heading_table("Item 1. Business") + '<p>body</p>'
+        )
+        assert _sections(html) == []
+
+    # --------------------------------------------------- H/I: not an Item cell
+
+    def test_a_sole_cell_row_that_is_not_item_resolving_is_not_a_heading(self):
+        html = (
+            f'<table>{_toc_row("1", "Business", "t1")}</table>'
+            '<div id="t1"></div>' + _heading_table("(dollars in millions)") + '<p>body</p>'
+        )
+        assert _sections(html) == []
+
+    def test_an_item_cell_sharing_its_row_with_data_is_not_a_heading(self):
+        html = (
+            f'<table>{_toc_row("1", "Business", "t1")}</table>'
+            '<div id="t1"></div>'
+            '<table><tr><td>Item 1. Business</td><td>1,234</td></tr></table><p>body</p>'
+        )
+        assert _sections(html) == []
+
+    # --------------------------------------------- same-Item identity required
+
+    def test_the_link_source_item_must_equal_the_candidate_cells_item(self):
+        html = (
+            f'<table>{_toc_row("3", "Legal Proceedings", "t1")}</table>'
+            '<div id="t1"></div>' + _heading_table("Item 1. Business") + '<p>body</p>'
+        )
+        assert _sections(html) == []
+
+    # --------------------------- §58/§59: the ordering relation is not permissive
+
+    def test_an_intervening_table_consumes_the_relation(self):
+        #: marker -> unrelated table -> candidate table. The candidate is NOT the
+        #: first table after the marker, so it is not licensed. The walk does not
+        #: step over tables to reach a nicer answer.
+        html = (
+            f'<table>{_toc_row("1", "Business", "t1")}</table>'
+            '<div id="t1"></div>'
+            '<table><tr><td>a</td><td>b</td><td>c</td><td>d</td></tr></table>'
+            + _heading_table("Item 1. Business") + '<p>body</p>'
+        )
+        assert _sections(html) == []
+
+    def test_page_furniture_between_marker_and_table_does_not_break_the_relation(self):
+        #: The real corpus shape for 7 of 46 headings: a back-link anchor and its
+        #: text sit between marker and table. Neither is a table, so the ordering
+        #: relation still reaches the heading table.
+        html = (
+            f'<table>{_toc_row("1", "Business", "t1")}</table>'
+            '<div id="t1"></div><p>20</p><a href="#toc">Table of Contents</a>'
+            + _heading_table("Item 1. Business") + '<p>body</p>'
+        )
+        assert [s[0] for s in _sections(html)] == ["1"]
+
+    # ------------------------------------- C/N: block heading for the same Item
+
+    def test_a_block_heading_already_open_is_not_duplicated_by_a_table_heading(self):
+        html = (
+            f'<table>{_toc_row("1", "Business", "t1")}</table>'
+            '<p>Item 1. Business</p><p>body</p>'
+            '<div id="t1"></div>' + _heading_table("Item 1. Business") + '<p>more</p>'
+        )
+        #: Exactly one section for Item 1, opened by the block heading, and the
+        #: table heading adds nothing -- Sprint 47's dedup, unchanged.
+        assert [(s[0], s[1]) for s in _sections(html)] == [("1", "BUSINESS")]
+
+    def test_a_table_heading_still_closes_a_different_open_section(self):
+        html = (
+            f'<table>{_toc_row("3", "Legal Proceedings", "t3")}</table>'
+            '<p>Item 1. Business</p><p>business body</p>'
+            '<div id="t3"></div>' + _heading_table("Item 3. Legal proceedings")
+            + '<p>legal body</p>'
+        )
+        kinds = [(s[0], s[1]) for s in _sections(html)]
+        assert kinds == [("1", "BUSINESS"), ("3", "LEGAL_PROCEEDINGS")]
+
+    def test_an_unmapped_table_heading_closes_without_opening_anything(self):
+        html = (
+            f'<table>{_toc_row("1", "Business", "t1")}{_toc_row("1B", "Unresolved", "t1b")}'
+            f'{_toc_row("2", "Properties", "t2")}</table>'
+            '<div id="t1"></div>' + _heading_table("Item 1. Business") + '<p>one</p>'
+            '<div id="t1b"></div>' + _heading_table("Item 1B. Unresolved staff comments")
+            + '<p>orphan</p>'
+            '<div id="t2"></div>' + _heading_table("Item 2. Properties") + '<p>two</p>'
+        )
+        content = extract_filing_content(_filing("10-K"), _fetcher(html))
+        assert [(s.item_number, s.kind.name) for s in content.sections] == [
+            ("1", "BUSINESS"), ("2", "PROPERTIES"),
+        ]
+        #: The unmapped Item ended Item 1 rather than being absorbed into it, and
+        #: the content after it belongs to no section.
+        assert [p.text for p in content.sections[0].paragraphs] == ["one"]
+        assert "orphan" in [p.text for p in content.unattributed_paragraphs]
+        assert all(s.kind is not FilingSectionKind.UNKNOWN for s in content.sections)
+
+    # ------------------------------------------- J/K/L: marker edge positions
+
+    def test_a_duplicated_fragment_identifier_licenses_nothing(self):
+        #: Two preserved markers carry the same identifier, so the source does not
+        #: say which position the link meant. Refused rather than guessed.
+        html = (
+            f'<table>{_toc_row("1", "Business", "dup")}</table>'
+            '<div id="dup"></div>' + _heading_table("Item 1. Business")
+            + '<p>body</p><div id="dup"></div>'
+        )
+        assert _sections(html) == []
+
+    def test_a_marker_after_the_last_table_licenses_nothing(self):
+        html = (
+            f'<table>{_toc_row("1", "Business", "t1")}</table>'
+            + _heading_table("Item 1. Business") + '<p>body</p><div id="t1"></div>'
+        )
+        assert _sections(html) == []
+
+    def test_a_marker_before_the_first_table_licenses_that_first_table(self):
+        html = (
+            '<div id="t1"></div>'
+            f'<table>{_toc_row("1", "Business", "t1")}</table>'
+            + _heading_table("Item 1. Business") + '<p>body</p>'
+        )
+        #: The contents table itself is the first table at or after boundary 0, and
+        #: its Item rows are not sole-cell rows, so nothing is licensed.
+        assert _sections(html) == []
+
+    # ------------------------------------- §60/§61: many links, many targets
+
+    def test_one_item_may_name_several_targets(self):
+        html = (
+            '<table>'
+            '<tr><td>Item 1.</td><td><a href="#a">Business</a></td><td>4</td></tr>'
+            '<tr><td>Item 1.</td><td><a href="#b">Business</a></td><td>4</td></tr>'
+            '</table>'
+            '<p>filler</p><div id="b"></div>' + _heading_table("Item 1. Business")
+            + '<p>body</p>'
+        )
+        assert [s[0] for s in _sections(html)] == ["1"]
+
+    def test_a_target_named_by_a_different_item_does_not_license_this_cell(self):
+        html = (
+            '<table>'
+            '<tr><td>Item 1.</td><td><a href="#shared">Business</a></td><td>4</td></tr>'
+            '<tr><td>Item 3.</td><td><a href="#shared">Legal</a></td><td>9</td></tr>'
+            '</table>'
+            '<div id="shared"></div>' + _heading_table("Item 2. Properties") + '<p>body</p>'
+        )
+        #: Shared target, but Item 2 is named by neither link.
+        assert _sections(html) == []
+
+    # ---------------------------------------------------------- firewalls
+
+    def test_a_licensed_table_heading_shifts_no_existing_source_event_index(self):
+        html = (
+            f'<table>{_toc_row("1", "Business", "t1")}</table>'
+            '<div id="t1"></div>' + _heading_table("Item 1. Business")
+            + '<p>one</p><p>two</p>'
+        )
+        content = extract_filing_content(_filing("10-K"), _fetcher(html))
+        events = _parse_html(html)
+        paragraphs = [p for s in content.sections for p in s.paragraphs] + list(
+            content.unattributed_paragraphs
+        )
+        for p in paragraphs:
+            assert events[p.source_event_index].text == p.text
+
+    def test_the_role_is_independent_of_the_item_title_wording(self):
+        for title in ("Business", "Zzzzz Yyyyy", "Something else entirely"):
+            html = (
+                f'<table>{_toc_row("1", title, "t1")}</table>'
+                '<div id="t1"></div>' + _heading_table(f"Item 1. {title}") + '<p>body</p>'
+            )
+            assert [s[0] for s in _sections(html)] == ["1"], title
+
+    def test_markers_alone_create_no_section(self):
+        html = '<div id="t1"></div><p>plain text</p><div id="t2"></div>'
+        assert _sections(html) == []
+
+    def test_ten_q_part_identity_still_separates_repeated_item_numbers(self):
+        html = (
+            f'<table>{_toc_row("1", "Financials", "t1")}</table>'
+            '<p>PART I</p><div id="t1"></div>' + _heading_table("Item 1. Financials")
+            + '<p>part one body</p>'
+        )
+        content = extract_filing_content(_filing("10-Q"), _fetcher(html))
+        assert [(s.item_number, s.kind.name) for s in content.sections] == [
+            ("1", "FINANCIAL_STATEMENTS"),
+        ]

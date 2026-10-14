@@ -176,6 +176,8 @@ documents, and this module deliberately does not answer it.
 from __future__ import annotations
 
 import re
+from bisect import bisect_left
+from collections import Counter
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -1129,6 +1131,113 @@ def _resolve_item_kind(
 #: occupied in the single ordered event stream survives the split into three
 #: separate collections. Pairing rather than a parallel list because the two
 #: cannot then drift apart.
+def _row_sole_item_cell(row: _ParsedRow) -> str | None:
+    """The Item number of a row's ONE non-empty cell, or `None`.
+
+    Both halves matter and Sprint 56 proved why: the existing Item grammar alone
+    accepts a table-of-contents entry just as readily as a body heading, and the
+    sole-non-empty-cell shape alone admits hundreds of rows that are not Items at
+    all. Neither is sufficient, and the conjunction is still not sufficient -- it
+    is only the surface a caller may then ask the source about."""
+    non_empty = [cell for cell in row.cells if cell.text.strip()]
+    if len(non_empty) != 1:
+        return None
+    return _match_item_heading_shape(non_empty[0].text.strip())
+
+
+def _row_item_number(row: _ParsedRow) -> str | None:
+    """The Item this row is about, read from whichever of its cells carries the
+    Item surface -- used for the LINK SOURCE, whose row is decomposed into
+    separate number/title/page cells and so is never a sole-cell row."""
+    for cell in row.cells:
+        text = cell.text.strip()
+        if text:
+            item_number = _match_item_heading_shape(text)
+            if item_number is not None:
+                return item_number
+    return None
+
+
+def _table_item_heading_boundaries(
+    events: tuple[_ParsedEvent, ...], markers: tuple[_SourceMarker, ...],
+) -> dict[int, str]:
+    """Maps a table event's index to the Item number that table's own cell opens,
+    for the tables the filing's own navigation positively licenses.
+
+    A filing can print an Item heading as a table cell rather than a text block,
+    and then the heading is invisible to the ordinary block path -- a real issuer
+    in this corpus yields zero sections for exactly that reason. What licenses the
+    promotion here is not the cell's shape but a relation the source itself
+    states: the filing's table of contents links forward to `#X`, the source
+    carried a marker `X` at a known position (Sprint 58), and the first table from
+    that position onward is this very table. The cell is therefore the
+    *destination* the document names for that Item, which is what an Item heading
+    is. Both ends resolve the Item through the existing grammar and the numbers
+    must be equal, so the relation never rests on titles or on text similarity.
+
+    Deliberately NOT used, because each was measured and found to be either not
+    load-bearing or actively wrong (Sprint 57): the absence of an outbound link
+    (it accepts an unlinked contents entry and rejects a linked real heading), the
+    absence of an ordinary block heading for the same Item (it suppresses a real
+    heading that has one), table layout, boldness, alignment, colspan, table size,
+    issuer, year, expected Item order, occurrence counts and position thresholds.
+
+    The ordering relation is `first table at or after the marker`, never a
+    distance tolerance. An unrelated table between the marker and a later Item row
+    therefore consumes the relation and that later row is not licensed -- the
+    walk does not step over tables to reach a nicer answer. Strict adjacency would
+    be the tighter relation and it does not hold: it accounts for 39 of 46 real
+    headings in the held corpus, because page-break furniture sits between marker
+    and table in the rest."""
+    table_indexes = [index for index, event in enumerate(events) if isinstance(event, _TableEvent)]
+    if not table_indexes:
+        return {}
+
+    #: Occurrence-counted on purpose. The source preserves every marker
+    #: individually, and a fragment carrying more than one of them does not say
+    #: which position the link meant -- so such a target licenses nothing rather
+    #: than being resolved by guesswork.
+    marker_positions: dict[str, int] = {}
+    marker_counts: Counter[str] = Counter(marker.identifier for marker in markers)
+    for marker in markers:
+        marker_positions.setdefault(marker.identifier, marker.following_event_index)
+
+    #: Every fragment an Item-resolving row links forward to, keyed by that row's
+    #: own Item. One Item may name several targets and one target may be named by
+    #: several Items -- both occur in this corpus -- so this stays a set and the
+    #: Item equality below does the discriminating.
+    targets_by_item: dict[str, set[str]] = {}
+    for event in events:
+        if not isinstance(event, _TableEvent):
+            continue
+        for row in event.header_rows + event.body_rows + event.footer_rows:
+            item_number = _row_item_number(row)
+            if item_number is None:
+                continue
+            for cell in row.cells:
+                for _text, href in cell.references:
+                    if href.startswith("#"):
+                        targets_by_item.setdefault(item_number, set()).add(href[1:])
+
+    boundaries: dict[int, str] = {}
+    for table_index, event in enumerate(events):
+        if not isinstance(event, _TableEvent):
+            continue
+        for row in event.header_rows + event.body_rows + event.footer_rows:
+            item_number = _row_sole_item_cell(row)
+            if item_number is None or table_index in boundaries:
+                continue
+            for target in targets_by_item.get(item_number, ()):
+                if marker_counts[target] != 1:
+                    continue
+                position = marker_positions[target]
+                following = bisect_left(table_indexes, position)
+                if following < len(table_indexes) and table_indexes[following] == table_index:
+                    boundaries[table_index] = item_number
+                    break
+    return boundaries
+
+
 @dataclass
 class _MutableSubsection:
     heading_text: str
@@ -1236,6 +1345,7 @@ def _subsection_objects(subsections: list[_MutableSubsection], filing: Regulator
 def _assign_events_to_sections(
     events: tuple[_ParsedEvent, ...], filing: RegulatoryFiling,
     item_map: dict[tuple[str | None, str], FilingSectionKind] | None,
+    markers: tuple[_SourceMarker, ...] = (),
 ) -> tuple[
     tuple[FilingSection, ...], tuple[FilingParagraph, ...], tuple[FilingTable, ...], tuple[FilingReference, ...],
 ]:
@@ -1259,6 +1369,16 @@ def _assign_events_to_sections(
     falls through to `unattributed_paragraphs` like any other text,
     unchanged from Sprint 13's own behavior.
 
+    An `Item` heading is usually a text block, but a filing may print one as a
+    table cell instead, and then the ordinary block path cannot see it at all.
+    `_table_item_heading_boundaries` reads the filing's own navigation (via the
+    preserved source markers `markers` carries) to find the tables the document
+    itself names as an Item's destination; such a table takes the SAME heading
+    transition below as a block heading, and then falls through to the ordinary
+    table branch so it stays one source object, attributed once, at its own
+    index. Sprint 47's dedup therefore applies to it unchanged: where a real
+    block heading for that Item is already open, the table opens nothing.
+
     Every object built here also carries the index its event held in
     `events` (`source_event_index`). This walk is the point at which one
     ordered stream becomes three separately numbered tuples, so it is the
@@ -1278,6 +1398,45 @@ def _assign_events_to_sections(
     #: persisted. `None` whenever no section is open.
     current_item_key: tuple[str | None, str] | None = None
     current_subsection: _MutableSubsection | None = None
+    #: Computed once, before the walk, from the ordered events and the preserved
+    #: source markers. The walk itself stays single-pass.
+    table_heading_items = _table_item_heading_boundaries(events, markers) if markers else {}
+
+    def open_or_close_item_section(item_number: str, event_index: int) -> None:
+        """The ONE place an `Item` heading changes section state, whether that
+        heading arrived as a text block or as a licensed table cell. Keeping it
+        single is what makes Sprint 47's dedup, the Part-aware 10-Q key and the
+        unmapped-Item termination identical on both paths rather than a second
+        implementation that can drift."""
+        nonlocal current_section, current_item_key, current_subsection
+        #: One open source Item is one logical section. A filing that prints
+        #: its current Item's own heading again -- a running page header, which
+        #: real EDGAR HTML does on every page -- is a repeated *occurrence* of
+        #: the section already open, not a second section. Keyed on the same
+        #: `(lookup_part, item_number)` the item map itself uses, so a 10-Q's
+        #: Part I Item 1 and Part II Item 1 stay distinct; for 10-K/8-K
+        #: `lookup_part` is always `None` and the key is the Item number alone.
+        item_key = (current_part if form_type in _PART_AWARE_FORMS else None, item_number)
+        if item_key == current_item_key:
+            #: Falls through to nothing: the open section keeps its own opening
+            #: `source_event_index`/`heading_text`, any open subsection stays
+            #: open, and the content after this header continues into it.
+            return
+        kind = _resolve_item_kind(item_number, form_type, item_map, current_part) if item_map is not None else None
+        if kind is not None:
+            current_section = _MutableSection(
+                item_number=item_number, kind=kind, source_event_index=event_index,
+                paragraphs=[], tables=[], references=[], subsections=[],
+            )
+            sections.append(current_section)
+            current_item_key = item_key
+        else:
+            #: A real heading Atlas cannot name (e.g. Part II's
+            #: own Item 2) still ends the previous section --
+            #: never silently absorbed into it.
+            current_section = None
+            current_item_key = None
+        current_subsection = None
 
     for event_index, event in enumerate(events):
         if isinstance(event, _BlockEvent):
@@ -1289,34 +1448,7 @@ def _assign_events_to_sections(
                     continue
             item_number = _match_item_heading_shape(event.text)
             if item_number is not None:
-                #: One open source Item is one logical section. A filing that prints
-                #: its current Item's own heading again -- a running page header, which
-                #: real EDGAR HTML does on every page -- is a repeated *occurrence* of
-                #: the section already open, not a second section. Keyed on the same
-                #: `(lookup_part, item_number)` the item map itself uses, so a 10-Q's
-                #: Part I Item 1 and Part II Item 1 stay distinct; for 10-K/8-K
-                #: `lookup_part` is always `None` and the key is the Item number alone.
-                item_key = (current_part if form_type in _PART_AWARE_FORMS else None, item_number)
-                if item_key == current_item_key:
-                    #: Falls through to nothing: the open section keeps its own opening
-                    #: `source_event_index`/`heading_text`, any open subsection stays
-                    #: open, and the content after this header continues into it.
-                    continue
-                kind = _resolve_item_kind(item_number, form_type, item_map, current_part) if item_map is not None else None
-                if kind is not None:
-                    current_section = _MutableSection(
-                        item_number=item_number, kind=kind, source_event_index=event_index,
-                        paragraphs=[], tables=[], references=[], subsections=[],
-                    )
-                    sections.append(current_section)
-                    current_item_key = item_key
-                else:
-                    #: A real heading Atlas cannot name (e.g. Part II's
-                    #: own Item 2) still ends the previous section --
-                    #: never silently absorbed into it.
-                    current_section = None
-                    current_item_key = None
-                current_subsection = None
+                open_or_close_item_section(item_number, event_index)
                 continue
             if event.is_heading and current_section is not None:
                 current_subsection = _MutableSubsection(
@@ -1332,6 +1464,12 @@ def _assign_events_to_sections(
             )
             target_paragraphs.append((event_index, event.text, event.page_box))
         elif isinstance(event, _TableEvent):
+            table_item_number = table_heading_items.get(event_index)
+            if table_item_number is not None:
+                open_or_close_item_section(table_item_number, event_index)
+            #: No `continue`: the table is still the source content it has always
+            #: been, so it falls through and is attributed to whichever section is
+            #: open -- which, when it just opened one, is its own.
             target_tables = (
                 current_subsection.tables if current_subsection is not None
                 else current_section.tables if current_section is not None
@@ -1391,10 +1529,10 @@ def extract_filing_content(
             unattributed_paragraphs=(), unattributed_tables=(), unattributed_references=(),
         )
 
-    events = _parse_html(html)
+    events, markers = _parse_source_stream(html)
     item_map = _ITEM_MAPS_BY_FORM.get(filing.form_type)
     sections, unattributed_paragraphs, unattributed_tables, unattributed_references = _assign_events_to_sections(
-        events, filing, item_map
+        events, filing, item_map, markers
     )
     extraction_status = ExtractionStatus.EXTRACTED if item_map is not None else ExtractionStatus.STRUCTURE_UNKNOWN
 
