@@ -148,6 +148,12 @@ class PortfolioView(CamelModel):
     cash_weight_percent: float | None = None
     cash_value_absolute: float | None = None
     total_value: float | None = None
+    #: The currency `total_value`, `cash_value_absolute` and every
+    #: holding's `value_absolute` are denominated in, or `None` when the
+    #: portfolio does not establish one. The display layer must render
+    #: amounts without a symbol in that case rather than assume a
+    #: currency -- see `AlphaPortfolioState.reporting_currency`.
+    currency: str | None = None
     number_of_holdings: int = 0
     concentration_level: str | None = None
     objective: str | None = None
@@ -188,6 +194,7 @@ class PortfolioView(CamelModel):
             # it's excluded from `projection.py`'s summary entirely
             # when absent.
             total_value=summary.total_value if state.holdings_have_absolute_values else None,
+            currency=state.reporting_currency,
             # Real, investor-supplied holdings only -- `summary` itself
             # additionally counts the synthetic CASH line `projection.py`
             # adds so the calculation engine can compute cash weight;

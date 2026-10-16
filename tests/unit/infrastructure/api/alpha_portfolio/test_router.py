@@ -797,6 +797,11 @@ def _empty_fields() -> dict:
         "cashWeightPercent": None,
         "cashValueAbsolute": None,
         "totalValue": None,
+        # A portfolio that does not exist denominates nothing, so the
+        # display layer renders amounts without a currency symbol rather
+        # than defaulting to one -- see `AlphaPortfolioState
+        # .reporting_currency`.
+        "currency": None,
         "numberOfHoldings": 0,
         "concentrationLevel": None,
         "objective": None,

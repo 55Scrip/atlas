@@ -58,11 +58,9 @@ def _user_agent() -> str:
 def _fetch_json(url: str, headers: dict[str, str] | None = None) -> Any:
     """The one real implementation of `JsonFetcher` for this module --
     a bare `httpx.get` with `raise_for_status`. No typed error taxonomy
-    (unlike `atlas.business_data_providers.http.fetch_json`): an SEC
-    fetch failure here surfaces as a plain exception, which is enough
-    for a read-only discovery endpoint that already tolerates and
-    returns `[]` for "no candidates" -- see the router's own docstring
-    on not overbuilding failure handling."""
+    (unlike `atlas.business_data_providers.http.fetch_json`): a failure
+    raises, and `SecTitleIndexSource.entries` is what decides that an
+    unreachable SEC means "no entries" rather than a crash."""
     response = httpx.get(url, headers=headers, timeout=_TIMEOUT_SECONDS)
     response.raise_for_status()
     return response.json()
@@ -95,7 +93,34 @@ class SecTitleIndexSource:
         self._cache: tuple[SecTickerEntry, ...] | None = None
 
     def entries(self) -> tuple[SecTickerEntry, ...]:
+        """Every entry SEC publishes, or an empty tuple when SEC cannot
+        be reached.
+
+        Returning `()` rather than raising is the whole point. This index
+        began as the discovery endpoint's own dependency, where a raised
+        exception was acceptable because that endpoint already answers
+        "no candidates" with `[]`. It later became a dependency of
+        `POST /alpha-portfolio/import/preview`, and there the same raise
+        turned a transient SEC outage into a bare 500 on the first screen
+        of the product -- with "try again" as the only offered remedy and
+        no way for it to succeed. An empty index degrades instead: a row
+        that needed discovery reports that Atlas could not identify it,
+        and a row that already carried a ticker is unaffected.
+
+        The failure is deliberately **not** cached. Caching it would make
+        one unlucky request poison every later one until the process
+        restarted, and the alternative -- a disk cache with its own
+        invalidation rules -- is a cache system this does not need, since
+        `portfolio_import`'s own wiring no longer asks for the index
+        unless a row genuinely lacks a ticker.
+        """
         if self._cache is None:
-            payload = self._fetch_json(_TICKER_MAP_URL, {"User-Agent": _user_agent()})
+            try:
+                payload = self._fetch_json(_TICKER_MAP_URL, {"User-Agent": _user_agent()})
+            except Exception:
+                # Transport failure, timeout, HTTP error status, or a body
+                # that is not JSON at all -- every one of them means the
+                # same thing to a caller: no entries are available now.
+                return ()
             self._cache = _parse_entries(payload)
         return self._cache

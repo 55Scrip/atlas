@@ -161,6 +161,12 @@ interface PortfolioView {
   cashWeightPercent: number | null;
   cashValueAbsolute: number | null;
   totalValue: number | null;
+  /** What `totalValue`, `cashValueAbsolute` and each holding's
+   * `valueAbsolute` are denominated in. `null` when the portfolio does
+   * not establish one (weight-only, mixed, or no currency reported), in
+   * which case amounts render without a symbol rather than a guessed
+   * one -- see `AlphaPortfolioState.reporting_currency`. */
+  currency: string | null;
   numberOfHoldings: number;
   concentrationLevel: string | null;
   objective: string | null;
@@ -1309,7 +1315,7 @@ function PortfolioPulse({
 }) {
   const cashDisplay =
     view.cashValueAbsolute !== null
-      ? formatCurrency(view.cashValueAbsolute)
+      ? formatCurrency(view.cashValueAbsolute, view.currency)
       : view.cashWeightPercent !== null
         ? formatPercentPoints(view.cashWeightPercent)
         : t("portfolio.header.notAvailable");
@@ -1347,7 +1353,7 @@ function PortfolioPulse({
               as="span"
               style={{ fontSize: "var(--type-heading-3-size, 1.5rem)", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}
             >
-              {view.totalValue !== null ? formatCurrency(view.totalValue) : t("portfolio.pulse.totalValueUnavailable")}
+              {view.totalValue !== null ? formatCurrency(view.totalValue, view.currency) : t("portfolio.pulse.totalValueUnavailable")}
             </Text>
           </Stack>
           <Stack gap="metadata">
@@ -1470,7 +1476,7 @@ function PortfolioSidebar({
             </Text>
             <Text as="span" style={{ fontVariantNumeric: "tabular-nums" }}>
               {view.cashValueAbsolute !== null
-                ? formatCurrency(view.cashValueAbsolute)
+                ? formatCurrency(view.cashValueAbsolute, view.currency)
                 : view.cashWeightPercent !== null
                   ? formatPercentPoints(view.cashWeightPercent)
                   : t("portfolio.header.notAvailable")}
@@ -2082,7 +2088,7 @@ function HoldingsTable({
       )}
       {view.hasAbsoluteValues && view.totalValue !== null && (
         <Text color="tertiary" as="p" style={{ fontVariantNumeric: "tabular-nums" }}>
-          {t("portfolio.holdings.totalValue", { value: formatCurrency(view.totalValue) })}
+          {t("portfolio.holdings.totalValue", { value: formatCurrency(view.totalValue, view.currency) })}
         </Text>
       )}
 
@@ -2202,6 +2208,7 @@ function HoldingsTable({
                   <HoldingsTableRow
                     key={holding.ticker}
                     holding={holding}
+                    currency={view.currency}
                     isUnresolvedInCockpit={isUnresolvedInCockpit}
                     analysis={cockpitByTicker.get(holding.ticker)}
                     allocationFit={allocationFitByTicker.get(holding.ticker)}
@@ -2336,6 +2343,7 @@ function HoldingsTableRow({
   openInvestmentCase,
   simulated,
   simulationUsesValue,
+  currency,
   simulationBase,
   edits,
   assessmentEvidence,
@@ -2364,6 +2372,10 @@ function HoldingsTableRow({
    * and offers no controls. */
   simulated: HypotheticalHolding | undefined;
   simulationUsesValue: boolean;
+  /** The portfolio's own denomination, threaded rather than read off the
+   * holding: this row renders holding values and the editor beneath it
+   * renders portfolio-level figures too, and they must agree. */
+  currency: string | null;
   /** Unallocated capital available to fund an increase right now. The
    * `+` control disables at zero rather than letting the model silently
    * clamp an edit the investor asked for. */
@@ -2515,8 +2527,8 @@ function HoldingsTableRow({
           {simulationUsesValue && holding.valueAbsolute !== null && (
             <Text as="span" color="tertiary" style={SECONDARY_LINE_STYLE}>
               {simulated?.isChanged
-                ? `${formatCurrency(simulated.baseValue)} → ${formatCurrency(simulated.hypotheticalValue)}`
-                : formatCurrency(simulated ? simulated.hypotheticalValue : holding.valueAbsolute)}
+                ? `${formatCurrency(simulated.baseValue, currency)} → ${formatCurrency(simulated.hypotheticalValue, currency)}`
+                : formatCurrency(simulated ? simulated.hypotheticalValue : holding.valueAbsolute, currency)}
             </Text>
           )}
         </div>
@@ -2668,6 +2680,7 @@ function HoldingsTableRow({
                 base={simulationBase}
                 edits={edits}
                 evidence={assessmentEvidence}
+                currency={currency}
                 onApply={(value) => {
                   onEditPosition(simulated.key, value, simulated.baseValue);
                   onCloseEditor();
@@ -2716,6 +2729,7 @@ function PositionEditor({
   base,
   edits,
   evidence,
+  currency,
   onApply,
   onClose,
   t,
@@ -2725,6 +2739,10 @@ function PositionEditor({
   base: PortfolioSimulationBase;
   edits: PortfolioEdits;
   evidence: AssessmentEvidence;
+  /** The portfolio's denomination: this editor shows a holding's value
+   * and portfolio-level headroom side by side, so both are labelled from
+   * one source rather than two. */
+  currency: string | null;
   onApply: (value: number) => void;
   onClose: () => void;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
@@ -2750,7 +2768,7 @@ function PositionEditor({
   const current = applyPortfolioEdits(base, edits);
   const headroom = availableCapital(current);
   const step = editStep(simulated.baseValue);
-  const money = (value: number) => formatCurrency(value);
+  const money = (value: number) => formatCurrency(value, currency);
   const pct = (value: number) => `${value.toFixed(1)}%`;
 
   function impactRow(label: string, now: string, after: string) {

@@ -28,6 +28,11 @@ const VIEW = {
   cashWeightPercent: null,
   cashValueAbsolute: null,
   totalValue: 1000000,
+  // This fixture's holdings are US listings, so the portfolio reports USD.
+  // Declaring it is what makes the `$` assertions below meaningful: before
+  // currency-aware formatting they passed against a hardcoded USD default
+  // and would have passed just as happily for a SEK portfolio.
+  currency: "USD",
   numberOfHoldings: 3,
   concentrationLevel: "Elevated",
   objective: null,

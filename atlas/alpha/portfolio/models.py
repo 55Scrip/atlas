@@ -180,6 +180,35 @@ class AlphaPortfolioState:
         return all(holding.value_absolute is not None for holding in self.holdings)
 
     @property
+    def reporting_currency(self) -> str | None:
+        """The one currency this portfolio's absolute values are denominated
+        in, or `None` when that cannot be established.
+
+        Derived rather than stored, so it can never drift from the holdings
+        it describes. `None` is a real answer and the honest one for a
+        weight-only portfolio, for a mixed-currency state, or for holdings
+        that simply never carried a currency -- and the display layer is
+        expected to show such amounts without a currency symbol rather than
+        pick one. Labelling an unknown denomination is how every holding in
+        a SEK portfolio came to be rendered with a `$`.
+
+        Only holdings carrying an absolute value are consulted, because this
+        exists to denominate exactly those figures. `_build_holdings_from_input`
+        already rejects a value-bearing import that mixes currencies, so for
+        an imported portfolio this is a single value by construction; the
+        set-based check is here for the states that bypass import, such as
+        holdings introduced one at a time by confirmed trades.
+        """
+        currencies = {
+            holding.currency.strip().upper()
+            for holding in self.holdings
+            if holding.value_absolute is not None
+            and holding.currency
+            and holding.currency.strip()
+        }
+        return next(iter(currencies)) if len(currencies) == 1 else None
+
+    @property
     def has_absolute_values(self) -> bool:
         """True only if every holding, and cash, carries an absolute value.
 
