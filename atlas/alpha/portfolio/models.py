@@ -73,6 +73,28 @@ class AlphaHolding:
     is Alpha-provisional bookkeeping only -- no field is added to Core's
     own Case object to hold this association (Alpha Sprint 1 Phase 4,
     Decision A: Alpha never adds Core-shaped state to Core).
+
+    The two identity fields sit beside `case_id` for the same reason it
+    does: they are provisional bookkeeping about *which thing* this line
+    refers to, not economics about the position. They are deliberately
+    two fields rather than one, and named apart, because they carry
+    different kinds of truth:
+
+    * `source_isin` is what the import source said. It is provenance --
+      an identifier a file supplied -- and it is never, on its own,
+      evidence that Atlas knows which security this is. A malformed one
+      never reaches here at all; the parser treats an invalid ISIN as
+      absence rather than as a weaker value.
+    * `canonical_security_id` is what Atlas *proved* from that source
+      identifier against its own security master, offline, at the moment
+      the import was persisted. It is absent far more often than
+      `source_isin` is -- a correspondence Atlas has not recorded cannot
+      be established without asking a provider, and persisting an import
+      does not ask.
+
+    A holding carrying `source_isin` and no `canonical_security_id` is
+    therefore the ordinary, honest case and not a failure: the file named
+    an identifier and Atlas has not yet established what it refers to.
     """
 
     ticker: str
@@ -83,6 +105,12 @@ class AlphaHolding:
     currency: str | None = None
     case_id: str | None = None
     reconciliation_status: ReconciliationStatus = ReconciliationStatus.NONE
+    #: The import source's own security identifier, verbatim after
+    #: validation. Provenance, never proof -- see the class docstring.
+    source_isin: str | None = None
+    #: The security master id Atlas independently established from
+    #: `source_isin`. Proof, never client input -- see the class docstring.
+    canonical_security_id: str | None = None
 
     def __post_init__(self) -> None:
         if not self.ticker or not self.ticker.strip():

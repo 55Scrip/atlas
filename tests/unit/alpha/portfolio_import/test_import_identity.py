@@ -17,6 +17,7 @@ import pytest
 from atlas.alpha.portfolio_import.column_detection import detect_header
 from atlas.alpha.portfolio_import.isin import is_valid_isin, normalize_isin
 from atlas.alpha.portfolio_import.models import ColumnRole
+from atlas.alpha.portfolio_import.row_parser import parse_input
 
 
 # --- ISIN validity -----------------------------------------------------
@@ -180,3 +181,46 @@ def test_share_class_survives_the_import() -> None:
     names = {row.fields[ColumnRole.COMPANY_NAME] for row in _parsed().rows}
     assert "Volvo B" in names
     assert "Novo Nordisk B" in names
+
+
+# ---------------------------------------------------------------------
+# Two parser defects Sprint 67 measured and Sprint 68 deliberately did
+# NOT fix: both are about which identifier a row ends up with, not about
+# whether a resolved identity is retained, and neither can produce a
+# canonical binding on its own (identity is re-established server-side
+# from whatever ISIN survives, against the master, or not at all).
+# Recorded here so the behaviour is pinned rather than rediscovered.
+# ---------------------------------------------------------------------
+def test_two_conflicting_isin_columns_silently_keep_the_last_one() -> None:
+    """OPEN DEFECT. `parse_input` builds a row's fields with a dict
+    comprehension over `zip(roles, columns)`, so a second ISIN column
+    overwrites the first with no ambiguity recorded anywhere.
+
+    The resolver's doctrine is that anything ambiguous withholds, but
+    this ambiguity is resolved by column order before the resolver is
+    ever asked. Not fixed here: a column-detection change is a different
+    sprint, and this cannot fabricate identity -- whichever ISIN wins
+    still has to be matched against the security master to bind.
+    """
+    rows = parse_input(
+        "Namn;ISIN;ISIN\nNagot AB;SE0000115446;SE0000108227\n"
+    ).rows
+
+    assert rows[0].fields[ColumnRole.ISIN] == "SE0000108227"
+
+
+def test_a_bare_isin_line_in_pasted_text_is_not_read_as_an_isin() -> None:
+    """OPEN DEFECT. The flat (no-delimiter) copy-paste path has no column
+    roles, so a line containing only an ISIN meets the trailing-value
+    pattern and is split into a name and a number.
+
+    `SE0000115446` becomes the holding `SE` with weight 115446, which
+    `AlphaHolding` then rejects outright -- the defect is visible and
+    fails closed rather than corrupting a portfolio. Pinned here because
+    it means the pasted-page import shape cannot carry an ISIN at all,
+    which is the shape the live 2026-08-28 import appears to have used.
+    """
+    rows = parse_input("Volvo AB ser. B\nSE0000115446\n").rows
+
+    assert rows[-1].fields[ColumnRole.COMPANY_NAME] == "SE"
+    assert rows[-1].fields[ColumnRole.WEIGHT] == "0000115446"

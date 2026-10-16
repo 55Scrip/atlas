@@ -23,9 +23,14 @@ class CaseInstrumentBinding:
     Share classes stay distinct for the same reason -- `GOOG` and
     `GOOGL`, `BRK.B`, `VOLV-B` are simply different keys.
 
-    `canonical_security_id` is the migration seam to
-    `atlas.alpha.canonical_security`. Always `None` today; see this
-    package's `__init__` for why it cannot be filled yet.
+    `canonical_security_id` is the link to
+    `atlas.alpha.canonical_security`. It is filled on exactly one path:
+    a Case created by an import whose row carried a hard identifier that
+    the backend then matched against the security master itself. It stays
+    `None` everywhere else -- including on every Case reached by its
+    ticker, which is most of them -- because a ticker match is not
+    evidence about which security a Case is. See this package's
+    `__init__` for the rest of that boundary.
     """
 
     case_id: str

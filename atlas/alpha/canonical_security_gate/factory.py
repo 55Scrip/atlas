@@ -27,6 +27,7 @@ __all__ = [
     "build_identity_gate",
     "build_import_identity_resolver",
     "build_listing_mic_reader",
+    "build_offline_import_identity_verifier",
     "build_provider_symbol_resolver",
 ]
 
@@ -154,3 +155,69 @@ def build_import_identity_resolver(engine: Engine):
         return result
 
     return resolve
+
+
+def build_offline_import_identity_verifier(engine: Engine, *, map_isin_fn=None):
+    """The sanctioned seam for "which security is this row, proved from what
+    Atlas already holds" -- the question `import_portfolio` has to answer at
+    the moment it persists, as distinct from the one the preview asks.
+
+    Built here for the same reason `build_import_identity_resolver` is: the
+    portfolio package may not import `canonical_security` or
+    `canonical_security_resolution` directly (that package's own
+    integration-safety guard enforces it), so it receives a plain callable.
+
+    Two deliberate differences from the preview resolver, and both are the
+    whole point:
+
+    * **No provider, ever.** `map_isin_fn` defaults to one that reports the
+      provider as unavailable without being able to reach it, so the only
+      correspondence this can accept is one already recorded in the master.
+      Persisting an import is not a moment to go asking the world what a
+      holding is -- it is the moment to write down what Atlas already proved.
+      A master hit therefore costs nothing and works offline; a master miss
+      withholds. That also means this verifier can never reach the
+      construction branch, so confirming an import never creates a security.
+    * **It returns an id or nothing.** The caller gets no status to interpret
+      and no security to persist, because the only safe answer to "may this
+      holding claim this identity" is yes with an id, or no.
+
+    Returns `(ticker, company_name, isin, market, account_currency) -> str |
+    None`. Nothing about the row other than its own identifiers decides the
+    answer, which is what makes a client-supplied canonical id irrelevant:
+    there is nowhere for one to enter.
+    """
+    from atlas.alpha.canonical_security.repository import SqlAlchemyCanonicalSecurityRepository
+    from atlas.alpha.canonical_security_gate.import_resolution import (
+        ImportedIdentity,
+        resolve_imported_identity,
+    )
+    from atlas.alpha.security_identity_evidence.openfigi_adapter import OpenFigiProviderUnavailable
+
+    create_canonical_security_tables(engine)
+    master = SqlAlchemyCanonicalSecurityRepository(engine)
+
+    def _never_fetch(isin: str):
+        raise OpenFigiProviderUnavailable(
+            "identity is not fetched while an import is being persisted; "
+            "only a correspondence already recorded in the security master counts here"
+        )
+
+    provider = map_isin_fn if map_isin_fn is not None else _never_fetch
+
+    def verify(*, ticker, company_name=None, isin, market, account_currency=None) -> "str | None":
+        if not isin:
+            return None
+        result = resolve_imported_identity(
+            ImportedIdentity(
+                ticker=ticker, company_name=company_name, isin=isin,
+                market=market, account_currency=account_currency,
+            ),
+            master=master,
+            map_isin_fn=provider,
+        )
+        if not result.resolved or result.security is None:
+            return None
+        return str(result.security.id)
+
+    return verify

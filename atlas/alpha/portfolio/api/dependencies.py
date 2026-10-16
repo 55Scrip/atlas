@@ -87,6 +87,23 @@ def get_alpha_watchlist_store_for_portfolio(
     return AlphaWatchlistStore(engine)
 
 
+def get_offline_import_identity_verifier(engine: Engine = Depends(get_decision_engine)):
+    """`(ticker, company_name, isin, market, account_currency) -> canonical
+    id or None`, resolved from the security master with no provider.
+
+    Delegates to `canonical_security_gate.factory`, the sanctioned
+    integration boundary -- this package must never import
+    `canonical_security` or `canonical_security_resolution` itself, exactly
+    as `portfolio_import` and `business_data_refresh` must not (see those
+    packages' own guard tests). The service receives a plain callable.
+    """
+    from atlas.alpha.canonical_security_gate.factory import (
+        build_offline_import_identity_verifier,
+    )
+
+    return build_offline_import_identity_verifier(engine)
+
+
 def get_alpha_portfolio_service(
     store: AlphaPortfolioStore = Depends(get_alpha_portfolio_store),
     trade_log_store: AlphaTradeLogStore = Depends(get_alpha_trade_log_store),
@@ -97,6 +114,7 @@ def get_alpha_portfolio_service(
     business_data_providers: tuple[BusinessDataProvider, ...] = Depends(get_default_business_data_providers),
     identity_gate: CanonicalSecurityIdentityGate = Depends(get_canonical_security_identity_gate),
     ingestion_result_repository: SqlAlchemyIngestionResultRepository = Depends(get_ingestion_result_repository),
+    verify_import_identity=Depends(get_offline_import_identity_verifier),
 ) -> AlphaPortfolioService:
     return AlphaPortfolioService(
         store,
@@ -121,4 +139,10 @@ def get_alpha_portfolio_service(
             ProviderAvailabilityStore(get_decision_engine()),
             provider_name=ALPHA_VANTAGE_PROVIDER_NAME,
         ),
+        # Portfolio Canonical Identity Retention: the seam that turns the
+        # hard identifier a confirm request carried into the security it
+        # names, proved against held state and never fetched. Supplied
+        # here rather than read from the request, because this is the
+        # whole reason a client-supplied canonical id is not trusted.
+        verify_import_identity=verify_import_identity,
     )

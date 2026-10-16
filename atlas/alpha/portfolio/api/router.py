@@ -183,6 +183,8 @@ def import_portfolio(
                         quantity=holding.quantity,
                         price=holding.price,
                         currency=holding.currency,
+                        isin=holding.isin,
+                        market=holding.market,
                     )
                     for holding in payload.holdings
                 ),
@@ -356,6 +358,8 @@ def reconcile(
                             quantity=holding.quantity,
                             price=holding.price,
                             currency=holding.currency,
+                            isin=holding.isin,
+                            market=holding.market,
                         )
                         for holding in payload.holdings
                     ),

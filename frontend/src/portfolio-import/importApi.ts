@@ -98,6 +98,16 @@ export interface ConfirmHolding {
   valueAbsolute: number | null;
   weightPercent: number | null;
   currency: string | null;
+  /** The row's own hard security identifier and the venue text it came
+   * with -- forwarded so the *backend* can establish which security this
+   * holding is. Deliberately NOT `canonicalSecurityId`: the preview
+   * response exposes one, but forwarding it would make this browser the
+   * authority on which company a Case is about, and a stale or tampered
+   * value would bind a thesis to the wrong security. The backend
+   * re-establishes the identity from these two fields against its own
+   * security master, so there is nothing here for a client to forge. */
+  isin: string | null;
+  market: string | null;
 }
 
 export interface ConfirmImportResult {
@@ -115,6 +125,12 @@ export function toConfirmHolding(row: ParsedHoldingRow, tickerOverride?: string)
     valueAbsolute: row.valueAbsolute,
     weightPercent: row.weightPercent,
     currency: row.currency,
+    // Source evidence only. `row.canonicalSecurityId`, `row.securityName`
+    // and `row.identityStatus` are display fields from the preview and are
+    // deliberately not forwarded -- the backend proves identity again from
+    // the ISIN rather than taking this screen's word for it.
+    isin: row.isin,
+    market: row.market,
   };
 }
 

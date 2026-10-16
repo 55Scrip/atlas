@@ -40,6 +40,24 @@ deliberate shadow mode: `tests/unit/alpha/canonical_security
 So `instrument_key` carries the operative ticker Atlas already keys
 every other subsystem on (`business_records.company`, the trade log's
 `security`, both membership tables), and `canonical_security_id` sits
-beside it, nullable and unused, so a row can gain a canonical identity
-later without another schema change and without touching Core.
+beside it, nullable, so a row can gain a canonical identity without
+another schema change and without touching Core.
+
+**What filled it, and what deliberately did not.** Portfolio Canonical
+Identity Retention connected that column to the one place an identity is
+actually established: an import row carrying an ISIN, re-resolved by the
+backend against the master at the moment the import is persisted -- no
+provider, no client-supplied id, and nothing created. A Case created from
+such a row is bound with its canonical identity.
+
+Every *existing* binding was left alone, and that is the harder half of
+the decision. The eleven unresolved tickers above have not become
+resolvable, and the other fifteen cannot be upgraded by noticing that a
+new import mentions the same ticker string: `instrument_key == ticker` is
+how those Cases are found, and using it as the proof of their security
+identity would reinstate exactly the inference this package was built to
+remove. A proven identity that disagrees with a stored one therefore
+raises, a proven identity arriving at a Case that has none is recorded on
+the holding and not on the binding, and whether historical bindings can
+ever be reconciled is a separate question with its own burden of proof.
 """

@@ -71,6 +71,12 @@ def _to_row(state: AlphaPortfolioState) -> dict[str, Any]:
                     "currency": holding.currency,
                     "caseId": holding.case_id,
                     "reconciliationStatus": holding.reconciliation_status.value,
+                    # Portfolio Canonical Identity Retention. Written
+                    # unconditionally, nulls included, like every other
+                    # optional field above -- a holding that names no
+                    # security says so rather than omitting the question.
+                    "sourceIsin": holding.source_isin,
+                    "canonicalSecurityId": holding.canonical_security_id,
                 }
                 for holding in state.holdings
             ]
@@ -96,6 +102,12 @@ def _to_state(row: Mapping[str, Any]) -> AlphaPortfolioState:
             reconciliation_status=ReconciliationStatus(
                 item.get("reconciliationStatus", ReconciliationStatus.NONE.value)
             ),
+            # `.get` rather than `[...]`: every row written before identity
+            # retention existed -- including the live 2026-08-28 import --
+            # has neither key, and must keep deserializing untouched. No
+            # historical row is rewritten to add them.
+            source_isin=item.get("sourceIsin"),
+            canonical_security_id=item.get("canonicalSecurityId"),
         )
         for item in json.loads(row["holdings_json"])
     )

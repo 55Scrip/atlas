@@ -18,7 +18,21 @@ class ImportHoldingRequest(CamelModel):
     """`weight_percent` is optional: whenever `value_absolute`, or
     `quantity` and `price`, are supplied for every holding in the batch,
     weight is derived server-side rather than trusted from this field --
-    see `AlphaPortfolioService._build_holdings_from_input`."""
+    see `AlphaPortfolioService._build_holdings_from_input`.
+
+    `isin`/`market` are the row's own hard security identifier and the
+    venue text it arrived with, forwarded so the *backend* can establish
+    which security this holding is. There is deliberately no
+    `canonicalSecurityId` field: the preview response exposes one, but a
+    confirm body is client-controlled input, and a canonical id accepted
+    on trust would let a stale, swapped or tampered client bind a thesis
+    to the wrong company. Atlas re-establishes the identity from these
+    two fields against its own security master instead, so an invented
+    canonical id has nowhere to enter rather than merely being rejected.
+    A client that sends one anyway is ignored (this model takes no extra
+    fields) -- see
+    `tests/unit/alpha/portfolio/test_import_identity_retention.py`.
+    """
 
     ticker: str
     weight_percent: float | None = None
@@ -26,6 +40,8 @@ class ImportHoldingRequest(CamelModel):
     quantity: float | None = None
     price: float | None = None
     currency: str | None = None
+    isin: str | None = None
+    market: str | None = None
 
 
 class ImportPortfolioRequestBody(CamelModel):

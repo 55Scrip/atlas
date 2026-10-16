@@ -53,6 +53,7 @@ class CaseGenerationService:
         current_case_id: str | None,
         ticker: str,
         known_case_ids_by_ticker: Mapping[str, str] | None = None,
+        canonical_security_id: str | None = None,
     ) -> str:
         """Return the one authoritative Case id for `ticker`.
 
@@ -65,13 +66,24 @@ class CaseGenerationService:
         is a brand-new Case created. `known_case_ids_by_ticker=None`
         (the default) skips step 2 entirely, matching this method's
         behavior before this slice existed.
+
+        `canonical_security_id` is an identity the *caller* has already
+        proven about this row from Atlas's own held evidence -- never a
+        value a client supplied. It is attached only on the one branch
+        below that creates a Case, and that asymmetry is deliberate:
+        every other branch found its Case through a ticker, and a Case
+        found by ticker is not thereby proven to be that security.
+        Reuse branches still pass it down so a contradiction with an
+        already-established identity is raised rather than ignored.
         """
         if current_case_id is not None:
+            self._check_identity(current_case_id, canonical_security_id)
             self._bind(current_case_id, ticker)
             return current_case_id
         if known_case_ids_by_ticker is not None:
             cross_context_case_id = known_case_ids_by_ticker.get(ticker)
             if cross_context_case_id is not None:
+                self._check_identity(cross_context_case_id, canonical_security_id)
                 self._bind(cross_context_case_id, ticker)
                 return cross_context_case_id
         # (4) the binding itself is now a resolution source, and the
@@ -81,12 +93,67 @@ class CaseGenerationService:
         # without first joining the Watchlist.
         bound = self._binding_repository.get_by_instrument_key(ticker) if self._binding_repository else None
         if bound is not None:
+            if self._binding_repository is not None:
+                self._binding_repository.assert_identity_agrees(bound, canonical_security_id)
             return bound.case_id
         case_id = str(self._case_service.create().id)
-        self._bind(case_id, ticker)
+        self._bind(case_id, ticker, canonical_security_id=canonical_security_id)
         return case_id
 
-    def _bind(self, case_id: str, ticker: str) -> None:
+    def assert_no_identity_conflicts(
+        self,
+        holdings: tuple[AlphaHolding, ...],
+        *,
+        known_case_ids_by_ticker: Mapping[str, str] | None = None,
+    ) -> None:
+        """Raise if any holding's proven identity contradicts a Case that
+        already has one, before a single binding is written.
+
+        `ensure_cases` writes one binding per holding, so without this a
+        contradiction on the fourth holding would leave the first three
+        already bound and the portfolio state unwritten. Every lookup here
+        is a read: no Case is created, so checking costs nothing a later
+        `ensure_cases` would not have paid anyway.
+        """
+        if self._binding_repository is None:
+            return
+        for holding in holdings:
+            proven = getattr(holding, "canonical_security_id", None)
+            if proven is None:
+                continue
+            case_id = holding.case_id
+            if case_id is None and known_case_ids_by_ticker is not None:
+                case_id = known_case_ids_by_ticker.get(holding.ticker)
+            existing = (
+                self._binding_repository.get_by_case_id(case_id)
+                if case_id is not None
+                else self._binding_repository.get_by_instrument_key(holding.ticker)
+            )
+            if existing is not None:
+                self._binding_repository.assert_identity_agrees(existing, proven)
+
+    def _check_identity(self, case_id: str, proven_canonical_security_id: str | None) -> None:
+        """Compare a proven identity against this Case's stored one without
+        writing anything.
+
+        Used by the reuse branches of `ensure_case_id`, which must stay able
+        to *disagree* loudly while never filling in an absence: a Case whose
+        binding has no canonical identity keeps none, because the Case was
+        reached through its ticker.
+        """
+        if self._binding_repository is None or proven_canonical_security_id is None:
+            return
+        existing = self._binding_repository.get_by_case_id(case_id)
+        if existing is not None:
+            self._binding_repository.assert_identity_agrees(existing, proven_canonical_security_id)
+
+    def _bind(
+        self,
+        case_id: str,
+        ticker: str,
+        *,
+        canonical_security_id: str | None = None,
+    ) -> None:
         """Record which instrument this Case is about.
 
         Called on every path, not only creation: a Case that predates
@@ -95,11 +162,20 @@ class CaseGenerationService:
         asks. Idempotent, and raises rather than rewriting if the Case
         is already bound to a different instrument -- see
         `CaseInstrumentBindingRepository.bind`.
+
+        `canonical_security_id` is *written*, so only the branch of
+        `ensure_case_id` that creates a Case passes it. A reuse branch
+        checks for contradiction through `_check_identity` and binds
+        without an identity, which is what keeps a ticker-found Case from
+        acquiring one.
         """
         if self._binding_repository is None:
             return
         self._binding_repository.bind(
-            CaseInstrumentBinding(case_id=case_id, instrument_key=ticker, bound_at=_utc_now())
+            CaseInstrumentBinding(
+                case_id=case_id, instrument_key=ticker, bound_at=_utc_now(),
+                canonical_security_id=canonical_security_id,
+            )
         )
 
     def ensure_cases(
@@ -129,6 +205,9 @@ class CaseGenerationService:
         as a real error to the caller, never be silently swallowed into
         a holding left without a Case.
         """
+        self.assert_no_identity_conflicts(
+            holdings, known_case_ids_by_ticker=known_case_ids_by_ticker
+        )
         return tuple(
             holding
             if holding.case_id is not None
@@ -138,6 +217,7 @@ class CaseGenerationService:
                     current_case_id=None,
                     ticker=holding.ticker,
                     known_case_ids_by_ticker=known_case_ids_by_ticker,
+                    canonical_security_id=getattr(holding, "canonical_security_id", None),
                 ),
             )
             for holding in holdings

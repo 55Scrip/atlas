@@ -38,6 +38,18 @@ class CaseInstrumentBindingRepository:
         instrument raises: a Case is about one company, and quietly
         rewriting which one would move a thesis, its Decision history
         and its evidence onto a different security.
+
+        Portfolio Canonical Identity Retention: a canonical security id
+        is written only when the row itself is written. An existing row
+        is never *upgraded* here, even when the caller arrives with an
+        independently proven identity, because the row it would upgrade
+        was found by `case_id` -- and in the import path that case_id
+        was itself resolved from a ticker. Writing a canonical identity
+        onto it would make ticker equality the proof of security
+        identity in a new place, which is the defect this whole package
+        exists to remove. A disagreement between a stored identity and
+        a proven one raises instead: that is a real contradiction about
+        which security a Case is, not a gap to be filled quietly.
         """
         existing = self.get_by_case_id(binding.case_id)
         if existing is not None:
@@ -47,6 +59,7 @@ class CaseInstrumentBindingRepository:
                     f"{existing.instrument_key!r}; refusing to rebind it to "
                     f"{binding.instrument_key!r}."
                 )
+            self.assert_identity_agrees(existing, binding.canonical_security_id)
             return existing
 
         with self._engine.begin() as connection:
@@ -59,6 +72,30 @@ class CaseInstrumentBindingRepository:
                 )
             )
         return binding
+
+    @staticmethod
+    def assert_identity_agrees(
+        existing: CaseInstrumentBinding, proven_canonical_security_id: str | None
+    ) -> None:
+        """Raise when a stored canonical identity and a freshly proven one
+        name two different securities.
+
+        Separate from `bind` and side-effect free on purpose, so a caller
+        that writes several bindings can check them all *before* writing any
+        of them and leave nothing half-written behind. Silence covers the
+        two safe cases and one deliberate refusal: nothing proven, the same
+        thing proven, and -- the refusal -- something proven about a row that
+        has no identity yet, which stays without one.
+        """
+        if proven_canonical_security_id is None or existing.canonical_security_id is None:
+            return
+        if existing.canonical_security_id != proven_canonical_security_id:
+            raise ConflictingCaseInstrumentBindingError(
+                f"Case {existing.case_id} is already bound to canonical security "
+                f"{existing.canonical_security_id!r}; this import proves "
+                f"{proven_canonical_security_id!r}. Refusing to overwrite an "
+                "established security identity."
+            )
 
     def get_by_case_id(self, case_id: str) -> CaseInstrumentBinding | None:
         with self._engine.connect() as connection:

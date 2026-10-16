@@ -26,6 +26,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
+from typing import Callable
 
 from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecordRepository
 from atlas.alpha.business_data_refresh.service import ensure_company_enriched
@@ -66,9 +67,45 @@ from atlas.shared import Portfolio as SharedPortfolio
 _ALLOCATION_TOLERANCE = 1e-6
 _CASH_TICKER = "CASH"
 
+#: `(ticker, company_name, isin, market, account_currency) -> canonical id or
+#: None`. Structural rather than imported so this module keeps no dependency
+#: on the identity packages: the security master, the canonical aggregate and
+#: the provider all stay behind `canonical_security_gate`, which is the only
+#: sanctioned crossing (see that package's integration-safety guards).
+VerifyImportIdentityFn = Callable[..., "str | None"]
+
 
 def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _verified_identity(
+    item: "ImportHoldingInput", verify_identity: "VerifyImportIdentityFn | None"
+) -> tuple[str | None, str | None]:
+    """`(source_isin, canonical_security_id)` for one imported row.
+
+    The source identifier is kept whether or not it resolved -- it is what
+    the file said, and a row Atlas could not place is still a row that named
+    something. The canonical id is kept only when `verify_identity` proved
+    it: no verifier wired, no identifier supplied, or nothing established
+    all give `None`, and none of those three is distinguishable from the
+    others by anything a client sent.
+
+    A verifier failure is deliberately not caught. An import that quietly
+    degraded to "identity unknown" whenever identity verification broke
+    would be indistinguishable from one that honestly could not place the
+    holding, and those two have to stay tellable apart.
+    """
+    if verify_identity is None or not item.isin:
+        return item.isin, None
+    canonical_security_id = verify_identity(
+        ticker=item.ticker,
+        company_name=None,
+        isin=item.isin,
+        market=item.market,
+        account_currency=item.currency,
+    )
+    return item.isin, canonical_security_id
 
 
 @dataclass(frozen=True)
@@ -86,6 +123,16 @@ class ImportHoldingInput:
     quantity: float | None = None
     price: float | None = None
     currency: str | None = None
+    #: Portfolio Canonical Identity Retention: the row's own hard security
+    #: identifier and the venue text it came with, carried so the backend
+    #: can establish which security this holding is *here*, rather than
+    #: trusting a canonical id a client might have sent. There is
+    #: deliberately no `canonical_security_id` on this type: the browser
+    #: is not an authority on security identity, and leaving the field out
+    #: makes a fabricated, swapped or stale one structurally unable to
+    #: reach a binding instead of merely defended against.
+    isin: str | None = None
+    market: str | None = None
 
 
 @dataclass(frozen=True)
@@ -213,6 +260,7 @@ def _build_holdings_from_input(
     items: tuple[ImportHoldingInput, ...],
     cash_value_absolute: float | None,
     existing_case_ids: dict[str, str],
+    verify_identity: "VerifyImportIdentityFn | None" = None,
 ) -> tuple[tuple[AlphaHolding, ...], float | None]:
     """Build final holdings from bulk import input, sharing one derivation
     path between `import_portfolio` and `reconcile_replace_allocation`
@@ -229,6 +277,7 @@ def _build_holdings_from_input(
     (`None` otherwise, leaving the caller's own `cash_weight_percent`
     untouched).
     """
+    identities = tuple(_verified_identity(item, verify_identity) for item in items)
     has_value = tuple(_resolve_holding_value(item) is not None for item in items)
     all_value_bearing = all(has_value)
     none_value_bearing = not any(has_value)
@@ -255,10 +304,12 @@ def _build_holdings_from_input(
                     quantity=item.quantity,
                     price=item.price,
                     currency=item.currency,
+                    source_isin=identity[0],
+                    canonical_security_id=identity[1],
                 ),
                 case_id=existing_case_ids.get(item.ticker.strip().upper()),
             )
-            for item in items
+            for item, identity in zip(items, identities)
         )
         return holdings, None
 
@@ -280,10 +331,12 @@ def _build_holdings_from_input(
                 quantity=item.quantity,
                 price=item.price,
                 currency=item.currency,
+                source_isin=identity[0],
+                canonical_security_id=identity[1],
             ),
             case_id=existing_case_ids.get(item.ticker.strip().upper()),
         )
-        for item in items
+        for item, identity in zip(items, identities)
     )
     recomputed_holdings, recomputed_cash_weight = _recompute_weights_from_absolute_values(
         interim_holdings, cash_value_absolute
@@ -410,6 +463,7 @@ class AlphaPortfolioService:
         identity_gate: CanonicalSecurityIdentityGate | None = None,
         ingestion_result_repository: SqlAlchemyIngestionResultRepository | None = None,
         quota_tracker: "object | None" = None,
+        verify_import_identity: VerifyImportIdentityFn | None = None,
     ) -> None:
         self._store = store
         self._trade_log_store = trade_log_store
@@ -426,6 +480,14 @@ class AlphaPortfolioService:
         # respect a budget. `None` -- every pre-8B caller -- keeps the
         # previous unbounded behaviour exactly.
         self._quota_tracker = quota_tracker
+        #: Portfolio Canonical Identity Retention. Optional in the same
+        #: `X | None = None` shape every other dependency here uses, so the
+        #: many existing construction sites keep working: without it an
+        #: import behaves exactly as it did before, carrying the source
+        #: identifier and establishing no canonical identity. Production
+        #: wiring supplies the offline verifier from
+        #: `canonical_security_gate.factory`.
+        self._verify_import_identity = verify_import_identity
 
     def _budget_available(self):
         return self._quota_tracker.has_budget if self._quota_tracker is not None else None
@@ -529,7 +591,8 @@ class AlphaPortfolioService:
         )
         try:
             holdings, derived_cash_weight_percent = _build_holdings_from_input(
-                request.holdings, request.cash_value_absolute, existing_case_ids
+                request.holdings, request.cash_value_absolute, existing_case_ids,
+                self._verify_import_identity,
             )
         except ValueError as exc:
             raise AlphaPortfolioValidationError(str(exc)) from exc
@@ -834,7 +897,8 @@ class AlphaPortfolioService:
         existing_case_ids = {holding.ticker: holding.case_id for holding in state.holdings}
         try:
             holdings, derived_cash_weight_percent = _build_holdings_from_input(
-                request.holdings, request.cash_value_absolute, existing_case_ids
+                request.holdings, request.cash_value_absolute, existing_case_ids,
+                self._verify_import_identity,
             )
         except ValueError as exc:
             raise AlphaPortfolioValidationError(str(exc)) from exc
